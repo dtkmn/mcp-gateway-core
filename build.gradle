@@ -1,0 +1,175 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = providers.gradleProperty('gatewayCoreGroup')
+        .orElse('io.github.dtkmn')
+        .get()
+version = providers.gradleProperty('gatewayCoreVersion')
+        .orElse('0.5.0')
+        .get()
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:6.0.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+def downstreamPackageMarker = 'mcp.server.' + 'zap'
+def scannerClientMarker = 'org.' + 'zaproxy'
+def publicToolPrefixMarker = 'zap' + '_'
+def privateRepoMarker = 'agentic-security-' + 'gateway'
+def forbiddenSourceCouplingPattern = ~/(\Q${downstreamPackageMarker}\E|\Q${scannerClientMarker}\E|\Q${publicToolPrefixMarker}\E|org\.springframework|ScanJob|ScanHistory|ReportService|FindingsService|enterprise|\Q${privateRepoMarker}\E|Agentic|\bASG\b|A2A|LLM provider|Kubernetes Gateway|service mesh)/
+def forbiddenMetadataLeakPattern = ~/(\Q${downstreamPackageMarker}\E|\Q${scannerClientMarker}\E|\Q${publicToolPrefixMarker}\E|\Q${privateRepoMarker}\E|Agentic|\bASG\b)/
+
+tasks.register('verifyNoForbiddenCoupling') {
+    group = 'verification'
+    description = 'Rejects ZAP, app-runtime, private, and data-plane gateway coupling from gateway-core.'
+
+    inputs.files(fileTree('src') {
+        include '**/*.java'
+    }, files('README.md', 'settings.gradle', 'gradle.properties'))
+
+    doLast {
+        List<String> matches = []
+        fileTree('src') {
+            include '**/*.java'
+        }.files.sort().each { file ->
+            file.readLines().eachWithIndex { line, index ->
+                if (line =~ forbiddenSourceCouplingPattern) {
+                    matches.add("${project.relativePath(file)}:${index + 1}: ${line.trim()}")
+                }
+            }
+        }
+        files('README.md', 'settings.gradle', 'gradle.properties').files.findAll { it.isFile() }.sort().each { file ->
+            file.readLines().eachWithIndex { line, index ->
+                if (line =~ forbiddenMetadataLeakPattern) {
+                    matches.add("${project.relativePath(file)}:${index + 1}: ${line.trim()}")
+                }
+            }
+        }
+        if (!matches.isEmpty()) {
+            throw new GradleException("gateway-core contains forbidden coupling:\n${matches.join('\n')}")
+        }
+    }
+}
+
+tasks.register('verifyGatewayCoreJarClosedWorld') {
+    group = 'verification'
+    description = 'Verifies the gateway-core JAR contains only mcp/gateway/core classes and manifest metadata.'
+    dependsOn tasks.named('jar')
+
+    doLast {
+        File jarFile = tasks.named('jar').get().archiveFile.get().asFile
+        List<String> classes = []
+        List<String> unexpected = []
+        new java.util.zip.ZipFile(jarFile).withCloseable { jar ->
+            jar.entries().each { entry ->
+                String name = entry.name
+                boolean manifestEntry = name == 'META-INF/' || name == 'META-INF/MANIFEST.MF'
+                boolean allowedEntry = name.startsWith('mcp/gateway/core/')
+                boolean allowedParentDirectory = entry.isDirectory() && 'mcp/gateway/core/'.startsWith(name)
+                if (allowedEntry && name.endsWith('.class')) {
+                    classes.add(name)
+                }
+                if (!manifestEntry && !allowedEntry && !allowedParentDirectory) {
+                    unexpected.add(name)
+                }
+            }
+        }
+        if (classes.isEmpty()) {
+            throw new GradleException('gateway-core JAR must contain classes under mcp/gateway/core/.')
+        }
+        if (!unexpected.isEmpty()) {
+            throw new GradleException("gateway-core JAR contains unexpected entries: ${unexpected.sort().take(20)}")
+        }
+    }
+}
+
+tasks.register('verifyGatewayCoreJdeps') {
+    group = 'verification'
+    description = 'Verifies the gateway-core JAR depends only on java.base.'
+    dependsOn tasks.named('jar')
+
+    doLast {
+        File jarFile = tasks.named('jar').get().archiveFile.get().asFile
+        Process process = new ProcessBuilder('jdeps', '-summary', jarFile.absolutePath)
+                .redirectErrorStream(true)
+                .start()
+        String output = process.inputStream.getText('UTF-8')
+        int exitCode = process.waitFor()
+        if (exitCode != 0) {
+            throw new GradleException("jdeps failed with exit code ${exitCode}: ${output}")
+        }
+        List<String> lines = output
+                .readLines()
+                .collect { it.trim() }
+                .findAll { !it.isEmpty() }
+        if (lines != ["${jarFile.name} -> java.base"]) {
+            throw new GradleException("gateway-core JAR must depend only on java.base; got ${lines}")
+        }
+    }
+}
+
+publishing {
+    publications {
+        gatewayCore(MavenPublication) {
+            from components.java
+            artifactId = 'mcp-gateway-core'
+            pom {
+                name = 'MCP Gateway Core'
+                description = 'Java-only governance contracts and primitives for MCP tool gateways.'
+                url = 'https://github.com/dtkmn/mcp-gateway-core'
+                licenses {
+                    license {
+                        name = 'Apache License, Version 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'dtkmn'
+                        name = 'Daniel Tse'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/dtkmn/mcp-gateway-core.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/dtkmn/mcp-gateway-core.git'
+                    url = 'https://github.com/dtkmn/mcp-gateway-core'
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'gatewayCoreStaging'
+            url = providers.gradleProperty('gatewayCorePublicationRepositoryUrl')
+                    .map { uri(it) }
+                    .orElse(layout.buildDirectory.dir('staging-repository').map { it.asFile.toURI() })
+                    .get()
+        }
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyNoForbiddenCoupling')
+    dependsOn tasks.named('verifyGatewayCoreJarClosedWorld')
+    dependsOn tasks.named('verifyGatewayCoreJdeps')
+}
