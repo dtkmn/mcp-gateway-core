@@ -6,6 +6,11 @@ import java.util.Map;
 
 /**
  * Generic audit event emitted by an MCP gateway runtime.
+ *
+ * @param type event type
+ * @param principal authenticated actor or client identifier
+ * @param outcome normalized event outcome
+ * @param details immutable event details
  */
 public record GatewayAuditEvent(
         String type,
@@ -13,6 +18,14 @@ public record GatewayAuditEvent(
         String outcome,
         Map<String, Object> details
 ) {
+    /**
+     * Creates a normalized audit event.
+     *
+     * @param type event type
+     * @param principal authenticated actor or client identifier
+     * @param outcome event outcome
+     * @param details event details
+     */
     public GatewayAuditEvent {
         type = normalize(type);
         principal = normalize(principal);
@@ -20,6 +33,15 @@ public record GatewayAuditEvent(
         details = safeDetails(details);
     }
 
+    /**
+     * Creates a normalized audit event.
+     *
+     * @param type event type
+     * @param principal authenticated actor or client identifier
+     * @param outcome event outcome
+     * @param details event details
+     * @return normalized audit event
+     */
     public static GatewayAuditEvent of(String type,
                                        String principal,
                                        String outcome,

@@ -5,6 +5,9 @@ Java-only governance contracts and primitives for MCP tool gateways.
 This repository is intentionally small. It is not a gateway runtime, router,
 scanner integration, UI, or traffic-management data plane.
 
+Current status: public preview. The package and coordinate are intended for
+early integration proof, not a stable compatibility promise.
+
 ## Scope
 
 Included:
@@ -28,10 +31,22 @@ Excluded:
 ## Build
 
 ```bash
-./gradlew build --no-daemon --stacktrace
+./gradlew verifyGatewayCorePublicPreviewPublication --no-daemon --stacktrace
 ```
 
-## Publish Dry Run
+This command runs the normal build, forbidden-coupling checks, closed-world JAR
+checks, `jdeps`, unsigned Central Portal bundle validation, and signed dry-run
+bundle validation with an ephemeral local GPG key.
+
+## Coordinates
+
+Planned public-preview coordinate:
+
+```text
+io.github.dtkmn:mcp-gateway-core:0.5.0
+```
+
+## Local Staging
 
 ```bash
 ./gradlew publishGatewayCorePublicationToGatewayCoreStagingRepository \
@@ -39,6 +54,7 @@ Excluded:
   --no-daemon --stacktrace
 ```
 
-The first public release still needs a dedicated release policy, compatibility
-matrix, signing flow, and downstream consumer proof.
+## Release And Compatibility
 
+- [Release policy](docs/RELEASE_POLICY.md)
+- [Compatibility policy](docs/COMPATIBILITY.md)

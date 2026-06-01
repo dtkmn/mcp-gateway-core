@@ -6,22 +6,42 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.LongSupplier;
 
+/**
+ * Thread-safe token-bucket rate limiter keyed by caller, tool, workspace, or another runtime key.
+ */
 public final class TokenBucketRateLimiter {
+    /** Default key used when callers provide a blank or null key. */
     public static final String DEFAULT_KEY = "anonymous";
 
     private final ConcurrentHashMap<String, BucketState> buckets = new ConcurrentHashMap<>();
     private final LongSupplier nanoClock;
     private final LongSupplier millisClock;
 
+    /**
+     * Creates a limiter using the system clocks.
+     */
     public TokenBucketRateLimiter() {
         this(System::nanoTime, System::currentTimeMillis);
     }
 
+    /**
+     * Creates a limiter with caller-provided clocks for deterministic tests.
+     *
+     * @param nanoClock monotonic nanosecond clock
+     * @param millisClock wall-clock millisecond clock
+     */
     public TokenBucketRateLimiter(LongSupplier nanoClock, LongSupplier millisClock) {
         this.nanoClock = Objects.requireNonNull(nanoClock, "nanoClock must not be null");
         this.millisClock = Objects.requireNonNull(millisClock, "millisClock must not be null");
     }
 
+    /**
+     * Attempts to consume one token from the bucket for the supplied key.
+     *
+     * @param key bucket key
+     * @param policy rate-limit policy
+     * @return {@code true} when a token was consumed or rate limiting is disabled
+     */
     public boolean tryConsume(String key, Policy policy) {
         Objects.requireNonNull(policy, "policy must not be null");
         if (!policy.enabled()) {
@@ -48,6 +68,13 @@ public final class TokenBucketRateLimiter {
         }
     }
 
+    /**
+     * Estimates when a rejected caller should retry.
+     *
+     * @param key bucket key
+     * @param policy rate-limit policy
+     * @return retry delay in whole seconds
+     */
     public long retryAfterSeconds(String key, Policy policy) {
         Objects.requireNonNull(policy, "policy must not be null");
         if (!policy.enabled()) {
@@ -143,6 +170,16 @@ public final class TokenBucketRateLimiter {
         return key.trim();
     }
 
+    /**
+     * Immutable token-bucket configuration.
+     *
+     * @param enabled whether rate limiting is enabled
+     * @param capacity maximum number of stored tokens
+     * @param refillTokens tokens added during each refill period
+     * @param refillPeriodSeconds refill period in seconds
+     * @param maxTrackedKeys maximum tracked bucket keys
+     * @param disabledRetryAfterSeconds retry delay returned when the policy is disabled
+     */
     public record Policy(
             boolean enabled,
             int capacity,
@@ -151,6 +188,16 @@ public final class TokenBucketRateLimiter {
             int maxTrackedKeys,
             long disabledRetryAfterSeconds
     ) {
+        /**
+         * Creates a normalized token-bucket policy.
+         *
+         * @param enabled whether rate limiting is enabled
+         * @param capacity maximum number of stored tokens
+         * @param refillTokens tokens added during each refill period
+         * @param refillPeriodSeconds refill period in seconds
+         * @param maxTrackedKeys maximum tracked bucket keys
+         * @param disabledRetryAfterSeconds retry delay returned when the policy is disabled
+         */
         public Policy {
             capacity = Math.max(1, capacity);
             refillTokens = Math.max(1, refillTokens);

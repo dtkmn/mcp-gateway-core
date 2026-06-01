@@ -2,12 +2,23 @@ package mcp.gateway.core.policy;
 
 /**
  * Generic input for evaluating an MCP tool policy decision.
+ *
+ * @param toolName MCP tool name
+ * @param target target URL, host, or runtime-defined target selector
+ * @param correlationId request correlation identifier
  */
 public record ToolPolicyEvaluationContext(
         String toolName,
         String target,
         String correlationId
 ) {
+    /**
+     * Creates a normalized policy evaluation context.
+     *
+     * @param toolName MCP tool name
+     * @param target target URL, host, or runtime-defined target selector
+     * @param correlationId request correlation identifier
+     */
     public ToolPolicyEvaluationContext {
         toolName = normalize(toolName);
         target = normalize(target);

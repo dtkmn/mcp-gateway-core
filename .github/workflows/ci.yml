@@ -14,5 +14,4 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - run: ./gradlew build --no-daemon --stacktrace
-
+      - run: ./gradlew verifyGatewayCorePublicPreviewPublication --no-daemon --stacktrace

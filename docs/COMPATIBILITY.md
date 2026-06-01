@@ -1,0 +1,49 @@
+# MCP Gateway Core Compatibility Policy
+
+This policy defines what the public-preview API currently promises and what it
+does not promise.
+
+## Public Surface
+
+The public surface is the Java package:
+
+```text
+mcp.gateway.core
+```
+
+The Maven coordinate is:
+
+```text
+io.github.dtkmn:mcp-gateway-core
+```
+
+## In Scope
+
+Public-preview consumers may depend on:
+
+- MCP tool invocation value types;
+- authorization, policy, and audit decision value types;
+- correlation ID helpers;
+- URL scope helpers;
+- token-bucket rate limiting primitives.
+
+## Out Of Scope
+
+This artifact does not promise:
+
+- dynamic plugin loading;
+- runtime routing;
+- scanner integration;
+- report, finding, evidence, or queue storage;
+- Spring Boot application wiring;
+- product-specific tool naming;
+- stable binary compatibility yet.
+
+## Compatibility Rule
+
+During public preview, changes should stay source-compatible when reasonable,
+but correctness and clean boundaries win over compatibility. Any breaking change
+must be deliberate, reviewed, and described in release notes.
+
+Stable compatibility can be declared only after downstream consumers prove the
+API shape in real integration workflows.

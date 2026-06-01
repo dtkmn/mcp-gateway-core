@@ -5,6 +5,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
 
+/**
+ * Normalized URL scope that can test whether a candidate URL is inside a base URL boundary.
+ */
 public final class UrlScope {
     private final String scheme;
     private final String host;
@@ -18,6 +21,13 @@ public final class UrlScope {
         this.path = path;
     }
 
+    /**
+     * Parses an absolute base URL into a scope.
+     *
+     * @param baseUrl absolute base URL
+     * @return parsed URL scope
+     * @throws IllegalArgumentException when the URL is not absolute or lacks a host
+     */
     public static UrlScope parse(String baseUrl) {
         UrlParts parts = parseParts(baseUrl);
         if (parts == null) {
@@ -26,6 +36,12 @@ public final class UrlScope {
         return new UrlScope(parts.scheme(), parts.host(), parts.port(), parts.path());
     }
 
+    /**
+     * Returns whether a candidate URL is inside this scope.
+     *
+     * @param candidateUrl candidate absolute URL
+     * @return {@code true} when scheme, host, effective port, and path are in scope
+     */
     public boolean contains(String candidateUrl) {
         UrlParts candidate = parseParts(candidateUrl);
         return candidate != null
