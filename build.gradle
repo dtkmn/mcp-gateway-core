@@ -129,11 +129,15 @@ tasks.register('verifyGatewayCoreJdeps') {
     }
 }
 
-def gatewayCorePublicationDirectory = {
-    layout.buildDirectory
-            .dir("staging-repository/${gatewayCorePublicationPath}")
+def gatewayCorePublicationRoot = {
+    providers.gradleProperty('gatewayCorePublicationRepositoryUrl')
+            .map { new File(uri(it)) }
+            .orElse(layout.buildDirectory.dir('staging-repository').map { it.asFile })
             .get()
-            .asFile
+}
+
+def gatewayCorePublicationDirectory = {
+    new File(gatewayCorePublicationRoot(), gatewayCorePublicationPath)
 }
 
 def gatewayCoreSignedDryRunPublicationRoot = {
