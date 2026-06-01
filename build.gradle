@@ -32,8 +32,10 @@ def downstreamPackageMarker = 'mcp.server.' + 'zap'
 def scannerClientMarker = 'org.' + 'zaproxy'
 def publicToolPrefixMarker = 'zap' + '_'
 def privateRepoMarker = 'agentic-security-' + 'gateway'
-def forbiddenSourceCouplingPattern = ~/(\Q${downstreamPackageMarker}\E|\Q${scannerClientMarker}\E|\Q${publicToolPrefixMarker}\E|org\.springframework|ScanJob|ScanHistory|ReportService|FindingsService|enterprise|\Q${privateRepoMarker}\E|Agentic|\bASG\b|A2A|LLM provider|Kubernetes Gateway|service mesh)/
-def forbiddenMetadataLeakPattern = ~/(\Q${downstreamPackageMarker}\E|\Q${scannerClientMarker}\E|\Q${publicToolPrefixMarker}\E|\Q${privateRepoMarker}\E|Agentic|\bASG\b)/
+def privateBrandMarker = 'Agent' + 'ic'
+def privateAcronymMarker = 'A' + 'SG'
+def forbiddenSourceCouplingPattern = ~/(\Q${downstreamPackageMarker}\E|\Q${scannerClientMarker}\E|\Q${publicToolPrefixMarker}\E|org\.springframework|ScanJob|ScanHistory|ReportService|FindingsService|enterprise|\Q${privateRepoMarker}\E|\Q${privateBrandMarker}\E|\b\Q${privateAcronymMarker}\E\b|A2A|LLM provider|Kubernetes Gateway|service mesh)/
+def forbiddenMetadataLeakPattern = ~/(\Q${downstreamPackageMarker}\E|\Q${scannerClientMarker}\E|\Q${publicToolPrefixMarker}\E|\Q${privateRepoMarker}\E|\Q${privateBrandMarker}\E|\b\Q${privateAcronymMarker}\E\b)/
 
 tasks.register('verifyNoForbiddenCoupling') {
     group = 'verification'
