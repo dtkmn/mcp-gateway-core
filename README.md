@@ -58,3 +58,4 @@ io.github.dtkmn:mcp-gateway-core:0.5.0
 
 - [Release policy](docs/RELEASE_POLICY.md)
 - [Compatibility policy](docs/COMPATIBILITY.md)
+- [Central validation upload](docs/CENTRAL_VALIDATION_UPLOAD.md)

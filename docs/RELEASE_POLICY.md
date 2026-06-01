@@ -37,11 +37,21 @@ That gate proves:
 - checksums match the ZIP payload;
 - the signed dry-run ZIP verifies detached signatures from extracted payloads.
 
+Before uploading to Central for validation, the guarded upload path must pass:
+
+```bash
+./bin/gateway-core-central-validation-upload.sh
+```
+
+That command uses the configured release GPG key, creates a release-signed
+bundle, verifies the extracted ZIP payload, and prints the exact confirmation
+token required for an optional `USER_MANAGED` validation upload.
+
 ## Publishing Boundary
 
-Publishing is manual until a dedicated release workflow exists. A validation
-bundle is not a release. A Central Portal deployment is not public until it is
-explicitly published in the Portal.
+Publishing is manual until this policy says otherwise. A validation bundle is
+not a release. A Central Portal deployment is not public until it is explicitly
+published in the Portal.
 
 Once a version is published to Maven Central, the same coordinate and version
 must never be reused.
