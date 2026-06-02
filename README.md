@@ -1,12 +1,28 @@
 # MCP Gateway Core
 
-Java-only governance contracts and primitives for MCP tool gateways.
+Java governance contracts and primitives for MCP tool gateways.
 
-This repository is intentionally small. It is not a gateway runtime, router,
-scanner integration, UI, or traffic-management data plane.
+This repository is intentionally small. It provides MCP-neutral Java value
+types and helpers that downstream gateway runtimes can use for tool identity,
+authorization, policy decisions, audit events, abuse protection, URL scoping,
+correlation IDs, and rate limiting.
+
+It is not a gateway runtime, router, scanner integration, UI, service mesh, or
+traffic-management data plane.
 
 Current status: public preview. The package and coordinate are intended for
 early integration proof, not a stable compatibility promise.
+
+## Why This Exists
+
+MCP servers need a reusable governance layer around tool calls: identify the
+tool, decide whether the caller may invoke it, apply quotas and rate limits,
+record audit events, and keep product-specific integrations out of the shared
+contract.
+
+`mcp-gateway-core` is that contract layer. Downstream projects still own their
+transport, authentication, storage, observability backend, and domain-specific
+tool behavior.
 
 ## Scope
 
@@ -43,10 +59,26 @@ bundle validation with an ephemeral local GPG key.
 
 ## Coordinates
 
-Planned public-preview coordinate:
+Public-preview coordinate:
 
 ```text
 io.github.dtkmn:mcp-gateway-core:0.5.3
+```
+
+Gradle:
+
+```groovy
+implementation "io.github.dtkmn:mcp-gateway-core:0.5.3"
+```
+
+Maven:
+
+```xml
+<dependency>
+  <groupId>io.github.dtkmn</groupId>
+  <artifactId>mcp-gateway-core</artifactId>
+  <version>0.5.3</version>
+</dependency>
 ```
 
 ## Local Staging
