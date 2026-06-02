@@ -45,7 +45,7 @@ bundle validation with an ephemeral local GPG key.
 Planned public-preview coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.5.1
+io.github.dtkmn:mcp-gateway-core:0.5.2
 ```
 
 ## Local Staging
