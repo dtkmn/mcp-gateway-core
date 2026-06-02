@@ -7,7 +7,7 @@ group = providers.gradleProperty('gatewayCoreGroup')
         .orElse('io.github.dtkmn')
         .get()
 version = providers.gradleProperty('gatewayCoreVersion')
-        .orElse('0.5.3')
+        .orElse('0.5.4')
         .get()
 def gatewayCoreArtifactId = 'mcp-gateway-core'
 def gatewayCorePublicationPath = "${project.group.toString().replace('.', '/')}/${gatewayCoreArtifactId}/${project.version}"
@@ -212,7 +212,7 @@ def verifyPomMetadata = { File pom ->
             artifactId : gatewayCoreArtifactId,
             version    : project.version.toString(),
             name       : 'MCP Gateway Core',
-            description: 'Java-only governance contracts and primitives for MCP tool gateways.',
+            description: 'Java governance contracts for MCP tool gateways; a library layer, not a proxy data plane.',
             url        : 'https://github.com/dtkmn/mcp-gateway-core'
     ]
     requiredText.each { field, expected ->
@@ -402,7 +402,7 @@ publishing {
             artifactId = gatewayCoreArtifactId
             pom {
                 name = 'MCP Gateway Core'
-                description = 'Java-only governance contracts and primitives for MCP tool gateways.'
+                description = 'Java governance contracts for MCP tool gateways; a library layer, not a proxy data plane.'
                 url = 'https://github.com/dtkmn/mcp-gateway-core'
                 licenses {
                     license {

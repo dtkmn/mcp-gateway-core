@@ -1,5 +1,7 @@
 package mcp.gateway.core.protection;
 
+import mcp.gateway.core.context.GatewayToolExecutionContext;
+
 /**
  * MCP-neutral context for abuse-protection and quota decisions.
  *
@@ -29,6 +31,19 @@ public record McpAbuseProtectionContext(String toolName,
      */
     public static McpAbuseProtectionContext of(String toolName, String clientId, String workspaceId) {
         return new McpAbuseProtectionContext(toolName, clientId, workspaceId);
+    }
+
+    /**
+     * Creates a protection context from a generic tool execution context.
+     *
+     * @param context tool execution context
+     * @return protection context
+     */
+    public static McpAbuseProtectionContext from(GatewayToolExecutionContext context) {
+        if (context == null) {
+            return of(null, null, null);
+        }
+        return of(context.toolName(), context.principalId(), context.workspaceId());
     }
 
     private static String normalize(String value) {

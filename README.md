@@ -55,6 +55,7 @@ Included:
 - correlation ID helpers
 - URL-scope helpers
 - token-bucket rate limiting primitives
+- gateway execution context and principal/workspace model
 
 Excluded:
 
@@ -80,13 +81,13 @@ bundle validation with an ephemeral local GPG key.
 Public-preview coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.5.3
+io.github.dtkmn:mcp-gateway-core:0.5.4
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.3"
+implementation "io.github.dtkmn:mcp-gateway-core:0.5.4"
 ```
 
 Maven:
@@ -95,7 +96,7 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.5.3</version>
+  <version>0.5.4</version>
 </dependency>
 ```
 
