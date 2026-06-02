@@ -1,5 +1,6 @@
 package mcp.gateway.core.authz;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -20,4 +21,27 @@ public record ToolAuthorizationDecision(
         List<String> grantedScopes,
         List<String> missingScopes
 ) {
+    /**
+     * Creates an immutable decision.
+     */
+    public ToolAuthorizationDecision {
+        actionName = normalizeActionName(actionName);
+        requiredScopes = immutableScopes(requiredScopes);
+        grantedScopes = immutableScopes(grantedScopes);
+        missingScopes = immutableScopes(missingScopes);
+    }
+
+    static String normalizeActionName(String actionName) {
+        if (actionName == null || actionName.isBlank()) {
+            throw new IllegalArgumentException("authorization action name must not be blank");
+        }
+        return actionName.trim();
+    }
+
+    static List<String> immutableScopes(Collection<String> scopes) {
+        if (scopes == null || scopes.isEmpty()) {
+            return List.of();
+        }
+        return List.copyOf(scopes);
+    }
 }

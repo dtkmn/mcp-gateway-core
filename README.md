@@ -14,6 +14,7 @@ Included:
 
 - MCP tool invocation contracts
 - MCP tool identity, surface, and capability registry contracts
+- MCP tool authorization request, requirement, and evaluator contracts
 - policy decision and evaluation contracts
 - audit event contracts
 - correlation ID helpers
