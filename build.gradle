@@ -7,7 +7,7 @@ group = providers.gradleProperty('gatewayCoreGroup')
         .orElse('io.github.dtkmn')
         .get()
 version = providers.gradleProperty('gatewayCoreVersion')
-        .orElse('0.5.2')
+        .orElse('0.5.3')
         .get()
 def gatewayCoreArtifactId = 'mcp-gateway-core'
 def gatewayCorePublicationPath = "${project.group.toString().replace('.', '/')}/${gatewayCoreArtifactId}/${project.version}"

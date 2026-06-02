@@ -24,7 +24,9 @@ Public-preview consumers may depend on:
 - MCP tool invocation value types;
 - MCP tool identity, surface, and capability registry value types;
 - authorization request, requirement, evaluator, and decision value types;
-- policy and audit decision value types;
+- policy decision value types;
+- audit event, sink, and emitter value/contract types;
+- abuse-protection context and quota limit value types;
 - correlation ID helpers;
 - URL scope helpers;
 - token-bucket rate limiting primitives.

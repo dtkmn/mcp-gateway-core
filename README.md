@@ -16,7 +16,8 @@ Included:
 - MCP tool identity, surface, and capability registry contracts
 - MCP tool authorization request, requirement, and evaluator contracts
 - policy decision and evaluation contracts
-- audit event contracts
+- audit event, sink, and emitter contracts
+- abuse-protection context and quota decision contracts
 - correlation ID helpers
 - URL-scope helpers
 - token-bucket rate limiting primitives
@@ -45,7 +46,7 @@ bundle validation with an ephemeral local GPG key.
 Planned public-preview coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.5.2
+io.github.dtkmn:mcp-gateway-core:0.5.3
 ```
 
 ## Local Staging
