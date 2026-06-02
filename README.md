@@ -13,6 +13,7 @@ early integration proof, not a stable compatibility promise.
 Included:
 
 - MCP tool invocation contracts
+- MCP tool identity, surface, and capability registry contracts
 - policy decision and evaluation contracts
 - audit event contracts
 - correlation ID helpers
@@ -43,7 +44,7 @@ bundle validation with an ephemeral local GPG key.
 Planned public-preview coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.5.0
+io.github.dtkmn:mcp-gateway-core:0.5.1
 ```
 
 ## Local Staging

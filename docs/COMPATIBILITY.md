@@ -22,6 +22,7 @@ io.github.dtkmn:mcp-gateway-core
 Public-preview consumers may depend on:
 
 - MCP tool invocation value types;
+- MCP tool identity, surface, and capability registry value types;
 - authorization, policy, and audit decision value types;
 - correlation ID helpers;
 - URL scope helpers;
