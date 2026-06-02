@@ -24,6 +24,24 @@ contract.
 transport, authentication, storage, observability backend, and domain-specific
 tool behavior.
 
+## Relationship To Runtime Gateways
+
+Runtime gateway projects such as
+[agentgateway](https://agentgateway.dev/docs/standalone/main/about/introduction/)
+provide a gateway control plane and proxy/data plane for routing, securing, and
+observing MCP, LLM, A2A, and other agent traffic.
+
+`mcp-gateway-core` is deliberately narrower. It is a Java library for reusable
+MCP tool-governance contracts: tool descriptors, authorization requirements,
+policy decisions, audit events, abuse-protection decisions, and small helper
+primitives.
+
+Use a runtime gateway when you need traffic routing, proxying, Kubernetes
+Gateway API integration, backend federation, or data-plane operations. Use
+`mcp-gateway-core` when you are building an MCP gateway/security pack and need
+a shared Java contract for tool-level governance without adopting a full proxy
+runtime.
+
 ## Scope
 
 Included:
