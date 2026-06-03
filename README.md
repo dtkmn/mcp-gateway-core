@@ -66,6 +66,26 @@ Excluded:
 - A2A, LLM-provider, service-mesh, or Kubernetes gateway implementation
 - product-specific tool names from downstream security packs
 
+For package-by-package detail, see the [module map](docs/MODULES.md).
+
+## Module Map
+
+| Area | Package |
+| --- | --- |
+| MCP invocation | `mcp.gateway.core.invocation` |
+| Tool descriptors and registry | `mcp.gateway.core.tool` |
+| Execution context | `mcp.gateway.core.context` |
+| Authorization | `mcp.gateway.core.authz` |
+| Policy decisions | `mcp.gateway.core.policy` |
+| Audit events | `mcp.gateway.core.audit` |
+| Abuse protection and quota decisions | `mcp.gateway.core.protection` |
+| Rate limiting | `mcp.gateway.core.rate` |
+| Correlation IDs | `mcp.gateway.core.logging` |
+| URL scope checks | `mcp.gateway.core.url` |
+
+The artifact should remain JDK-only. Runtime projects should keep framework,
+transport, storage, scanner, and product behavior in their own adapters.
+
 ## Build
 
 ```bash
@@ -113,3 +133,26 @@ Maven:
 - [Release policy](docs/RELEASE_POLICY.md)
 - [Compatibility policy](docs/COMPATIBILITY.md)
 - [Central validation upload](docs/CENTRAL_VALIDATION_UPLOAD.md)
+- [Module map](docs/MODULES.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Security policy](SECURITY.md)
+
+## Security Tooling
+
+The repository uses GitHub-native security automation first:
+
+- Dependabot version updates for GitHub Actions and Gradle.
+- CodeQL Java analysis with an explicit Gradle test build.
+- The Gradle public-preview verification gate for forbidden coupling,
+  closed-world JAR contents, `jdeps`, Central bundle shape, checksums, and
+  signed dry-run payload validation.
+
+Snyk is not wired as a required gate yet. Add it only when the repository or
+organization owns the token, alert triage, and failure policy.
+
+## Future Plan
+
+The short version: prove boring governance contracts through real downstream
+consumers before claiming stable API or broader gateway-runtime scope.
+
+See the [roadmap](docs/ROADMAP.md) for graduation criteria and non-goals.
