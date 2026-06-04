@@ -16,6 +16,7 @@ storage, policy sources, observability backends, and domain-specific tools.
 | `mcp.gateway.core.context` | Principal, workspace, and execution context records shared across governance decisions. | Auth providers, tenant stores, workspace databases. |
 | `mcp.gateway.core.authz` | Authorization request, requirement, access registry, pipeline, and decision mechanics. | OAuth/JWT/API-key validation, product-specific scope catalog ownership, runtime mode flags. |
 | `mcp.gateway.core.policy` | Policy evaluation context, decision, outcome, and deny exception vocabulary. | Policy bundle parsing, extension hooks, persistence, audit shipping. |
+| `mcp.gateway.core.policybundle` | First-match policy rule evaluation, rule-list invariants, selector matching, trace details, and default-decision fallback. | JSON/schema parsing, policy bundle storage, extension hooks, product-specific bundle examples. |
 | `mcp.gateway.core.audit` | Audit event records plus sink/emitter contracts. | Logging frameworks, metrics systems, storage, redaction policy for app-specific fields. |
 | `mcp.gateway.core.protection` | Abuse-protection context, quota limits, and allow/reject decisions. | Queue inspection, workspace counters, backpressure wiring, rate-limit properties. |
 | `mcp.gateway.core.rate` | JDK-only token-bucket rate limiter with bounded key tracking. | Distributed rate limiting, cache coordination, operator configuration. |

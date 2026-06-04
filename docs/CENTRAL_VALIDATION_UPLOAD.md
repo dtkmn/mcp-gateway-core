@@ -33,7 +33,7 @@ and detached signatures from the extracted ZIP payload.
 The dry run prints a confirmation token like:
 
 ```text
-upload:io.github.dtkmn:mcp-gateway-core:0.5.5:USER_MANAGED
+upload:io.github.dtkmn:mcp-gateway-core:0.5.6:USER_MANAGED
 ```
 
 ## Validation Upload
