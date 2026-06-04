@@ -14,7 +14,7 @@ storage, policy sources, observability backends, and domain-specific tools.
 | `mcp.gateway.core.invocation` | Normalized MCP tool invocation value types and invocation kind. | JSON-RPC parsing, HTTP transport, MCP SDK wiring. |
 | `mcp.gateway.core.tool` | Tool descriptors, surfaces, capabilities, and in-memory registry lookup. | Product-specific tool names, tool execution, dynamic discovery. |
 | `mcp.gateway.core.context` | Principal, workspace, and execution context records shared across governance decisions. | Auth providers, tenant stores, workspace databases. |
-| `mcp.gateway.core.authz` | Authorization request, requirement, pipeline, and decision mechanics. | OAuth/JWT/API-key validation, scope registry ownership, runtime mode flags. |
+| `mcp.gateway.core.authz` | Authorization request, requirement, access registry, pipeline, and decision mechanics. | OAuth/JWT/API-key validation, product-specific scope catalog ownership, runtime mode flags. |
 | `mcp.gateway.core.policy` | Policy evaluation context, decision, outcome, and deny exception vocabulary. | Policy bundle parsing, extension hooks, persistence, audit shipping. |
 | `mcp.gateway.core.audit` | Audit event records plus sink/emitter contracts. | Logging frameworks, metrics systems, storage, redaction policy for app-specific fields. |
 | `mcp.gateway.core.protection` | Abuse-protection context, quota limits, and allow/reject decisions. | Queue inspection, workspace counters, backpressure wiring, rate-limit properties. |
