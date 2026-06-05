@@ -48,7 +48,7 @@ Included:
 
 - MCP tool invocation contracts
 - MCP tool identity, surface, capability, and access-registry contracts
-- MCP tool authorization request, requirement, and evaluator contracts
+- MCP tool authorization request, requirement, registry, authorizer, and evaluator contracts
 - policy decision and policy-bundle evaluation contracts
 - audit event, sink, and emitter contracts
 - abuse-protection context and quota decision contracts
@@ -102,13 +102,13 @@ bundle validation with an ephemeral local GPG key.
 Public-preview coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.5.6
+io.github.dtkmn:mcp-gateway-core:0.5.7
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.6"
+implementation "io.github.dtkmn:mcp-gateway-core:0.5.7"
 ```
 
 Maven:
@@ -117,7 +117,7 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.5.6</version>
+  <version>0.5.7</version>
 </dependency>
 ```
 
