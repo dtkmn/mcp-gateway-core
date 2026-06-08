@@ -5,16 +5,28 @@ does not promise.
 
 ## Public Surface
 
-The public surface is the Java package:
+The framework-neutral public surface is the Java package:
 
 ```text
 mcp.gateway.core
 ```
 
-The Maven coordinate is:
+The core Maven coordinate is:
 
 ```text
 io.github.dtkmn:mcp-gateway-core
+```
+
+The optional Spring WebFlux adapter surface is:
+
+```text
+mcp.gateway.spring.webflux
+```
+
+with Maven coordinate:
+
+```text
+io.github.dtkmn:mcp-gateway-spring-webflux
 ```
 
 ## In Scope
@@ -30,7 +42,9 @@ Public-preview consumers may depend on:
 - gateway execution context, principal, workspace, and tool execution context value types;
 - correlation ID helpers;
 - URL scope helpers;
-- token-bucket rate limiting primitives.
+- token-bucket rate limiting primitives;
+- optional Spring WebFlux filters and resolver interfaces for applying core
+  authorization and abuse-protection decisions to MCP HTTP requests.
 
 ## Out Of Scope
 
@@ -41,6 +55,8 @@ This artifact does not promise:
 - scanner integration;
 - report, finding, evidence, or queue storage;
 - Spring Boot application wiring;
+- Spring Boot auto-configuration;
+- Spring AI SDK integration;
 - product-specific tool naming;
 - stable binary compatibility yet.
 

@@ -1,11 +1,16 @@
 # Module Map
 
-`mcp-gateway-core` is a single Java library artifact. The "modules" below are
-package-level contract families inside `mcp.gateway.core`.
+This repository publishes two public-preview Java artifacts:
+
+| Artifact | Package root | Purpose |
+| --- | --- | --- |
+| `mcp-gateway-core` | `mcp.gateway.core` | JDK-only MCP governance contracts and primitives. |
+| `mcp-gateway-spring-webflux` | `mcp.gateway.spring.webflux` | Optional Spring WebFlux filters and adapters over the core contracts. |
 
 The design rule is simple: core owns MCP-neutral vocabulary and small,
-deterministic primitives. Runtime projects own transport, authentication,
-storage, policy sources, observability backends, and domain-specific tools.
+deterministic primitives. Adapter artifacts may own framework glue. Runtime
+projects still own authentication providers, storage, policy sources,
+observability backends, and domain-specific tools.
 
 ## Package Map
 
@@ -22,6 +27,7 @@ storage, policy sources, observability backends, and domain-specific tools.
 | `mcp.gateway.core.rate` | JDK-only token-bucket rate limiter with bounded key tracking. | Distributed rate limiting, cache coordination, operator configuration. |
 | `mcp.gateway.core.logging` | Correlation ID constants and sanitization/resolution helpers. | MDC wiring, web filters, request attributes. |
 | `mcp.gateway.core.url` | URL scope normalization and matching helpers. | Target allowlist policy, scan evidence selection, crawler behavior. |
+| `mcp.gateway.spring.webflux` | WebFlux filters, JSON-RPC request parsing, request body replay, safe denial/rejection responses, and resolver interfaces for mapping Spring requests into core context. | Spring Boot auto-configuration, Spring AI SDK integration, auth-provider setup, persistence, product-specific scope catalogs. |
 
 ## Current Consumer Pattern
 
@@ -48,7 +54,7 @@ Good candidates:
 
 Bad candidates:
 
-- web filters, controllers, or Spring Boot auto-configuration;
+- controllers or Spring Boot auto-configuration;
 - scanner, report, finding, evidence, or queue models;
 - SaaS tenancy implementation;
 - product-specific policy files or tool names;
@@ -56,7 +62,7 @@ Bad candidates:
 
 ## Dependency Boundary
 
-The published artifact must remain JDK-only. The release gate enforces this
-with `jdeps` and closed-world JAR checks. If a future feature needs a framework
-dependency, it belongs in a downstream runtime adapter until a separate module
-and release policy exist.
+The `mcp-gateway-core` artifact must remain JDK-only. The release gate enforces
+this with `jdeps` and closed-world JAR checks. Framework dependencies belong in
+separate adapter artifacts such as `mcp-gateway-spring-webflux`, which must keep
+their own closed-world and forbidden-coupling checks.

@@ -5,7 +5,9 @@ Java governance contracts and primitives for MCP tool gateways.
 This repository is intentionally small. It provides MCP-neutral Java value
 types and helpers that downstream gateway runtimes can use for tool identity,
 authorization, policy decisions, audit events, abuse protection, URL scoping,
-correlation IDs, and rate limiting.
+correlation IDs, and rate limiting. It also publishes an optional Spring WebFlux
+adapter for Java runtimes that want ready-made HTTP filters around those core
+contracts.
 
 It is not a gateway runtime, router, scanner integration, UI, service mesh, or
 traffic-management data plane.
@@ -20,9 +22,10 @@ tool, decide whether the caller may invoke it, apply quotas and rate limits,
 record audit events, and keep product-specific integrations out of the shared
 contract.
 
-`mcp-gateway-core` is that contract layer. Downstream projects still own their
-transport, authentication, storage, observability backend, and domain-specific
-tool behavior.
+`mcp-gateway-core` is that contract layer. `mcp-gateway-spring-webflux` is a
+thin framework adapter over the same contracts. Downstream projects still own
+their transport setup, authentication provider, storage, observability backend,
+and domain-specific tool behavior.
 
 ## Relationship To Runtime Gateways
 
@@ -56,12 +59,13 @@ Included:
 - URL-scope helpers
 - token-bucket rate limiting primitives
 - gateway execution context and principal/workspace model
+- optional Spring WebFlux request filters and JSON-RPC parsing adapters
 
 Excluded:
 
 - scanner integrations
 - report, finding, queue, or evidence storage
-- Spring Boot application wiring
+- Spring Boot application wiring or auto-configuration
 - enterprise packaging
 - A2A, LLM-provider, service-mesh, or Kubernetes gateway implementation
 - product-specific tool names from downstream security packs
@@ -83,32 +87,52 @@ For package-by-package detail, see the [module map](docs/MODULES.md).
 | Rate limiting | `mcp.gateway.core.rate` |
 | Correlation IDs | `mcp.gateway.core.logging` |
 | URL scope checks | `mcp.gateway.core.url` |
+| Spring WebFlux adapter | `mcp.gateway.spring.webflux` |
 
-The artifact should remain JDK-only. Runtime projects should keep framework,
-transport, storage, scanner, and product behavior in their own adapters.
+The core artifact remains JDK-only. The Spring WebFlux adapter is separate so
+runtime projects can choose it without forcing Spring onto core consumers.
+Storage, scanner, and product behavior stay outside both artifacts.
+
+## Repository Layout
+
+```text
+core/                       # publishes io.github.dtkmn:mcp-gateway-core
+adapters/spring-webflux/    # publishes io.github.dtkmn:mcp-gateway-spring-webflux
+```
+
+The root Gradle project only coordinates shared verification tasks. It is not a
+published artifact.
 
 ## Build
 
 ```bash
-./gradlew verifyGatewayCorePublicPreviewPublication --no-daemon --stacktrace
+./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace
 ```
 
-This command runs the normal build, forbidden-coupling checks, closed-world JAR
-checks, `jdeps`, unsigned Central Portal bundle validation, and signed dry-run
-bundle validation with an ephemeral local GPG key.
+This command runs the core and adapter builds, forbidden-coupling checks,
+closed-world JAR checks, core `jdeps`, unsigned Central Portal bundle
+validation, and signed dry-run bundle validation with an ephemeral local GPG
+key.
 
 ## Coordinates
 
-Public-preview coordinate:
+Core coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.5.7
+io.github.dtkmn:mcp-gateway-core:0.5.8
+```
+
+Optional Spring WebFlux adapter coordinate:
+
+```text
+io.github.dtkmn:mcp-gateway-spring-webflux:0.5.8
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.7"
+implementation "io.github.dtkmn:mcp-gateway-core:0.5.8"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.8" // optional
 ```
 
 Maven:
@@ -117,14 +141,20 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.5.7</version>
+  <version>0.5.8</version>
+</dependency>
+<dependency>
+  <groupId>io.github.dtkmn</groupId>
+  <artifactId>mcp-gateway-spring-webflux</artifactId>
+  <version>0.5.8</version>
 </dependency>
 ```
 
 ## Local Staging
 
 ```bash
-./gradlew publishGatewayCorePublicationToGatewayCoreStagingRepository \
+./gradlew :core:publishGatewayCorePublicationToGatewayCoreStagingRepository \
+  :adapters:spring-webflux:publishGatewaySpringWebFluxPublicationToGatewayCoreStagingRepository \
   -PgatewayCorePublicationRepositoryUrl="$(pwd)/build/staging-repository" \
   --no-daemon --stacktrace
 ```

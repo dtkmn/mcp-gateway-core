@@ -205,18 +205,27 @@ copy_publication_for_release_signing() {
   local release_root="$2"
   local source_root="build/staging-repository"
   local source_artifact_dir="$source_root/io/github/dtkmn/mcp-gateway-core/$version"
+  local target_artifact_dir="$release_root/io/github/dtkmn/mcp-gateway-core/$version"
+  local artifact
+  local checksum
 
   [ -d "$source_artifact_dir" ] \
     || fail "staged public-preview publication is missing for version $version"
 
   rm -rf "$release_root"
-  mkdir -p "$release_root"
-  cp -R "$source_root/." "$release_root/"
-  find "$release_root/io/github/dtkmn/mcp-gateway-core" \
-    -maxdepth 1 \
-    -type f \
-    -name 'maven-metadata.xml*' \
-    -delete
+  mkdir -p "$target_artifact_dir"
+
+  while IFS= read -r artifact; do
+    [ -f "$source_artifact_dir/$artifact" ] \
+      || fail "staged public-preview publication is missing artifact: $artifact"
+    cp "$source_artifact_dir/$artifact" "$target_artifact_dir/$artifact"
+
+    for checksum in md5 sha1 sha256 sha512; do
+      [ -f "$source_artifact_dir/$artifact.$checksum" ] \
+        || fail "staged public-preview publication is missing checksum: $artifact.$checksum"
+      cp "$source_artifact_dir/$artifact.$checksum" "$target_artifact_dir/$artifact.$checksum"
+    done
+  done < <(required_artifacts "$version")
 }
 
 sign_release_publication() {
@@ -420,7 +429,9 @@ esac
 
 configure_gpg
 
-./gradlew verifyGatewayCorePublicPreviewPublication --no-daemon --stacktrace
+./gradlew :core:verifyGatewayCorePublicPreviewPublication \
+  -PgatewayCorePublicationRepositoryUrl="file://$(pwd)/build/staging-repository" \
+  --no-daemon --stacktrace
 
 work_root="build/gateway-core-central-validation-upload"
 release_root="$work_root/publication"

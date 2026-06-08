@@ -19,6 +19,8 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(readme.contains("SECURITY.md"));
         assertTrue(readme.contains("docs/RELEASE_POLICY.md"));
         assertTrue(readme.contains("docs/COMPATIBILITY.md"));
+        assertTrue(readme.contains("core/"));
+        assertTrue(readme.contains("adapters/spring-webflux/"));
     }
 
     @Test
@@ -31,15 +33,18 @@ class ProjectDocumentationAndSecurityToolingTest {
                 "mcp.gateway.core.context",
                 "mcp.gateway.core.authz",
                 "mcp.gateway.core.policy",
+                "mcp.gateway.core.policybundle",
                 "mcp.gateway.core.audit",
                 "mcp.gateway.core.protection",
                 "mcp.gateway.core.rate",
                 "mcp.gateway.core.logging",
-                "mcp.gateway.core.url"
+                "mcp.gateway.core.url",
+                "mcp.gateway.spring.webflux"
         }) {
             assertTrue(moduleMap.contains(packageName), () -> "Missing module-map entry for " + packageName);
         }
-        assertTrue(moduleMap.contains("The published artifact must remain JDK-only."));
+        assertTrue(moduleMap.contains("The `mcp-gateway-core` artifact must remain JDK-only."));
+        assertTrue(moduleMap.contains("separate adapter artifacts"));
     }
 
     @Test

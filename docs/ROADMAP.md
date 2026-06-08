@@ -12,7 +12,8 @@ Current focus:
 
 - keep the package and Maven coordinate steady;
 - prove the contracts through real downstream consumers;
-- keep the artifact JDK-only;
+- keep the core artifact JDK-only;
+- keep framework support in separate adapter artifacts;
 - reject scanner, runtime, private, and data-plane coupling;
 - publish only artifacts that pass the public-preview verification gate.
 
@@ -29,13 +30,18 @@ Current focus:
    Add source-compatibility and behavior regression checks for the public
    contract families that downstream consumers actually use.
 
-3. **Documentation quality**
+3. **Adapter proof**
+
+   Prove the Spring WebFlux adapter against real downstream MCP runtimes without
+   letting framework dependencies leak into `mcp-gateway-core`.
+
+4. **Documentation quality**
 
    Keep the module map, compatibility policy, release policy, and security
    policy aligned with shipped code. Do not add marketing pages until there is
    a runtime behavior or consumer proof behind the claim.
 
-4. **Security hygiene**
+5. **Security hygiene**
 
    Run GitHub-native dependency and code scanning, keep release signing gates
    strict, and add external scanning only when ownership and token management
@@ -51,6 +57,7 @@ Do not call this stable until all of these are true:
 - release notes clearly distinguish compatible additions from breaking changes;
 - Javadocs are clean enough for public API users;
 - security scanning and release-signing gates are required in CI;
+- adapter artifacts have their own closed-world and forbidden-coupling gates;
 - the compatibility policy defines what SemVer means for this library.
 
 ## Non-Goals
