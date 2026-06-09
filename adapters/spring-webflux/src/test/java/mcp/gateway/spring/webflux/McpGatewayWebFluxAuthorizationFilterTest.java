@@ -60,10 +60,10 @@ class McpGatewayWebFluxAuthorizationFilterTest {
 
         assertEquals(body, downstreamBody.get());
         assertEquals(1, observations.size());
-        assertEquals("allowed", observations.getFirst().outcome());
-        assertEquals("scope_granted", observations.getFirst().reason());
-        assertEquals("demo-client", observations.getFirst().context().principalId());
-        assertEquals("corr-1", observations.getFirst().context().correlationId());
+        assertEquals("allowed", observations.get(0).outcome());
+        assertEquals("scope_granted", observations.get(0).reason());
+        assertEquals("demo-client", observations.get(0).context().principalId());
+        assertEquals("corr-1", observations.get(0).context().correlationId());
     }
 
     @Test

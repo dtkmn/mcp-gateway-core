@@ -19,10 +19,10 @@ class GatewayAuditEmitterTest {
         emitter.emit(" policy_decision ", " client-a ", " deny ", Map.of("tool", "demo_tool"));
 
         assertEquals(1, events.size());
-        assertEquals("policy_decision", events.getFirst().type());
-        assertEquals("client-a", events.getFirst().principal());
-        assertEquals("deny", events.getFirst().outcome());
-        assertEquals(Map.of("tool", "demo_tool"), events.getFirst().details());
+        assertEquals("policy_decision", events.get(0).type());
+        assertEquals("client-a", events.get(0).principal());
+        assertEquals("deny", events.get(0).outcome());
+        assertEquals(Map.of("tool", "demo_tool"), events.get(0).details());
     }
 
     @Test
@@ -33,10 +33,10 @@ class GatewayAuditEmitterTest {
         emitter.emit(null);
 
         assertEquals(1, events.size());
-        assertNull(events.getFirst().type());
-        assertNull(events.getFirst().principal());
-        assertNull(events.getFirst().outcome());
-        assertEquals(Map.of(), events.getFirst().details());
+        assertNull(events.get(0).type());
+        assertNull(events.get(0).principal());
+        assertNull(events.get(0).outcome());
+        assertEquals(Map.of(), events.get(0).details());
     }
 
     @Test

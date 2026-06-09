@@ -1,5 +1,9 @@
 # MCP Gateway Core
 
+[![Core Maven Central](https://img.shields.io/maven-central/v/io.github.dtkmn/mcp-gateway-core?label=mcp-gateway-core)](https://central.sonatype.com/artifact/io.github.dtkmn/mcp-gateway-core)
+[![Spring WebFlux Adapter Maven Central](https://img.shields.io/maven-central/v/io.github.dtkmn/mcp-gateway-spring-webflux?label=mcp-gateway-spring-webflux)](https://central.sonatype.com/artifact/io.github.dtkmn/mcp-gateway-spring-webflux)
+[![Java](https://img.shields.io/badge/Java-17%2B-blue)](#build)
+
 Java governance contracts and primitives for MCP tool gateways.
 
 This repository is intentionally small. It provides MCP-neutral Java value
@@ -14,6 +18,26 @@ traffic-management data plane.
 
 Current status: public preview. The package and coordinate are intended for
 early integration proof, not a stable compatibility promise.
+
+## Architecture At A Glance
+
+```mermaid
+flowchart LR
+    Client["MCP client"]
+    Runtime["Downstream MCP runtime<br/>Spring app, custom server, security pack"]
+    Adapter["Optional adapter<br/>mcp-gateway-spring-webflux"]
+    Core["Core contracts<br/>mcp-gateway-core"]
+    Product["Product-specific tools<br/>scanner, database, files, internal APIs"]
+
+    Client --> Runtime
+    Runtime --> Adapter
+    Runtime --> Core
+    Adapter --> Core
+    Runtime --> Product
+
+    Core -. owns .-> Contracts["tool identity<br/>authz decisions<br/>policy rules<br/>audit events<br/>quotas and rate limits"]
+    Product -. owns .-> Behavior["tool behavior<br/>storage<br/>auth provider<br/>observability backend"]
+```
 
 ## Why This Exists
 
@@ -110,29 +134,29 @@ published artifact.
 ```
 
 This command runs the core and adapter builds, forbidden-coupling checks,
-closed-world JAR checks, core `jdeps`, unsigned Central Portal bundle
-validation, and signed dry-run bundle validation with an ephemeral local GPG
-key.
+closed-world JAR checks, Java 17 bytecode checks, adapter runtime-classpath
+bytecode checks, core `jdeps`, unsigned Central Portal bundle validation, and
+signed dry-run bundle validation with an ephemeral local GPG key.
 
 ## Coordinates
 
 Core coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.5.8
+io.github.dtkmn:mcp-gateway-core:0.5.9
 ```
 
 Optional Spring WebFlux adapter coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-spring-webflux:0.5.8
+io.github.dtkmn:mcp-gateway-spring-webflux:0.5.9
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.8"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.8" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.5.9"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.9" // optional
 ```
 
 Maven:
@@ -141,12 +165,12 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.5.8</version>
+  <version>0.5.9</version>
 </dependency>
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-spring-webflux</artifactId>
-  <version>0.5.8</version>
+  <version>0.5.9</version>
 </dependency>
 ```
 

@@ -7,11 +7,13 @@ group = providers.gradleProperty('gatewayCoreGroup')
         .orElse('io.github.dtkmn')
         .get()
 version = providers.gradleProperty('gatewayCoreVersion')
-        .orElse('0.5.8')
+        .orElse('0.5.9')
         .get()
 def gatewayCoreArtifactId = 'mcp-gateway-core'
 def gatewayCorePublicationPath = "${project.group.toString().replace('.', '/')}/${gatewayCoreArtifactId}/${project.version}"
 def gatewayCoreCentralBundleName = "${gatewayCoreArtifactId}-${project.version}-central-portal-bundle.zip"
+def gatewayJavaRelease = 17
+def gatewayJavaClassFileMajorVersion = 61
 
 java {
     toolchain {
@@ -19,6 +21,10 @@ java {
     }
     withSourcesJar()
     withJavadocJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = gatewayJavaRelease
 }
 
 tasks.withType(AbstractArchiveTask).configureEach {
@@ -129,6 +135,43 @@ tasks.register('verifyGatewayCoreJdeps') {
                 .findAll { !it.isEmpty() }
         if (lines != ["${jarFile.name} -> java.base"]) {
             throw new GradleException("gateway-core JAR must depend only on java.base; got ${lines}")
+        }
+    }
+}
+
+tasks.register('verifyGatewayCoreJavaReleaseBytecode') {
+    group = 'verification'
+    description = 'Verifies gateway-core emits Java 17-compatible class files.'
+    dependsOn tasks.named('jar')
+
+    doLast {
+        File jarFile = tasks.named('jar').get().archiveFile.get().asFile
+        List<String> mismatches = []
+        int classCount = 0
+        new java.util.zip.ZipFile(jarFile).withCloseable { jar ->
+            jar.entries().each { entry ->
+                if (!entry.name.endsWith('.class')) {
+                    return
+                }
+                classCount++
+                jar.getInputStream(entry).withCloseable { input ->
+                    byte[] header = input.readNBytes(8)
+                    if (header.length < 8) {
+                        mismatches.add("${entry.name}: truncated class header")
+                        return
+                    }
+                    int major = ((header[6] & 0xff) << 8) | (header[7] & 0xff)
+                    if (major != gatewayJavaClassFileMajorVersion) {
+                        mismatches.add("${entry.name}: class-file major ${major}, expected ${gatewayJavaClassFileMajorVersion} for Java ${gatewayJavaRelease}")
+                    }
+                }
+            }
+        }
+        if (classCount == 0) {
+            throw new GradleException('gateway-core JAR must contain class files to verify.')
+        }
+        if (!mismatches.isEmpty()) {
+            throw new GradleException("gateway-core JAR is not Java ${gatewayJavaRelease} bytecode:\n${mismatches.take(20).join('\n')}")
         }
     }
 }
@@ -535,6 +578,7 @@ tasks.named('check') {
     dependsOn tasks.named('verifyNoForbiddenCoupling')
     dependsOn tasks.named('verifyGatewayCoreJarClosedWorld')
     dependsOn tasks.named('verifyGatewayCoreJdeps')
+    dependsOn tasks.named('verifyGatewayCoreJavaReleaseBytecode')
     dependsOn tasks.named('verifyGatewayCoreCentralPortalBundle')
     dependsOn tasks.named('verifyGatewayCoreSignedCentralPortalDryRun')
 }

@@ -33,11 +33,17 @@ That gate proves:
 - the core JAR contains only `mcp/gateway/core/**` classes and manifest metadata;
 - `jdeps` reports only `java.base`;
 - adapter JARs contain only their adapter package classes and manifest metadata;
+- published classes and adapter runtime dependencies are Java 17-compatible;
 - forbidden downstream runtime and product-specific markers are absent;
 - Maven metadata has required POM fields;
 - the Central Portal ZIP is closed-world;
 - checksums match the ZIP payload;
 - the signed dry-run ZIP verifies detached signatures from extracted payloads.
+
+CI must also run `bin/java17-consumer-smoke.sh` after the public-preview proof.
+That smoke test switches to a Java 17 runtime and compiles/runs a clean
+downstream consumer against the staged `mcp-gateway-core` and
+`mcp-gateway-spring-webflux` artifacts.
 
 Before uploading public-preview artifacts to Central for validation, the guarded
 upload path must pass:

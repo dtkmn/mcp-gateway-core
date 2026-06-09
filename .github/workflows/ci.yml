@@ -15,3 +15,8 @@ jobs:
           distribution: temurin
           java-version: '25'
       - run: ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: ./bin/java17-consumer-smoke.sh
