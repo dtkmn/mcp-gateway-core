@@ -3,10 +3,11 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: ./bin/gateway-core-central-validation-upload.sh [options]
+Usage: ./bin/gateway-public-preview-central-validation-upload.sh [options]
 
-Guarded path for uploading the mcp-gateway-core bundle to Central for
-USER_MANAGED validation. Default mode creates and verifies the release-signed
+Guarded path for uploading the MCP Gateway public-preview bundle to Central for
+USER_MANAGED validation. The bundle contains mcp-gateway-core and
+mcp-gateway-spring-webflux. Default mode creates and verifies the release-signed
 bundle but does not upload.
 
 Options:
@@ -31,7 +32,7 @@ EOF
 }
 
 fail() {
-  echo "mcp-gateway-core Central validation upload failed: $*" >&2
+  echo "MCP Gateway public-preview Central validation upload failed: $*" >&2
   exit 1
 }
 
@@ -191,52 +192,68 @@ verify_signature() {
     || fail "signature for $(basename "$artifact") was not made by GATEWAY_CORE_RELEASE_GPG_FINGERPRINT"
 }
 
-required_artifacts() {
-  local version="$1"
+public_artifact_ids() {
   printf '%s\n' \
-    "mcp-gateway-core-${version}.pom" \
-    "mcp-gateway-core-${version}.jar" \
-    "mcp-gateway-core-${version}-sources.jar" \
-    "mcp-gateway-core-${version}-javadoc.jar"
+    "mcp-gateway-core" \
+    "mcp-gateway-spring-webflux"
+}
+
+required_artifacts() {
+  local artifact_id="$1"
+  local version="$2"
+  printf '%s\n' \
+    "${artifact_id}-${version}.pom" \
+    "${artifact_id}-${version}.jar" \
+    "${artifact_id}-${version}-sources.jar" \
+    "${artifact_id}-${version}-javadoc.jar"
 }
 
 copy_publication_for_release_signing() {
   local version="$1"
   local release_root="$2"
   local source_root="build/staging-repository"
-  local source_artifact_dir="$source_root/io/github/dtkmn/mcp-gateway-core/$version"
-  local target_artifact_dir="$release_root/io/github/dtkmn/mcp-gateway-core/$version"
+  local artifact_id
   local artifact
   local checksum
 
-  [ -d "$source_artifact_dir" ] \
-    || fail "staged public-preview publication is missing for version $version"
-
   rm -rf "$release_root"
-  mkdir -p "$target_artifact_dir"
 
-  while IFS= read -r artifact; do
-    [ -f "$source_artifact_dir/$artifact" ] \
-      || fail "staged public-preview publication is missing artifact: $artifact"
-    cp "$source_artifact_dir/$artifact" "$target_artifact_dir/$artifact"
+  while IFS= read -r artifact_id; do
+    local source_artifact_dir="$source_root/io/github/dtkmn/$artifact_id/$version"
+    local target_artifact_dir="$release_root/io/github/dtkmn/$artifact_id/$version"
 
-    for checksum in md5 sha1 sha256 sha512; do
-      [ -f "$source_artifact_dir/$artifact.$checksum" ] \
-        || fail "staged public-preview publication is missing checksum: $artifact.$checksum"
-      cp "$source_artifact_dir/$artifact.$checksum" "$target_artifact_dir/$artifact.$checksum"
-    done
-  done < <(required_artifacts "$version")
+    [ -d "$source_artifact_dir" ] \
+      || fail "staged public-preview publication is missing for ${artifact_id}:${version}"
+
+    mkdir -p "$target_artifact_dir"
+
+    while IFS= read -r artifact; do
+      [ -f "$source_artifact_dir/$artifact" ] \
+        || fail "staged public-preview publication is missing artifact: $artifact"
+      cp "$source_artifact_dir/$artifact" "$target_artifact_dir/$artifact"
+
+      for checksum in md5 sha1 sha256 sha512; do
+        [ -f "$source_artifact_dir/$artifact.$checksum" ] \
+          || fail "staged public-preview publication is missing checksum: $artifact.$checksum"
+        cp "$source_artifact_dir/$artifact.$checksum" "$target_artifact_dir/$artifact.$checksum"
+      done
+    done < <(required_artifacts "$artifact_id" "$version")
+  done < <(public_artifact_ids)
 }
 
 sign_release_publication() {
   local version="$1"
-  local artifact_dir="$2"
+  local release_root="$2"
+  local artifact_id
   local artifact
 
-  while IFS= read -r artifact; do
-    [ -f "$artifact_dir/$artifact" ] || fail "release publication is missing artifact: $artifact"
-    sign_artifact "$artifact_dir/$artifact"
-  done < <(required_artifacts "$version")
+  while IFS= read -r artifact_id; do
+    local artifact_dir="$release_root/io/github/dtkmn/$artifact_id/$version"
+    while IFS= read -r artifact; do
+      [ -f "$artifact_dir/$artifact" ] || fail "release publication is missing artifact: $artifact"
+      sign_artifact "$artifact_dir/$artifact"
+    done < <(required_artifacts "$artifact_id" "$version")
+  done < <(public_artifact_ids)
 }
 
 create_bundle() {
@@ -257,9 +274,9 @@ verify_release_bundle() {
   local version="$1"
   local bundle="$2"
   local verification_root="$3"
-  local base="io/github/dtkmn/mcp-gateway-core/${version}"
-  local expected_entries=24
+  local expected_entries=48
   local checksums=(md5 sha1 sha256 sha512)
+  local artifact_id
   local artifact
   local checksum
 
@@ -274,31 +291,37 @@ verify_release_bundle() {
   [ "$non_directory_entries" -eq "$expected_entries" ] \
     || fail "release validation bundle should contain exactly $expected_entries files, found $non_directory_entries"
 
-  while IFS= read -r artifact; do
-    local artifact_path="$verification_root/$base/$artifact"
-    [ -f "$artifact_path" ] || fail "release validation bundle is missing artifact: $base/$artifact"
-    [ -f "$artifact_path.asc" ] || fail "release validation bundle is missing signature: $base/$artifact.asc"
-    verify_signature "$artifact_path"
-    for checksum in "${checksums[@]}"; do
-      [ -f "$artifact_path.$checksum" ] \
-        || fail "release validation bundle is missing checksum: $base/$artifact.$checksum"
-      verify_checksum "$artifact_path" "$artifact_path.$checksum" "$checksum"
-    done
-  done < <(required_artifacts "$version")
+  while IFS= read -r artifact_id; do
+    local base="io/github/dtkmn/${artifact_id}/${version}"
+    while IFS= read -r artifact; do
+      local artifact_path="$verification_root/$base/$artifact"
+      [ -f "$artifact_path" ] || fail "release validation bundle is missing artifact: $base/$artifact"
+      [ -f "$artifact_path.asc" ] || fail "release validation bundle is missing signature: $base/$artifact.asc"
+      verify_signature "$artifact_path"
+      for checksum in "${checksums[@]}"; do
+        [ -f "$artifact_path.$checksum" ] \
+          || fail "release validation bundle is missing checksum: $base/$artifact.$checksum"
+        verify_checksum "$artifact_path" "$artifact_path.$checksum" "$checksum"
+      done
+    done < <(required_artifacts "$artifact_id" "$version")
+  done < <(public_artifact_ids)
 
   find "$verification_root" -type f | while IFS= read -r file; do
     local relative="${file#$verification_root/}"
     local allowed=false
-    while IFS= read -r artifact; do
-      if [ "$relative" = "$base/$artifact" ] || [ "$relative" = "$base/$artifact.asc" ]; then
-        allowed=true
-      fi
-      for checksum in "${checksums[@]}"; do
-        if [ "$relative" = "$base/$artifact.$checksum" ]; then
+    while IFS= read -r artifact_id; do
+      local base="io/github/dtkmn/${artifact_id}/${version}"
+      while IFS= read -r artifact; do
+        if [ "$relative" = "$base/$artifact" ] || [ "$relative" = "$base/$artifact.asc" ]; then
           allowed=true
         fi
-      done
-    done < <(required_artifacts "$version")
+        for checksum in "${checksums[@]}"; do
+          if [ "$relative" = "$base/$artifact.$checksum" ]; then
+            allowed=true
+          fi
+        done
+      done < <(required_artifacts "$artifact_id" "$version")
+    done < <(public_artifact_ids)
     [ "$allowed" = "true" ] || fail "release validation bundle contains unexpected file: $relative"
   done
 }
@@ -335,7 +358,7 @@ upload_user_managed_deployment() {
   validate_central_api_base_url
   api_base="$CENTRAL_API_BASE_URL_NORMALIZED"
 
-  deployment_name="$(urlencode "io.github.dtkmn:mcp-gateway-core:${version}")"
+  deployment_name="$(urlencode "io.github.dtkmn:mcp-gateway-public-preview:${version}")"
   token="$(printf '%s:%s' "$central_portal_username" "$central_portal_password" | base64 | tr -d '\n')"
   upload_url="${api_base%/}/api/v1/publisher/upload?publishingType=USER_MANAGED&name=${deployment_name}"
 
@@ -429,19 +452,18 @@ esac
 
 configure_gpg
 
-./gradlew :core:verifyGatewayCorePublicPreviewPublication \
+./gradlew verifyGatewayPublicPreviewPublication \
   -PgatewayCorePublicationRepositoryUrl="file://$(pwd)/build/staging-repository" \
   --no-daemon --stacktrace
 
-work_root="build/gateway-core-central-validation-upload"
+work_root="build/gateway-public-preview-central-validation-upload"
 release_root="$work_root/publication"
-artifact_dir="$release_root/io/github/dtkmn/mcp-gateway-core/$version"
-bundle="$work_root/mcp-gateway-core-${version}-central-validation-bundle.zip"
+bundle="$work_root/mcp-gateway-public-preview-${version}-central-validation-bundle.zip"
 verification_root="$work_root/verification"
-confirmation_token="upload:io.github.dtkmn:mcp-gateway-core:${version}:USER_MANAGED"
+confirmation_token="upload:io.github.dtkmn:mcp-gateway-public-preview:${version}:USER_MANAGED"
 
 copy_publication_for_release_signing "$version" "$release_root"
-sign_release_publication "$version" "$artifact_dir"
+sign_release_publication "$version" "$release_root"
 create_bundle "$release_root" "$bundle"
 verify_release_bundle "$version" "$bundle" "$verification_root"
 
@@ -450,8 +472,10 @@ if [ "$execute_upload" = "true" ]; then
   upload_user_managed_deployment "$version" "$bundle" "$work_root"
   deployment_id="$(cat "$work_root/deployment-id.txt")"
   cat <<EOF
-mcp-gateway-core Central validation upload submitted.
-- Coordinate: io.github.dtkmn:mcp-gateway-core:${version}
+MCP Gateway public-preview Central validation upload submitted.
+- Components:
+  - io.github.dtkmn:mcp-gateway-core:${version}
+  - io.github.dtkmn:mcp-gateway-spring-webflux:${version}
 - Publishing type: USER_MANAGED
 - Deployment id: ${deployment_id}
 - Status artifact: ${work_root}/deployment-status.json
@@ -460,12 +484,14 @@ mcp-gateway-core Central validation upload submitted.
 EOF
 else
   cat <<EOF
-mcp-gateway-core Central validation upload dry run passed.
-- Coordinate: io.github.dtkmn:mcp-gateway-core:${version}
+MCP Gateway public-preview Central validation upload dry run passed.
+- Components:
+  - io.github.dtkmn:mcp-gateway-core:${version}
+  - io.github.dtkmn:mcp-gateway-spring-webflux:${version}
 - Publishing type: USER_MANAGED
 - Release-signed bundle: ${bundle}
 - Upload action: disabled
 - To upload for Central validation, rerun with:
-  CENTRAL_UPLOAD_CONFIRMATION=${confirmation_token} ./bin/gateway-core-central-validation-upload.sh --execute-upload
+  CENTRAL_UPLOAD_CONFIRMATION=${confirmation_token} ./bin/gateway-public-preview-central-validation-upload.sh --execute-upload
 EOF
 fi

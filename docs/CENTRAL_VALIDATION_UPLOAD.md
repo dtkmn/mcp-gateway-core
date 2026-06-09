@@ -1,8 +1,10 @@
 # Central Validation Upload
 
-This runbook prepares and optionally uploads the core artifact
-`io.github.dtkmn:mcp-gateway-core` to Sonatype Central as a `USER_MANAGED`
-deployment.
+This runbook prepares and optionally uploads the public-preview MCP Gateway
+artifacts to Sonatype Central as one `USER_MANAGED` deployment:
+
+- `io.github.dtkmn:mcp-gateway-core`
+- `io.github.dtkmn:mcp-gateway-spring-webflux`
 
 It does not publish the deployment. Publishing must remain a deliberate manual
 Portal action until the release policy says otherwise.
@@ -34,7 +36,7 @@ and detached signatures from the extracted ZIP payload.
 The dry run prints a confirmation token like:
 
 ```text
-upload:io.github.dtkmn:mcp-gateway-core:0.5.8:USER_MANAGED
+upload:io.github.dtkmn:mcp-gateway-public-preview:0.5.8:USER_MANAGED
 ```
 
 ## Validation Upload

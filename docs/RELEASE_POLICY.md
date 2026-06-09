@@ -39,21 +39,17 @@ That gate proves:
 - checksums match the ZIP payload;
 - the signed dry-run ZIP verifies detached signatures from extracted payloads.
 
-Before uploading the core artifact to Central for validation, the guarded
-core-upload path must pass:
+Before uploading public-preview artifacts to Central for validation, the guarded
+upload path must pass:
 
 ```bash
-./bin/gateway-core-central-validation-upload.sh
+./bin/gateway-public-preview-central-validation-upload.sh
 ```
 
 That command uses the configured release GPG key, creates a release-signed
-bundle, verifies the extracted ZIP payload, and prints the exact confirmation
-token required for an optional `USER_MANAGED` validation upload.
-
-The current guarded upload script is scoped to `mcp-gateway-core`. Adapter
-artifacts must not be uploaded through that script. Publish an adapter only
-after this repository has an equivalent release-key validation upload path or a
-deliberately reviewed manual upload runbook for that adapter.
+bundle containing `mcp-gateway-core` and `mcp-gateway-spring-webflux`, verifies
+the extracted ZIP payload, and prints the exact confirmation token required for
+an optional `USER_MANAGED` validation upload.
 
 ## Publishing Boundary
 

@@ -65,17 +65,18 @@ jobs:
           if [ "${{ inputs.execute_upload }}" = "true" ]; then
             args+=(--execute-upload)
           fi
-          ./bin/gateway-core-central-validation-upload.sh "${args[@]}"
+          ./bin/gateway-public-preview-central-validation-upload.sh "${args[@]}"
 
       - name: Upload validation upload artifacts
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: gateway-core-central-validation-upload
+          name: gateway-public-preview-central-validation-upload
           if-no-files-found: ignore
           retention-days: 7
           path: |
-            build/gateway-core-central-validation-upload/deployment-id.txt
-            build/gateway-core-central-validation-upload/deployment-status.json
-            build/gateway-core-central-validation-upload/deployment-status-error.txt
-            build/gateway-core-central-validation-upload/deployment-upload-response.txt
+            build/gateway-public-preview-central-validation-upload/mcp-gateway-public-preview-*-central-validation-bundle.zip
+            build/gateway-public-preview-central-validation-upload/deployment-id.txt
+            build/gateway-public-preview-central-validation-upload/deployment-status.json
+            build/gateway-public-preview-central-validation-upload/deployment-status-error.txt
+            build/gateway-public-preview-central-validation-upload/deployment-upload-response.txt
