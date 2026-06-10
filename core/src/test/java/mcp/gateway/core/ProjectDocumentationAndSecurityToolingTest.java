@@ -19,6 +19,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(readme.contains("SECURITY.md"));
         assertTrue(readme.contains("docs/RELEASE_POLICY.md"));
         assertTrue(readme.contains("docs/COMPATIBILITY.md"));
+        assertTrue(readme.contains("docs/GETTING_STARTED.md"));
         assertTrue(readme.contains("core/"));
         assertTrue(readme.contains("adapters/spring-webflux/"));
     }

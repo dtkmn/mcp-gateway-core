@@ -96,6 +96,9 @@ Excluded:
 
 For package-by-package detail, see the [module map](docs/MODULES.md).
 
+For practical integration examples, see the
+[getting started guide](docs/GETTING_STARTED.md).
+
 ## Module Map
 
 | Area | Package |
@@ -185,6 +188,7 @@ Maven:
 
 ## Release And Compatibility
 
+- [Getting started](docs/GETTING_STARTED.md)
 - [Release policy](docs/RELEASE_POLICY.md)
 - [Compatibility policy](docs/COMPATIBILITY.md)
 - [Central validation upload](docs/CENTRAL_VALIDATION_UPLOAD.md)
