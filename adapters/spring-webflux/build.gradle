@@ -11,8 +11,8 @@ version = providers.gradleProperty('gatewayCoreVersion')
         .get()
 
 def springWebFluxArtifactId = 'mcp-gateway-spring-webflux'
-def springFrameworkVersion = providers.gradleProperty('springFrameworkVersion').orElse('7.0.7').get()
-def springSecurityVersion = providers.gradleProperty('springSecurityVersion').orElse('7.0.5').get()
+def springFrameworkVersion = providers.gradleProperty('springFrameworkVersion').orElse('7.0.8').get()
+def springSecurityVersion = providers.gradleProperty('springSecurityVersion').orElse('7.0.6').get()
 def jacksonDatabindVersion = providers.gradleProperty('jacksonDatabindVersion').orElse('2.21.2').get()
 def reactorVersion = providers.gradleProperty('reactorVersion').orElse('3.8.5').get()
 def publicationPath = "${project.group.toString().replace('.', '/')}/${springWebFluxArtifactId}/${project.version}"
