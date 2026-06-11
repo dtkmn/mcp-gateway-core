@@ -30,7 +30,7 @@ jobs:
       - name: Require Snyk configuration
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          SNYK_ORG: ${{ vars.SNYK_ORG }}
+          SNYK_ORG: ${{ secrets.SNYK_ORG || vars.SNYK_ORG }}
         run: |
           set -euo pipefail
           if [ -z "${SNYK_TOKEN}" ]; then
@@ -38,7 +38,7 @@ jobs:
             exit 1
           fi
           if [ -z "${SNYK_ORG}" ]; then
-            echo "::notice::SNYK_ORG is not set; Snyk will use the default organization associated with SNYK_TOKEN."
+            echo "::notice::SNYK_ORG secret or variable is not set; Snyk will use the default organization associated with SNYK_TOKEN."
           fi
 
       - name: Install Snyk CLI
@@ -48,7 +48,7 @@ jobs:
         id: snyk
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          SNYK_ORG: ${{ vars.SNYK_ORG }}
+          SNYK_ORG: ${{ secrets.SNYK_ORG || vars.SNYK_ORG }}
         run: |
           set +e
           snyk_args=(--all-sub-projects --sarif-file-output=snyk-open-source.sarif)

@@ -50,9 +50,9 @@ project graph. That workflow requires:
 
 - `SNYK_TOKEN` as a repository or organization secret.
 
-`SNYK_ORG` may be set as a repository or organization variable when the scan
-must be tied to a specific Snyk organization. If it is absent, Snyk uses the
-default organization associated with `SNYK_TOKEN`.
+`SNYK_ORG` may be set as a repository or organization secret, or as a variable
+when the scan must be tied to a specific Snyk organization. If it is absent,
+Snyk uses the default organization associated with `SNYK_TOKEN`.
 
 If `SNYK_TOKEN` is missing, the workflow fails. That is intentional: a skipped
 external scanner is not a passing security signal. GitHub does not pass

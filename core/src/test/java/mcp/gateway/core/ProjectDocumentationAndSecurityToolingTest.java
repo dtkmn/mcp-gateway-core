@@ -84,7 +84,8 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(snyk.contains("snyk/actions/setup@v1.0.0"));
         assertTrue(snyk.contains("SNYK_TOKEN"));
         assertTrue(snyk.contains("SNYK_ORG"));
-        assertTrue(snyk.contains("SNYK_ORG is not set"));
+        assertTrue(snyk.contains("secrets.SNYK_ORG || vars.SNYK_ORG"));
+        assertTrue(snyk.contains("SNYK_ORG secret or variable is not set"));
         assertTrue(snyk.contains("snyk_args=(--all-sub-projects"));
         assertTrue(snyk.contains("snyk_args+=(\"--org=${SNYK_ORG}\")"));
         assertTrue(snyk.contains("snyk test \"${snyk_args[@]}\""));
