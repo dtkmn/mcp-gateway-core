@@ -202,12 +202,17 @@ The repository uses GitHub-native security automation first:
 
 - Dependabot version updates for GitHub Actions and Gradle.
 - CodeQL Java analysis with an explicit Gradle test build.
+- Snyk Open Source scanning for the Gradle project graph in
+  `.github/workflows/snyk.yml`. The workflow requires a real `SNYK_TOKEN`
+  secret, accepts an optional `SNYK_ORG` variable for explicit organization
+  routing, fails visibly when the token is absent, uploads SARIF for review,
+  and then enforces the Snyk exit code.
 - The Gradle public-preview verification gate for forbidden coupling,
   closed-world JAR contents, `jdeps`, Central bundle shape, checksums, and
   signed dry-run payload validation.
 
-Snyk is not wired as a required gate yet. Add it only when the repository or
-organization owns the token, alert triage, and failure policy.
+The Snyk workflow is external dependency scanning. It does not publish,
+promote, or change the manual public-preview release path.
 
 ## Future Plan
 

@@ -45,7 +45,20 @@ The repository uses GitHub-native checks first:
   closed-world JAR contents, `jdeps`, Central bundle shape, checksums, and
   signed dry-run payload validation.
 
-Snyk or another external scanner can be added later, but it should be wired as
-an explicit repository/org decision with the required token and ownership. Do
-not add a token-shaped workflow that silently skips on public contributors and
-pretends to be a release gate.
+The repository also has an explicit Snyk Open Source workflow for the Gradle
+project graph. That workflow requires:
+
+- `SNYK_TOKEN` as a repository or organization secret.
+
+`SNYK_ORG` may be set as a repository or organization variable when the scan
+must be tied to a specific Snyk organization. If it is absent, Snyk uses the
+default organization associated with `SNYK_TOKEN`.
+
+If `SNYK_TOKEN` is missing, the workflow fails. That is intentional: a skipped
+external scanner is not a passing security signal. GitHub does not pass
+repository secrets to pull requests from forks, so those Snyk runs fail until a
+maintainer reruns the scan from a trusted branch or another trusted review path.
+
+Snyk results are uploaded as SARIF for GitHub Code Scanning and as a workflow
+artifact. Snyk project import, dashboard ownership, alert triage, ignores, and
+monitor snapshots remain manual repository or organization responsibilities.
