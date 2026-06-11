@@ -1,0 +1,19 @@
+{
+  "name": "mcp-gateway-core-docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node ./scripts/sync-docs.mjs",
+    "dev": "astro dev --host 127.0.0.1",
+    "prebuild": "node ./scripts/sync-docs.mjs",
+    "build": "astro build",
+    "preview": "astro preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.40.0",
+    "astro": "^6.4.6",
+    "sharp": "^0.35.0",
+    "typescript": "^6.0.3"
+  }
+}

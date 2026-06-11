@@ -4,4 +4,11 @@ out/
 *.iml
 .idea/
 .DS_Store
-
+node_modules/
+docs-site/node_modules/
+docs-site/dist/
+docs-site/.astro/
+docs-site/src/content/docs/guides/
+docs-site/src/content/docs/reference/
+docs-site/src/content/docs/project/
+docs-site/src/content/docs/maintainers/

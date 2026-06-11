@@ -98,6 +98,8 @@ For package-by-package detail, see the [module map](docs/MODULES.md).
 
 For practical integration examples, see the
 [getting started guide](docs/GETTING_STARTED.md).
+For field and value semantics, see the
+[contract reference](docs/CONTRACT_REFERENCE.md).
 
 ## Module Map
 
@@ -188,7 +190,9 @@ Maven:
 
 ## Release And Compatibility
 
+- [Documentation site](https://dtkmn.github.io/mcp-gateway-core/)
 - [Getting started](docs/GETTING_STARTED.md)
+- [Contract reference](docs/CONTRACT_REFERENCE.md)
 - [Release policy](docs/RELEASE_POLICY.md)
 - [Compatibility policy](docs/COMPATIBILITY.md)
 - [Central validation upload](docs/CENTRAL_VALIDATION_UPLOAD.md)
@@ -213,6 +217,18 @@ The repository uses GitHub-native security automation first:
 
 The Snyk workflow is external dependency scanning. It does not publish,
 promote, or change the manual public-preview release path.
+
+## Documentation Site
+
+The public documentation site is built with Astro Starlight from `docs-site/`
+and deployed to GitHub Pages:
+
+```bash
+npm --prefix docs-site run build
+```
+
+The site syncs source Markdown from `docs/` and `SECURITY.md` before each build
+so the repository README/docs remain the editing source of truth.
 
 ## Future Plan
 

@@ -20,8 +20,54 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(readme.contains("docs/RELEASE_POLICY.md"));
         assertTrue(readme.contains("docs/COMPATIBILITY.md"));
         assertTrue(readme.contains("docs/GETTING_STARTED.md"));
+        assertTrue(readme.contains("docs/CONTRACT_REFERENCE.md"));
+        assertTrue(readme.contains("https://dtkmn.github.io/mcp-gateway-core/"));
+        assertTrue(readme.contains("docs-site/"));
         assertTrue(readme.contains("core/"));
         assertTrue(readme.contains("adapters/spring-webflux/"));
+    }
+
+    @Test
+    void astroDocsSiteIsConfiguredForGithubPages() throws IOException {
+        String packageJson = Files.readString(Path.of("docs-site/package.json"));
+        String astroConfig = Files.readString(Path.of("docs-site/astro.config.mjs"));
+        String pagesWorkflow = Files.readString(Path.of(".github/workflows/pages.yml"));
+        String syncScript = Files.readString(Path.of("docs-site/scripts/sync-docs.mjs"));
+
+        assertTrue(packageJson.contains("\"@astrojs/starlight\""));
+        assertTrue(packageJson.contains("\"prebuild\": \"node ./scripts/sync-docs.mjs\""));
+        assertTrue(astroConfig.contains("base: '/mcp-gateway-core'"));
+        assertTrue(astroConfig.contains("https://dtkmn.github.io"));
+        assertTrue(astroConfig.contains("{ label: 'Overview', link: '/' }"));
+        assertTrue(!astroConfig.contains("link: '/mcp-gateway-core/'"));
+        assertTrue(pagesWorkflow.contains("withastro/action@v6"));
+        assertTrue(pagesWorkflow.contains("actions/deploy-pages@v5"));
+        assertTrue(pagesWorkflow.contains("node-version: 24"));
+        assertTrue(syncScript.contains("docs/GETTING_STARTED.md"));
+        assertTrue(syncScript.contains("docs/CONTRACT_REFERENCE.md"));
+        assertTrue(syncScript.contains("editUrl"));
+    }
+
+    @Test
+    void contractReferenceDocumentsFieldAndValueSemantics() throws IOException {
+        String reference = Files.readString(Path.of("docs/CONTRACT_REFERENCE.md"));
+
+        for (String required : new String[] {
+                "McpToolInvocation",
+                "GatewayToolExecutionContext",
+                "McpToolAccessRule",
+                "ToolAuthorizationDecision",
+                "ToolPolicyDecision",
+                "PolicyBundleRuleset",
+                "GatewayAuditEvent",
+                "McpAbuseProtectionDecision",
+                "TokenBucketRateLimiter.Policy",
+                "McpGatewayWebFluxProperties",
+                "McpGatewayAuthorizationMode",
+                "Runtime Responsibility"
+        }) {
+            assertTrue(reference.contains(required), () -> "Contract reference missing " + required);
+        }
     }
 
     @Test
@@ -76,6 +122,8 @@ class ProjectDocumentationAndSecurityToolingTest {
 
         assertTrue(dependabot.contains("package-ecosystem: \"github-actions\""));
         assertTrue(dependabot.contains("package-ecosystem: \"gradle\""));
+        assertTrue(dependabot.contains("package-ecosystem: \"npm\""));
+        assertTrue(dependabot.contains("directory: \"/docs-site\""));
         assertTrue(codeql.contains("github/codeql-action/init@v4"));
         assertTrue(codeql.contains("build-mode: manual"));
         assertTrue(codeql.contains("./gradlew clean test --no-daemon --stacktrace"));
