@@ -2,7 +2,7 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 export default defineConfig({
-  site: 'https://dtkmn.github.io',
+  site: 'https://danieltse.org',
   base: '/mcp-gateway-core',
   trailingSlash: 'always',
   integrations: [

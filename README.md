@@ -190,7 +190,7 @@ Maven:
 
 ## Release And Compatibility
 
-- [Documentation site](https://dtkmn.github.io/mcp-gateway-core/)
+- [Documentation site](https://danieltse.org/mcp-gateway-core/)
 - [Getting started](docs/GETTING_STARTED.md)
 - [Contract reference](docs/CONTRACT_REFERENCE.md)
 - [Release policy](docs/RELEASE_POLICY.md)

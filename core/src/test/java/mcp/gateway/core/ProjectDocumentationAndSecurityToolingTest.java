@@ -21,7 +21,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(readme.contains("docs/COMPATIBILITY.md"));
         assertTrue(readme.contains("docs/GETTING_STARTED.md"));
         assertTrue(readme.contains("docs/CONTRACT_REFERENCE.md"));
-        assertTrue(readme.contains("https://dtkmn.github.io/mcp-gateway-core/"));
+        assertTrue(readme.contains("https://danieltse.org/mcp-gateway-core/"));
         assertTrue(readme.contains("docs-site/"));
         assertTrue(readme.contains("core/"));
         assertTrue(readme.contains("adapters/spring-webflux/"));
@@ -37,7 +37,8 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(packageJson.contains("\"@astrojs/starlight\""));
         assertTrue(packageJson.contains("\"prebuild\": \"node ./scripts/sync-docs.mjs\""));
         assertTrue(astroConfig.contains("base: '/mcp-gateway-core'"));
-        assertTrue(astroConfig.contains("https://dtkmn.github.io"));
+        assertTrue(astroConfig.contains("site: 'https://danieltse.org'"));
+        assertTrue(!astroConfig.contains("https://dtkmn.github.io"));
         assertTrue(astroConfig.contains("{ label: 'Overview', link: '/' }"));
         assertTrue(!astroConfig.contains("link: '/mcp-gateway-core/'"));
         assertTrue(pagesWorkflow.contains("withastro/action@v6"));
