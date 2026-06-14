@@ -17,7 +17,7 @@ export default defineConfig({
         },
       ],
       editLink: {
-        baseUrl: 'https://github.com/dtkmn/mcp-gateway-core/edit/main/docs-site/src/content/docs/',
+        baseUrl: 'https://github.com/dtkmn/mcp-gateway-core/edit/main/docs-site/',
       },
       sidebar: [
         {

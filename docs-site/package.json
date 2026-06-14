@@ -8,6 +8,7 @@
     "dev": "astro dev --host 127.0.0.1",
     "prebuild": "node ./scripts/sync-docs.mjs",
     "build": "astro build",
+    "postbuild": "node ./scripts/verify-build-output.mjs",
     "preview": "astro preview --host 127.0.0.1"
   },
   "dependencies": {

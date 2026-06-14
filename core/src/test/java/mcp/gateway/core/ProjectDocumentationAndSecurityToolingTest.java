@@ -31,22 +31,39 @@ class ProjectDocumentationAndSecurityToolingTest {
     void astroDocsSiteIsConfiguredForGithubPages() throws IOException {
         String packageJson = Files.readString(Path.of("docs-site/package.json"));
         String astroConfig = Files.readString(Path.of("docs-site/astro.config.mjs"));
+        String indexPage = Files.readString(Path.of("docs-site/src/content/docs/index.md"));
         String pagesWorkflow = Files.readString(Path.of(".github/workflows/pages.yml"));
         String syncScript = Files.readString(Path.of("docs-site/scripts/sync-docs.mjs"));
+        String verifyScript = Files.readString(Path.of("docs-site/scripts/verify-build-output.mjs"));
 
         assertTrue(packageJson.contains("\"@astrojs/starlight\""));
         assertTrue(packageJson.contains("\"prebuild\": \"node ./scripts/sync-docs.mjs\""));
+        assertTrue(packageJson.contains("\"postbuild\": \"node ./scripts/verify-build-output.mjs\""));
         assertTrue(astroConfig.contains("base: '/mcp-gateway-core'"));
         assertTrue(astroConfig.contains("site: 'https://danieltse.org'"));
         assertTrue(!astroConfig.contains("https://dtkmn.github.io"));
+        assertTrue(astroConfig.contains("baseUrl: 'https://github.com/dtkmn/mcp-gateway-core/edit/main/docs-site/'"));
+        assertTrue(!astroConfig.contains("edit/main/docs-site/src/content/docs/"));
         assertTrue(astroConfig.contains("{ label: 'Overview', link: '/' }"));
         assertTrue(!astroConfig.contains("link: '/mcp-gateway-core/'"));
+        assertTrue(indexPage.contains("link: guides/getting-started/"));
+        assertTrue(indexPage.contains("[Getting started](guides/getting-started/)"));
+        assertTrue(!indexPage.contains("link: /guides/"));
+        assertTrue(!indexPage.contains("](/guides/"));
+        assertTrue(!indexPage.contains("link: /mcp-gateway-core/"));
+        assertTrue(!indexPage.contains("](/mcp-gateway-core/"));
         assertTrue(pagesWorkflow.contains("withastro/action@v6"));
         assertTrue(pagesWorkflow.contains("actions/deploy-pages@v5"));
         assertTrue(pagesWorkflow.contains("node-version: 24"));
         assertTrue(syncScript.contains("docs/GETTING_STARTED.md"));
         assertTrue(syncScript.contains("docs/CONTRACT_REFERENCE.md"));
         assertTrue(syncScript.contains("editUrl"));
+        assertTrue(verifyScript.contains("https://danieltse.org"));
+        assertTrue(verifyScript.contains("/mcp-gateway-core"));
+        assertTrue(verifyScript.contains("home canonical"));
+        assertTrue(verifyScript.contains("root-relative docs links"));
+        assertTrue(verifyScript.contains("extractLocs"));
+        assertTrue(verifyScript.contains("assertAllLocsUnderBase"));
     }
 
     @Test

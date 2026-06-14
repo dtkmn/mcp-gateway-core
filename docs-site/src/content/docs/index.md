@@ -7,10 +7,10 @@ hero:
   tagline: Java contracts and Spring WebFlux adapters for MCP tool governance.
   actions:
     - text: Get started
-      link: /mcp-gateway-core/guides/getting-started/
+      link: guides/getting-started/
       icon: right-arrow
     - text: Contract reference
-      link: /mcp-gateway-core/reference/contract-reference/
+      link: reference/contract-reference/
       variant: secondary
 ---
 
@@ -27,11 +27,11 @@ integration, UI, or service mesh.
 
 | Need | Start Here |
 | --- | --- |
-| Wire the library into an MCP server | [Getting started](/mcp-gateway-core/guides/getting-started/) |
-| Understand every field and enum value | [Contract reference](/mcp-gateway-core/reference/contract-reference/) |
-| See package ownership boundaries | [Module map](/mcp-gateway-core/reference/modules/) |
-| Check compatibility promises and non-promises | [Compatibility](/mcp-gateway-core/reference/compatibility/) |
-| Understand where this project is going | [Roadmap](/mcp-gateway-core/project/roadmap/) |
+| Wire the library into an MCP server | [Getting started](guides/getting-started/) |
+| Understand every field and enum value | [Contract reference](reference/contract-reference/) |
+| See package ownership boundaries | [Module map](reference/modules/) |
+| Check compatibility promises and non-promises | [Compatibility](reference/compatibility/) |
+| Understand where this project is going | [Roadmap](project/roadmap/) |
 
 ## Coordinates
 
