@@ -15,14 +15,14 @@ Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.9"
+implementation "io.github.dtkmn:mcp-gateway-core:0.5.10"
 ```
 
 Use both artifacts when your MCP endpoint is a Spring WebFlux route:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.9"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.9"
+implementation "io.github.dtkmn:mcp-gateway-core:0.5.10"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.10"
 ```
 
 The adapter currently targets the Spring Framework 7 / Spring Security 7 line.
@@ -124,11 +124,11 @@ boolean allowed = limiter.tryConsume(key, policy);
 long retryAfterSeconds = limiter.retryAfterSeconds(key, policy);
 ```
 
-## Spring WebFlux Authorization Filter
+## Spring WebFlux Governance Filter
 
 The Spring WebFlux adapter is deliberately not auto-configuration. You wire the
 beans so your app stays in charge of authentication, tenant resolution, tool
-catalogs, and enforcement mode.
+catalogs, protection limits, and enforcement mode.
 
 ```java
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -139,11 +139,14 @@ import mcp.gateway.core.authz.McpToolAccessRule;
 import mcp.gateway.core.authz.McpToolAuthorizer;
 import mcp.gateway.core.authz.ToolAuthorizationDecision;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
+import mcp.gateway.core.protection.McpAbuseProtectionDecision;
+import mcp.gateway.core.rate.TokenBucketRateLimiter;
 import mcp.gateway.core.tool.McpToolSurface;
+import mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator;
 import mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator;
 import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
-import mcp.gateway.spring.webflux.McpGatewayWebFluxAuthorizationFilter;
 import mcp.gateway.spring.webflux.McpGatewayWebFluxContextResolver;
+import mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter;
 import mcp.gateway.spring.webflux.McpGatewayWebFluxProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -196,16 +199,51 @@ class McpGatewayConfiguration {
     }
 
     @Bean
-    McpGatewayWebFluxAuthorizationFilter mcpGatewayAuthorizationFilter(
+    McpGatewayAbuseProtectionEvaluator mcpGatewayAbuseProtectionEvaluator() {
+        TokenBucketRateLimiter limiter = new TokenBucketRateLimiter();
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(true, 60, 60, 60, 10_000, 1);
+
+        return new McpGatewayAbuseProtectionEvaluator() {
+            @Override
+            public boolean enabled() {
+                return true;
+            }
+
+            @Override
+            public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
+                String key = context.principalId() + ":" + context.actionName();
+                if (limiter.tryConsume(key, policy)) {
+                    return McpAbuseProtectionDecision.allow(
+                            context.toolName(),
+                            context.principalId(),
+                            context.workspaceId()
+                    );
+                }
+                return McpAbuseProtectionDecision.reject(
+                        "rate_limited",
+                        "Too many MCP requests",
+                        context.toolName(),
+                        context.principalId(),
+                        context.workspaceId(),
+                        limiter.retryAfterSeconds(key, policy)
+                );
+            }
+        };
+    }
+
+    @Bean
+    McpGatewayWebFluxGovernanceFilter mcpGatewayGovernanceFilter(
             ObjectMapper objectMapper,
             McpGatewayWebFluxProperties properties,
-            McpGatewayAuthorizationEvaluator evaluator,
+            McpGatewayAuthorizationEvaluator authorizationEvaluator,
+            McpGatewayAbuseProtectionEvaluator protectionEvaluator,
             McpGatewayWebFluxContextResolver contextResolver
     ) {
-        return new McpGatewayWebFluxAuthorizationFilter(
+        return new McpGatewayWebFluxGovernanceFilter(
                 objectMapper,
                 properties,
-                evaluator,
+                authorizationEvaluator,
+                protectionEvaluator,
                 contextResolver
         );
     }
@@ -213,72 +251,9 @@ class McpGatewayConfiguration {
 ```
 
 The default scope extractor reads Spring Security authorities named
-`SCOPE_<scope>` and passes normalized scope names into the evaluator.
-
-## Spring WebFlux Abuse Protection
-
-Wire abuse protection separately when you want rate limiting, quota checks, or
-backpressure decisions before requests reach the MCP tool runtime.
-
-```java
-import com.fasterxml.jackson.databind.ObjectMapper;
-import mcp.gateway.core.context.GatewayToolExecutionContext;
-import mcp.gateway.core.protection.McpAbuseProtectionDecision;
-import mcp.gateway.core.rate.TokenBucketRateLimiter;
-import mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator;
-import mcp.gateway.spring.webflux.McpGatewayWebFluxAbuseProtectionFilter;
-import mcp.gateway.spring.webflux.McpGatewayWebFluxContextResolver;
-import mcp.gateway.spring.webflux.McpGatewayWebFluxProperties;
-import org.springframework.context.annotation.Bean;
-
-@Bean
-McpGatewayAbuseProtectionEvaluator mcpGatewayAbuseProtectionEvaluator() {
-    TokenBucketRateLimiter limiter = new TokenBucketRateLimiter();
-    TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(true, 60, 60, 60, 10_000, 1);
-
-    return new McpGatewayAbuseProtectionEvaluator() {
-        @Override
-        public boolean enabled() {
-            return true;
-        }
-
-        @Override
-        public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
-            String key = context.principalId() + ":" + context.actionName();
-            if (limiter.tryConsume(key, policy)) {
-                return McpAbuseProtectionDecision.allow(
-                        context.toolName(),
-                        context.principalId(),
-                        context.workspaceId()
-                );
-            }
-            return McpAbuseProtectionDecision.reject(
-                    "rate_limited",
-                    "Too many MCP requests",
-                    context.toolName(),
-                    context.principalId(),
-                    context.workspaceId(),
-                    limiter.retryAfterSeconds(key, policy)
-            );
-        }
-    };
-}
-
-@Bean
-McpGatewayWebFluxAbuseProtectionFilter mcpGatewayAbuseProtectionFilter(
-        ObjectMapper objectMapper,
-        McpGatewayWebFluxProperties properties,
-        McpGatewayAbuseProtectionEvaluator evaluator,
-        McpGatewayWebFluxContextResolver contextResolver
-) {
-    return new McpGatewayWebFluxAbuseProtectionFilter(
-            objectMapper,
-            properties,
-            evaluator,
-            contextResolver
-    );
-}
-```
+`SCOPE_<scope>` and passes normalized scope names into the authorization
+evaluator. The governance filter evaluates authorization first, then protection,
+and preserves the request body for the downstream MCP runtime.
 
 ## Adoption Checklist
 

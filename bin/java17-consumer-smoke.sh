@@ -99,10 +99,17 @@ import mcp.gateway.core.authz.McpToolAccessRegistry;
 import mcp.gateway.core.authz.McpToolAccessRule;
 import mcp.gateway.core.authz.McpToolAuthorizer;
 import mcp.gateway.core.authz.ToolAuthorizationDecision;
+import mcp.gateway.core.context.GatewayToolExecutionContext;
+import mcp.gateway.core.governance.GatewayToolAuthorizationPolicy;
+import mcp.gateway.core.governance.GatewayToolGovernance;
+import mcp.gateway.core.governance.GatewayToolGovernanceDecision;
+import mcp.gateway.core.governance.GatewayToolGovernanceOutcome;
 import mcp.gateway.core.invocation.McpToolInvocation;
 import mcp.gateway.core.invocation.McpToolInvocationKind;
+import mcp.gateway.core.protection.McpAbuseProtectionDecision;
 import mcp.gateway.core.tool.McpToolSurface;
 import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
+import mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter;
 import mcp.gateway.spring.webflux.McpJsonRpcToolInvocationParser;
 
 public final class Smoke {
@@ -128,6 +135,52 @@ public final class Smoke {
 
         require(decision.allowed(), "expected demo_tool authorization to be allowed");
         require(McpGatewayAuthorizationMode.ENFORCE.name().equals("ENFORCE"), "expected adapter enum to load");
+        require(McpGatewayWebFluxGovernanceFilter.class.getName().contains("GovernanceFilter"),
+                "expected combined governance filter to load");
+
+        GatewayToolExecutionContext context = GatewayToolExecutionContext.of(
+                "demo-client",
+                "demo-workspace",
+                "demo-correlation",
+                invocation,
+                null
+        );
+        GatewayToolGovernanceDecision governanceDecision = GatewayToolGovernance.evaluate(
+                context,
+                List.of("demo:execute"),
+                new mcp.gateway.core.governance.GatewayToolAuthorizationEvaluator() {
+                    @Override
+                    public GatewayToolAuthorizationPolicy policy() {
+                        return GatewayToolAuthorizationPolicy.enforce();
+                    }
+
+                    @Override
+                    public ToolAuthorizationDecision authorize(
+                            java.util.Collection<String> grantedScopes,
+                            GatewayToolExecutionContext context
+                    ) {
+                        return authorizer.authorize(context, grantedScopes, false, true);
+                    }
+                },
+                new mcp.gateway.core.governance.GatewayToolProtectionEvaluator() {
+                    @Override
+                    public boolean enabled() {
+                        return true;
+                    }
+
+                    @Override
+                    public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
+                        return McpAbuseProtectionDecision.allow(
+                                context.toolName(),
+                                context.principalId(),
+                                context.workspaceId()
+                        );
+                    }
+                }
+        );
+
+        require(governanceDecision.outcome() == GatewayToolGovernanceOutcome.ALLOW,
+                "expected governance decision to allow");
     }
 
     private static void require(boolean condition, String message) {

@@ -3,11 +3,13 @@ package mcp.gateway.spring.webflux;
 import java.util.Collection;
 import mcp.gateway.core.authz.ToolAuthorizationDecision;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
+import mcp.gateway.core.governance.GatewayToolAuthorizationEvaluator;
+import mcp.gateway.core.governance.GatewayToolAuthorizationPolicy;
 
 /**
  * Evaluates authorization for a parsed MCP invocation.
  */
-public interface McpGatewayAuthorizationEvaluator {
+public interface McpGatewayAuthorizationEvaluator extends GatewayToolAuthorizationEvaluator {
     /**
      * Returns the current authorization mode.
      *
@@ -23,6 +25,15 @@ public interface McpGatewayAuthorizationEvaluator {
      * @return authorization decision
      */
     ToolAuthorizationDecision authorize(Collection<String> grantedScopes, GatewayToolExecutionContext context);
+
+    @Override
+    default GatewayToolAuthorizationPolicy policy() {
+        return switch (mode()) {
+            case DISABLED -> GatewayToolAuthorizationPolicy.disabled();
+            case WARN -> GatewayToolAuthorizationPolicy.warn();
+            case ENFORCE -> GatewayToolAuthorizationPolicy.enforce();
+        };
+    }
 
     /**
      * Returns whether authorization should be evaluated.

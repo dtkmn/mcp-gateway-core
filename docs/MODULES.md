@@ -24,6 +24,7 @@ observability backends, and domain-specific tools.
 | `mcp.gateway.core.policybundle` | First-match policy rule evaluation, rule-list invariants, selector matching, trace details, and default-decision fallback. | JSON/schema parsing, policy bundle storage, extension hooks, product-specific bundle examples. |
 | `mcp.gateway.core.audit` | Audit event records plus sink/emitter contracts. | Logging frameworks, metrics systems, storage, redaction policy for app-specific fields. |
 | `mcp.gateway.core.protection` | Abuse-protection context, quota limits, and allow/reject decisions. | Queue inspection, workspace counters, backpressure wiring, rate-limit properties. |
+| `mcp.gateway.core.governance` | Framework-neutral orchestration for authorization, protection, and pass/warn/reject decisions. | HTTP response writing, Spring filters, runtime auth providers, product-specific denial copy. |
 | `mcp.gateway.core.rate` | JDK-only token-bucket rate limiter with bounded key tracking. | Distributed rate limiting, cache coordination, operator configuration. |
 | `mcp.gateway.core.logging` | Correlation ID constants and sanitization/resolution helpers. | MDC wiring, web filters, request attributes. |
 | `mcp.gateway.core.url` | URL scope normalization and matching helpers. | Target allowlist policy, scan evidence selection, crawler behavior. |

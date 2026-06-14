@@ -6,7 +6,7 @@ group = providers.gradleProperty('gatewayCoreGroup')
         .orElse('io.github.dtkmn')
         .get()
 version = providers.gradleProperty('gatewayCoreVersion')
-        .orElse('0.5.9')
+        .orElse('0.5.10')
         .get()
 
 tasks.register('test') {

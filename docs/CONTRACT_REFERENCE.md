@@ -282,6 +282,30 @@ Package: `mcp.gateway.core.protection`
 `McpQuotaLimit` is a simple count-based quota helper. It rejects when
 `currentCount >= maxAllowed`.
 
+## Governance Orchestration
+
+Package: `mcp.gateway.core.governance`
+
+`GatewayToolGovernance` runs the common framework-neutral gateway decision
+flow: authorization first, then abuse protection. It returns one
+`GatewayToolGovernanceDecision` that tells the runtime whether to pass, warn, or
+reject before tool execution.
+
+The runtime still owns the concrete authorization and protection providers. Core
+only coordinates their decisions.
+
+| Type | Meaning |
+| --- | --- |
+| `GatewayToolAuthorizationPolicy` | Whether authorization is disabled, warn-only, or enforcing. |
+| `GatewayToolAuthorizationEvaluator` | Runtime-supplied authorization decision provider. |
+| `GatewayToolProtectionEvaluator` | Runtime-supplied protection/quota decision provider. |
+| `GatewayToolGovernanceDecision` | Final pass/warn/reject result plus underlying decisions. |
+
+Authorization rejection short-circuits protection. Authorization warn decisions
+continue into protection so runtimes can observe policy drift without bypassing
+rate limits or quotas. Protection rejection preserves any authorization
+observation so downstream adapters can emit both facts accurately.
+
 ## Rate Limiting
 
 Package: `mcp.gateway.core.rate`
