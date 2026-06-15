@@ -2,6 +2,7 @@ package mcp.gateway.spring.webflux;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -182,15 +183,65 @@ class McpGatewayWebFluxGovernanceFilterTest {
                 contextResolver()
         );
 
-        StepVerifier.create(filter.filter(exchange(toolCallBody(), authentication("demo-client", "SCOPE_demo:run")),
-                        markCalledChain(downstreamCalled)))
-                .expectErrorMatches(error -> error instanceof NullPointerException
-                        && "authorization evaluator policy must not be null".equals(error.getMessage()))
-                .verify();
+        NullPointerException failure = assertThrows(NullPointerException.class, () -> filter.filter(
+                exchange(toolCallBody(), authentication("demo-client", "SCOPE_demo:run")),
+                markCalledChain(downstreamCalled)
+        ));
 
+        assertEquals("authorization evaluator policy must not be null", failure.getMessage());
         assertFalse(authorizationCalled.get());
         assertFalse(protectionCalled.get());
         assertFalse(downstreamCalled.get());
+    }
+
+    @Test
+    void authorizationPolicyControlsGovernanceWhenLegacyEnabledHelperIsWrong() {
+        AtomicBoolean authorizationCalled = new AtomicBoolean(false);
+        AtomicBoolean downstreamCalled = new AtomicBoolean(false);
+        List<McpAuthorizationObservation> observations = new ArrayList<>();
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                PROPERTIES,
+                new McpGatewayAuthorizationEvaluator() {
+                    @Override
+                    public McpGatewayAuthorizationMode mode() {
+                        return McpGatewayAuthorizationMode.ENFORCE;
+                    }
+
+                    @Override
+                    public GatewayToolAuthorizationPolicy policy() {
+                        return GatewayToolAuthorizationPolicy.enforce();
+                    }
+
+                    @Override
+                    public boolean enabled() {
+                        return false;
+                    }
+
+                    @Override
+                    public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
+                                                               GatewayToolExecutionContext context) {
+                        authorizationCalled.set(true);
+                        return authDenied();
+                    }
+                },
+                null,
+                contextResolver(),
+                McpGrantedScopesExtractor.springSecurityScopes(),
+                observations::add,
+                McpProtectionRejectionObserver.noop(),
+                McpGatewayCorrelationIdResolver.defaultResolver()
+        );
+        ServerWebExchange exchange = exchange(toolCallBody(), authentication("demo-client", "SCOPE_demo:read"));
+
+        StepVerifier.create(filter.filter(exchange, markCalledChain(downstreamCalled))).verifyComplete();
+
+        assertTrue(authorizationCalled.get());
+        assertFalse(downstreamCalled.get());
+        assertEquals(1, observations.size());
+        assertEquals("denied", observations.get(0).outcome());
+        assertEquals("insufficient_scope", observations.get(0).reason());
+        assertEquals(403, exchange.getResponse().getStatusCode().value());
     }
 
     @Test

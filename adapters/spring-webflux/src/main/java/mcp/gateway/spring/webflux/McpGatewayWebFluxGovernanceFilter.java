@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
+import mcp.gateway.core.governance.GatewayToolAuthorizationPolicy;
 import mcp.gateway.core.governance.GatewayToolGovernance;
 import mcp.gateway.core.governance.GatewayToolGovernanceDecision;
 import mcp.gateway.core.governance.GatewayToolGovernanceOutcome;
@@ -155,8 +156,19 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
     }
 
     private boolean governanceEnabled() {
-        return (authorizationEvaluator != null && authorizationEvaluator.enabled())
+        return authorizationGovernanceEnabled()
                 || (protectionEvaluator != null && protectionEvaluator.enabled());
+    }
+
+    private boolean authorizationGovernanceEnabled() {
+        if (authorizationEvaluator == null) {
+            return false;
+        }
+        GatewayToolAuthorizationPolicy policy = Objects.requireNonNull(
+                authorizationEvaluator.policy(),
+                "authorization evaluator policy must not be null"
+        );
+        return policy.enabled();
     }
 
     private boolean isRelevantRequest(ServerWebExchange exchange) {
