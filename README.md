@@ -79,6 +79,7 @@ Included:
 - policy decision and policy-bundle evaluation contracts
 - audit event, sink, and emitter contracts
 - abuse-protection context and quota decision contracts
+- framework-neutral gateway governance orchestration
 - correlation ID helpers
 - URL-scope helpers
 - token-bucket rate limiting primitives
@@ -113,6 +114,7 @@ For field and value semantics, see the
 | Policy bundle evaluation | `mcp.gateway.core.policybundle` |
 | Audit events | `mcp.gateway.core.audit` |
 | Abuse protection and quota decisions | `mcp.gateway.core.protection` |
+| Governance orchestration | `mcp.gateway.core.governance` |
 | Rate limiting | `mcp.gateway.core.rate` |
 | Correlation IDs | `mcp.gateway.core.logging` |
 | URL scope checks | `mcp.gateway.core.url` |
@@ -148,20 +150,20 @@ signed dry-run bundle validation with an ephemeral local GPG key.
 Core coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.5.9
+io.github.dtkmn:mcp-gateway-core:0.5.10
 ```
 
 Optional Spring WebFlux adapter coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-spring-webflux:0.5.9
+io.github.dtkmn:mcp-gateway-spring-webflux:0.5.10
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.9"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.9" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.5.10"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.10" // optional
 ```
 
 Maven:
@@ -170,12 +172,12 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.5.9</version>
+  <version>0.5.10</version>
 </dependency>
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-spring-webflux</artifactId>
-  <version>0.5.9</version>
+  <version>0.5.10</version>
 </dependency>
 ```
 

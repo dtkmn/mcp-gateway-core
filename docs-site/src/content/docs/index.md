@@ -36,8 +36,8 @@ integration, UI, or service mesh.
 ## Coordinates
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.9"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.9" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.5.10"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.10" // optional
 ```
 
 ## Boundary

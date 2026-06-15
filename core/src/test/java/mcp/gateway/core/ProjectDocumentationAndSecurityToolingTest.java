@@ -101,6 +101,7 @@ class ProjectDocumentationAndSecurityToolingTest {
                 "mcp.gateway.core.policybundle",
                 "mcp.gateway.core.audit",
                 "mcp.gateway.core.protection",
+                "mcp.gateway.core.governance",
                 "mcp.gateway.core.rate",
                 "mcp.gateway.core.logging",
                 "mcp.gateway.core.url",

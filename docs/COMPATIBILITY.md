@@ -39,6 +39,7 @@ Public-preview consumers may depend on:
 - policy decision value types;
 - audit event, sink, and emitter value/contract types;
 - abuse-protection context and quota limit value types;
+- framework-neutral gateway governance orchestration types;
 - gateway execution context, principal, workspace, and tool execution context value types;
 - correlation ID helpers;
 - URL scope helpers;
