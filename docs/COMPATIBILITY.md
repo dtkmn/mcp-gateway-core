@@ -44,8 +44,8 @@ Public-preview consumers may depend on:
 - correlation ID helpers;
 - URL scope helpers;
 - token-bucket rate limiting primitives;
-- optional Spring WebFlux filters and resolver interfaces for applying core
-  authorization and abuse-protection decisions to MCP HTTP requests.
+- optional Spring WebFlux governance filter and resolver interfaces for applying
+  core authorization and abuse-protection decisions to MCP HTTP requests.
 
 ## Out Of Scope
 

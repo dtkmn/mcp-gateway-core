@@ -15,14 +15,14 @@ Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.10"
+implementation "io.github.dtkmn:mcp-gateway-core:0.6.0"
 ```
 
 Use both artifacts when your MCP endpoint is a Spring WebFlux route:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.10"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.10"
+implementation "io.github.dtkmn:mcp-gateway-core:0.6.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.6.0"
 ```
 
 The adapter currently targets the Spring Framework 7 / Spring Security 7 line.

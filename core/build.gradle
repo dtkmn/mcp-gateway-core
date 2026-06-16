@@ -7,7 +7,7 @@ group = providers.gradleProperty('gatewayCoreGroup')
         .orElse('io.github.dtkmn')
         .get()
 version = providers.gradleProperty('gatewayCoreVersion')
-        .orElse('0.5.10')
+        .orElse('0.6.0')
         .get()
 def gatewayCoreArtifactId = 'mcp-gateway-core'
 def gatewayCorePublicationPath = "${project.group.toString().replace('.', '/')}/${gatewayCoreArtifactId}/${project.version}"
@@ -36,7 +36,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:6.0.1')
+    testImplementation platform('org.junit:junit-bom:6.1.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

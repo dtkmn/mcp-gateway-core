@@ -1,17 +1,15 @@
 package mcp.gateway.spring.webflux;
 
 /**
- * Runtime settings shared by MCP gateway WebFlux filters.
+ * Runtime settings for the MCP gateway WebFlux governance filter.
  *
  * @param mcpEndpoint HTTP path that receives MCP JSON-RPC requests
- * @param maxBodyBytes maximum request body size buffered by gateway filters
- * @param authorizationFilterOrder Spring WebFilter order for authorization
- * @param abuseProtectionFilterOrder Spring WebFilter order for abuse protection
+ * @param maxBodyBytes maximum request body size buffered by the gateway filter
+ * @param governanceFilterOrder Spring WebFilter order for the governance filter
  */
 public record McpGatewayWebFluxProperties(String mcpEndpoint,
                                           int maxBodyBytes,
-                                          int authorizationFilterOrder,
-                                          int abuseProtectionFilterOrder) {
+                                          int governanceFilterOrder) {
     /** Default MCP endpoint used by Spring AI MCP server WebFlux setups. */
     public static final String DEFAULT_MCP_ENDPOINT = "/mcp";
     /** Conservative default matching the current downstream security-pack runtime. */
@@ -31,7 +29,7 @@ public record McpGatewayWebFluxProperties(String mcpEndpoint,
      * @return default settings
      */
     public static McpGatewayWebFluxProperties defaults() {
-        return new McpGatewayWebFluxProperties(DEFAULT_MCP_ENDPOINT, DEFAULT_MAX_BODY_BYTES, 0, 1);
+        return new McpGatewayWebFluxProperties(DEFAULT_MCP_ENDPOINT, DEFAULT_MAX_BODY_BYTES, 0);
     }
 
     private static String normalizeEndpoint(String endpoint) {

@@ -7,7 +7,7 @@ group = providers.gradleProperty('gatewayCoreGroup')
         .orElse('io.github.dtkmn')
         .get()
 version = providers.gradleProperty('gatewayCoreVersion')
-        .orElse('0.5.10')
+        .orElse('0.6.0')
         .get()
 
 def springWebFluxArtifactId = 'mcp-gateway-spring-webflux'
@@ -98,7 +98,7 @@ dependencies {
     api "org.springframework.security:spring-security-core:${springSecurityVersion}"
     api "com.fasterxml.jackson.core:jackson-databind:${jacksonDatabindVersion}"
 
-    testImplementation platform('org.junit:junit-bom:6.0.1')
+    testImplementation platform('org.junit:junit-bom:6.1.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation "org.springframework:spring-test:${springFrameworkVersion}"
     testImplementation "io.projectreactor:reactor-test:${reactorVersion}"

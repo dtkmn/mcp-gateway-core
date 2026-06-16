@@ -19,9 +19,9 @@ tool-governance runtimes. It provides shared vocabulary and deterministic
 helpers for tool identity, authorization, policy decisions, audit events, abuse
 protection, correlation IDs, URL scoping, and rate limiting.
 
-The optional `mcp-gateway-spring-webflux` artifact adds WebFlux filters over
-those contracts. It is not a full gateway runtime, proxy data plane, scanner
-integration, UI, or service mesh.
+The optional `mcp-gateway-spring-webflux` artifact adds a WebFlux governance
+filter over those contracts. It is not a full gateway runtime, proxy data plane,
+scanner integration, UI, or service mesh.
 
 ## Choose Your Path
 
@@ -36,8 +36,8 @@ integration, UI, or service mesh.
 ## Coordinates
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.10"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.10" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.6.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.6.0" // optional
 ```
 
 ## Boundary

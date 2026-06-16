@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import mcp.gateway.core.authz.ToolAuthorizationDecision;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.invocation.McpToolInvocation;
@@ -73,6 +74,37 @@ class GatewayToolGovernanceTest {
     }
 
     @Test
+    void rejectsDeniedAuthorizationBeforeProtectionRunsInEnforceMode() {
+        AtomicBoolean protectionCalled = new AtomicBoolean(false);
+
+        GatewayToolGovernanceDecision decision = GatewayToolGovernance.evaluate(
+                context,
+                List.of("demo:read"),
+                authorization(GatewayToolAuthorizationPolicy.enforce(), authDenied()),
+                new GatewayToolProtectionEvaluator() {
+                    @Override
+                    public boolean enabled() {
+                        return true;
+                    }
+
+                    @Override
+                    public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
+                        protectionCalled.set(true);
+                        return McpAbuseProtectionDecision.allow("demo_tool", "client-a", "workspace-a");
+                    }
+                }
+        );
+
+        assertFalse(decision.allowed());
+        assertEquals(GatewayToolGovernanceOutcome.REJECT, decision.outcome());
+        assertEquals(GatewayToolGovernanceReason.INSUFFICIENT_SCOPE, decision.reason());
+        assertEquals(GatewayToolGovernanceOutcome.REJECT, decision.authorizationObservationOutcome());
+        assertEquals(GatewayToolGovernanceReason.INSUFFICIENT_SCOPE, decision.authorizationObservationReason());
+        assertNull(decision.protectionDecision());
+        assertFalse(protectionCalled.get());
+    }
+
+    @Test
     void warnAuthorizationContinuesThroughProtection() {
         GatewayToolGovernanceDecision decision = GatewayToolGovernance.evaluate(
                 context,
@@ -113,6 +145,85 @@ class GatewayToolGovernanceTest {
         assertEquals(GatewayToolGovernanceOutcome.ALLOW, decision.authorizationObservationOutcome());
         assertEquals(GatewayToolGovernanceReason.SCOPE_GRANTED, decision.authorizationObservationReason());
         assertEquals(rejected, decision.protectionDecision());
+    }
+
+    @Test
+    void disabledAuthorizationAndProtectionPassThroughWithoutCallingEvaluators() {
+        AtomicBoolean authorizationCalled = new AtomicBoolean(false);
+        AtomicBoolean protectionCalled = new AtomicBoolean(false);
+
+        GatewayToolGovernanceDecision decision = GatewayToolGovernance.evaluate(
+                context,
+                List.of("demo:run"),
+                new GatewayToolAuthorizationEvaluator() {
+                    @Override
+                    public GatewayToolAuthorizationPolicy policy() {
+                        return GatewayToolAuthorizationPolicy.disabled();
+                    }
+
+                    @Override
+                    public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
+                                                               GatewayToolExecutionContext context) {
+                        authorizationCalled.set(true);
+                        return authDenied();
+                    }
+                },
+                new GatewayToolProtectionEvaluator() {
+                    @Override
+                    public boolean enabled() {
+                        return false;
+                    }
+
+                    @Override
+                    public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
+                        protectionCalled.set(true);
+                        return McpAbuseProtectionDecision.reject(
+                                "rate_limited",
+                                "too many requests",
+                                "demo_tool",
+                                "client-a",
+                                "workspace-a",
+                                5
+                        );
+                    }
+                }
+        );
+
+        assertTrue(decision.allowed());
+        assertEquals(GatewayToolGovernanceOutcome.ALLOW, decision.outcome());
+        assertEquals(GatewayToolGovernanceReason.GOVERNANCE_PASSED, decision.reason());
+        assertFalse(decision.hasAuthorizationObservation());
+        assertNull(decision.authorizationDecision());
+        assertNull(decision.protectionDecision());
+        assertFalse(authorizationCalled.get());
+        assertFalse(protectionCalled.get());
+    }
+
+    @Test
+    void normalizesNullGrantedScopesBeforeAuthorization() {
+        AtomicReference<Collection<String>> capturedScopes = new AtomicReference<>();
+
+        GatewayToolGovernanceDecision decision = GatewayToolGovernance.evaluate(
+                context,
+                null,
+                new GatewayToolAuthorizationEvaluator() {
+                    @Override
+                    public GatewayToolAuthorizationPolicy policy() {
+                        return GatewayToolAuthorizationPolicy.enforce();
+                    }
+
+                    @Override
+                    public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
+                                                               GatewayToolExecutionContext context) {
+                        capturedScopes.set(grantedScopes);
+                        return authAllowed();
+                    }
+                },
+                null
+        );
+
+        assertTrue(decision.allowed());
+        assertEquals(List.of(), List.copyOf(capturedScopes.get()));
     }
 
     @Test
