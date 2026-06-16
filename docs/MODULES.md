@@ -5,7 +5,7 @@ This repository publishes two public-preview Java artifacts:
 | Artifact | Package root | Purpose |
 | --- | --- | --- |
 | `mcp-gateway-core` | `mcp.gateway.core` | JDK-only MCP governance contracts and primitives. |
-| `mcp-gateway-spring-webflux` | `mcp.gateway.spring.webflux` | Optional Spring WebFlux filters and adapters over the core contracts. |
+| `mcp-gateway-spring-webflux` | `mcp.gateway.spring.webflux` | Optional Spring WebFlux governance filter and adapters over the core contracts. |
 
 The design rule is simple: core owns MCP-neutral vocabulary and small,
 deterministic primitives. Adapter artifacts may own framework glue. Runtime
@@ -28,7 +28,7 @@ observability backends, and domain-specific tools.
 | `mcp.gateway.core.rate` | JDK-only token-bucket rate limiter with bounded key tracking. | Distributed rate limiting, cache coordination, operator configuration. |
 | `mcp.gateway.core.logging` | Correlation ID constants and sanitization/resolution helpers. | MDC wiring, web filters, request attributes. |
 | `mcp.gateway.core.url` | URL scope normalization and matching helpers. | Target allowlist policy, scan evidence selection, crawler behavior. |
-| `mcp.gateway.spring.webflux` | WebFlux filters, JSON-RPC request parsing, request body replay, safe denial/rejection responses, and resolver interfaces for mapping Spring requests into core context. | Spring Boot auto-configuration, Spring AI SDK integration, auth-provider setup, persistence, product-specific scope catalogs. |
+| `mcp.gateway.spring.webflux` | WebFlux governance filter, JSON-RPC request parsing, request body replay, safe denial/rejection responses, and resolver interfaces for mapping Spring requests into core context. | Spring Boot auto-configuration, Spring AI SDK integration, auth-provider setup, persistence, product-specific scope catalogs. |
 
 ## Current Consumer Pattern
 

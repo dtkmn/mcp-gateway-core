@@ -84,7 +84,7 @@ Included:
 - URL-scope helpers
 - token-bucket rate limiting primitives
 - gateway execution context and principal/workspace model
-- optional Spring WebFlux request filters and JSON-RPC parsing adapters
+- optional Spring WebFlux governance filter and JSON-RPC parsing adapters
 
 Excluded:
 
@@ -150,20 +150,20 @@ signed dry-run bundle validation with an ephemeral local GPG key.
 Core coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.5.10
+io.github.dtkmn:mcp-gateway-core:0.6.0
 ```
 
 Optional Spring WebFlux adapter coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-spring-webflux:0.5.10
+io.github.dtkmn:mcp-gateway-spring-webflux:0.6.0
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.5.10"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.5.10" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.6.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.6.0" // optional
 ```
 
 Maven:
@@ -172,12 +172,12 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.5.10</version>
+  <version>0.6.0</version>
 </dependency>
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-spring-webflux</artifactId>
-  <version>0.5.10</version>
+  <version>0.6.0</version>
 </dependency>
 ```
 

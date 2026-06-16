@@ -358,9 +358,8 @@ Boot auto-configuration.
 | Field | Meaning |
 | --- | --- |
 | `mcpEndpoint` | HTTP path receiving MCP JSON-RPC. Default is `/mcp`. |
-| `maxBodyBytes` | Maximum request body buffered by adapter filters. Minimum normalized value is `1024`. Default is `262144`. |
-| `authorizationFilterOrder` | Spring `WebFilter` order for authorization. |
-| `abuseProtectionFilterOrder` | Spring `WebFilter` order for abuse protection. |
+| `maxBodyBytes` | Maximum request body buffered by the adapter filter. Minimum normalized value is `1024`. Default is `262144`. |
+| `governanceFilterOrder` | Spring `WebFilter` order for the WebFlux governance filter. |
 
 `McpGatewayAuthorizationMode` values:
 
@@ -378,7 +377,8 @@ Boot auto-configuration.
 authorities with the `SCOPE_` prefix and converts them into normalized scope
 names.
 
-`McpAuthorizationObservation` is emitted by the authorization filter:
+`McpAuthorizationObservation` is emitted by the WebFlux governance filter when
+authorization runs:
 
 | Field | Meaning |
 | --- | --- |
