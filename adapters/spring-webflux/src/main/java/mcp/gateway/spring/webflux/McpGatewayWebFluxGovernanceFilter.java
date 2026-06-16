@@ -211,6 +211,6 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
 
     @Override
     public int getOrder() {
-        return Math.min(properties.authorizationFilterOrder(), properties.abuseProtectionFilterOrder());
+        return properties.governanceFilterOrder();
     }
 }

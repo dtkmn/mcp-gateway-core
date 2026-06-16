@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,6 +18,7 @@ import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.governance.GatewayToolAuthorizationPolicy;
 import mcp.gateway.core.protection.McpAbuseProtectionDecision;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -28,13 +30,27 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilterChain;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class McpGatewayWebFluxGovernanceFilterTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final McpGatewayWebFluxProperties PROPERTIES =
-            new McpGatewayWebFluxProperties("/mcp", 4096, 10, 11);
+            new McpGatewayWebFluxProperties("/mcp", 4096, 10);
+
+    @Test
+    void getOrderUsesConfiguredGovernanceFilterOrder() {
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                new McpGatewayWebFluxProperties("/mcp", 4096, 123),
+                null,
+                null,
+                contextResolver()
+        );
+
+        assertEquals(123, filter.getOrder());
+    }
 
     @Test
     void allowsRequestAndPreservesBodyAfterOneGovernancePass() {
@@ -277,7 +293,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicBoolean authorizationCalled = new AtomicBoolean(false);
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
                 OBJECT_MAPPER,
-                new McpGatewayWebFluxProperties("/mcp", 1024, 10, 11),
+                new McpGatewayWebFluxProperties("/mcp", 1024, 10),
                 new McpGatewayAuthorizationEvaluator() {
                     @Override
                     public McpGatewayAuthorizationMode mode() {
@@ -307,6 +323,54 @@ class McpGatewayWebFluxGovernanceFilterTest {
                 .verifyComplete();
 
         assertFalse(authorizationCalled.get());
+        assertEquals(413, exchange.getResponse().getStatusCode().value());
+        assertTrue(responseBody(exchange).contains("\"error\":\"request_body_too_large\""));
+    }
+
+    @Test
+    void rejectsStreamingBodyThatExceedsReadLimitBeforeGovernanceRuns() {
+        AtomicBoolean authorizationCalled = new AtomicBoolean(false);
+        AtomicBoolean protectionCalled = new AtomicBoolean(false);
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                new McpGatewayWebFluxProperties("/mcp", 1024, 10),
+                new McpGatewayAuthorizationEvaluator() {
+                    @Override
+                    public McpGatewayAuthorizationMode mode() {
+                        return McpGatewayAuthorizationMode.ENFORCE;
+                    }
+
+                    @Override
+                    public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
+                                                               GatewayToolExecutionContext context) {
+                        authorizationCalled.set(true);
+                        return authAllowed();
+                    }
+                },
+                new McpGatewayAbuseProtectionEvaluator() {
+                    @Override
+                    public boolean enabled() {
+                        return true;
+                    }
+
+                    @Override
+                    public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
+                        protectionCalled.set(true);
+                        return McpAbuseProtectionDecision.allow("demo_tool", "demo-client", "demo-workspace");
+                    }
+                },
+                contextResolver()
+        );
+        ServerWebExchange exchange = streamingExchangeWithoutContentLength(
+                "x".repeat(2048),
+                authentication("demo-client", "SCOPE_demo:run")
+        );
+
+        StepVerifier.create(filter.filter(exchange, ignored -> Mono.error(new AssertionError("must not call chain"))))
+                .verifyComplete();
+
+        assertFalse(authorizationCalled.get());
+        assertFalse(protectionCalled.get());
         assertEquals(413, exchange.getResponse().getStatusCode().value());
         assertTrue(responseBody(exchange).contains("\"error\":\"request_body_too_large\""));
     }
@@ -384,6 +448,24 @@ class McpGatewayWebFluxGovernanceFilterTest {
                 .header("X-Correlation-Id", "corr-1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body));
+    }
+
+    private static ServerWebExchange streamingExchangeWithoutContentLength(String body, Authentication authentication) {
+        DefaultDataBufferFactory bufferFactory = new DefaultDataBufferFactory();
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        int splitAt = 12;
+        byte[] firstChunk = Arrays.copyOfRange(bytes, 0, splitAt);
+        byte[] secondChunk = Arrays.copyOfRange(bytes, splitAt, bytes.length);
+        return MockServerWebExchange.from(MockServerHttpRequest.post("/mcp")
+                        .header("X-Correlation-Id", "corr-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(Flux.just(
+                                bufferFactory.wrap(firstChunk),
+                                bufferFactory.wrap(secondChunk)
+                        )))
+                .mutate()
+                .principal(Mono.just(authentication))
+                .build();
     }
 
     private static Authentication authentication(String name, String authority) {
