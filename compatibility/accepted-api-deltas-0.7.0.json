@@ -1,0 +1,6 @@
+{
+  "schema": "mcp-gateway-core.accepted-api-deltas.v1",
+  "version": "0.7.0",
+  "baseVersion": "0.6.0",
+  "deltas": []
+}

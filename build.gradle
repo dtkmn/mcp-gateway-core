@@ -24,6 +24,7 @@ tasks.named('clean') {
 tasks.named('check') {
     dependsOn ':core:check'
     dependsOn ':adapters:spring-webflux:check'
+    dependsOn 'verifyAcceptedApiDeltas'
 }
 
 tasks.named('build') {
@@ -34,6 +35,114 @@ tasks.named('build') {
 tasks.register('verifyGatewayPublicPreviewPublication') {
     group = 'verification'
     description = 'Runs public-preview verification for all published gateway artifacts.'
+    dependsOn 'verifyAcceptedApiDeltas'
     dependsOn ':core:verifyGatewayCorePublicPreviewPublication'
     dependsOn ':adapters:spring-webflux:verifyGatewaySpringWebFluxPublicPreviewPublication'
+}
+
+tasks.register('verifyAcceptedApiDeltas') {
+    group = 'verification'
+    description = 'Verifies accepted API/binary deltas are machine-readable and release-note linked.'
+
+    def acceptedDeltasFile = layout.projectDirectory.file('compatibility/accepted-api-deltas-0.7.0.json')
+    def releaseNotesFile = layout.projectDirectory.file('docs/RELEASE_NOTES.md')
+
+    inputs.file acceptedDeltasFile
+    inputs.file releaseNotesFile
+
+    doLast {
+        File acceptedDeltas = acceptedDeltasFile.asFile
+        File releaseNotes = releaseNotesFile.asFile
+        if (!acceptedDeltas.isFile()) {
+            throw new GradleException("Missing accepted API deltas file: ${acceptedDeltas}")
+        }
+        if (!releaseNotes.isFile()) {
+            throw new GradleException("Missing release notes file: ${releaseNotes}")
+        }
+
+        def parsed = new groovy.json.JsonSlurper().parse(acceptedDeltas)
+        if (!(parsed instanceof Map)) {
+            throw new GradleException('Accepted API deltas file must contain a JSON object.')
+        }
+        requireJsonValue(parsed, 'schema', 'mcp-gateway-core.accepted-api-deltas.v1')
+        requireJsonValue(parsed, 'version', '0.7.0')
+        requireJsonValue(parsed, 'baseVersion', '0.6.0')
+        if (!(parsed.deltas instanceof List)) {
+            throw new GradleException('Accepted API deltas file must contain a deltas array.')
+        }
+
+        Set<String> allowedArtifacts = ['mcp-gateway-core', 'mcp-gateway-spring-webflux'] as Set
+        Set<String> allowedClassifications = ['compatible-addition', 'breaking-change'] as Set
+        String releaseNotesText = releaseNotes.text
+        parsed.deltas.eachWithIndex { delta, index ->
+            if (!(delta instanceof Map)) {
+                throw new GradleException("Accepted API delta ${index} must be a JSON object.")
+            }
+            List<String> requiredKeys = [
+                    'artifact',
+                    'symbol',
+                    'oldSignature',
+                    'newSignature',
+                    'classification',
+                    'releaseNotesAnchor',
+                    'maintainerApproval'
+            ]
+            List<String> missing = requiredKeys.findAll { !delta.containsKey(it) }
+            if (!missing.isEmpty()) {
+                throw new GradleException("Accepted API delta ${index} is missing required keys: ${missing}")
+            }
+
+            String artifact = requiredString(delta, 'artifact', index)
+            if (!allowedArtifacts.contains(artifact)) {
+                throw new GradleException("Accepted API delta ${index} has invalid artifact '${artifact}'.")
+            }
+            requiredString(delta, 'symbol', index)
+            String classification = requiredString(delta, 'classification', index)
+            if (!allowedClassifications.contains(classification)) {
+                throw new GradleException("Accepted API delta ${index} has invalid classification '${classification}'.")
+            }
+
+            String releaseNotesAnchor = requiredString(delta, 'releaseNotesAnchor', index)
+            if (!releaseNotesAnchor.startsWith('#') || releaseNotesAnchor.length() == 1) {
+                throw new GradleException("Accepted API delta ${index} releaseNotesAnchor must be a non-empty Markdown anchor.")
+            }
+            String anchorId = releaseNotesAnchor.substring(1)
+            if (!releaseNotesText.contains("<a id=\"${anchorId}\"></a>")) {
+                throw new GradleException("Accepted API delta ${index} references missing release notes anchor ${releaseNotesAnchor}.")
+            }
+
+            if (classification == 'compatible-addition') {
+                if (delta.oldSignature != null) {
+                    throw new GradleException("Compatible addition delta ${index} must use null oldSignature.")
+                }
+                requiredString(delta, 'newSignature', index)
+                if (delta.maintainerApproval != null) {
+                    throw new GradleException("Compatible addition delta ${index} must use null maintainerApproval.")
+                }
+            } else {
+                requiredString(delta, 'oldSignature', index)
+                if (delta.newSignature != null && !(delta.newSignature instanceof String)) {
+                    throw new GradleException("Breaking change delta ${index} newSignature must be a string or null.")
+                }
+                if (delta.newSignature instanceof String && delta.newSignature.isBlank()) {
+                    throw new GradleException("Breaking change delta ${index} newSignature must not be blank when present.")
+                }
+                requiredString(delta, 'maintainerApproval', index)
+            }
+        }
+    }
+}
+
+def requireJsonValue(Map parsed, String key, String expected) {
+    if (parsed[key] != expected) {
+        throw new GradleException("Accepted API deltas file must set ${key} to '${expected}'.")
+    }
+}
+
+def requiredString(Map delta, String key, int index) {
+    def value = delta[key]
+    if (!(value instanceof String) || value.isBlank()) {
+        throw new GradleException("Accepted API delta ${index} field '${key}' must be a non-blank string.")
+    }
+    value
 }
