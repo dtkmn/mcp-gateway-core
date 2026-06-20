@@ -2,5 +2,42 @@
   "schema": "mcp-gateway-core.accepted-api-deltas.v1",
   "version": "0.7.0",
   "baseVersion": "0.6.0",
-  "deltas": []
+  "deltas": [
+    {
+      "artifact": "mcp-gateway-spring-webflux",
+      "symbol": "mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter",
+      "oldSignature": null,
+      "newSignature": "mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter :: public mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter(com.fasterxml.jackson.databind.ObjectMapper, mcp.gateway.spring.webflux.McpGatewayWebFluxProperties, mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator, mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator, mcp.gateway.spring.webflux.McpGatewayWebFluxContextResolver, mcp.gateway.spring.webflux.McpGrantedScopesExtractor, mcp.gateway.spring.webflux.McpAuthorizationObserver, mcp.gateway.spring.webflux.McpProtectionRejectionObserver, mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver, mcp.gateway.spring.webflux.McpInvalidRequestObserver);",
+      "classification": "compatible-addition",
+      "releaseNotesAnchor": "#0.7.0-api-binary-deltas",
+      "maintainerApproval": null
+    },
+    {
+      "artifact": "mcp-gateway-spring-webflux",
+      "symbol": "mcp.gateway.spring.webflux.McpInvalidRequestObserver",
+      "oldSignature": null,
+      "newSignature": "mcp.gateway.spring.webflux.McpInvalidRequestObserver :: public interface mcp.gateway.spring.webflux.McpInvalidRequestObserver {",
+      "classification": "compatible-addition",
+      "releaseNotesAnchor": "#0.7.0-api-binary-deltas",
+      "maintainerApproval": null
+    },
+    {
+      "artifact": "mcp-gateway-spring-webflux",
+      "symbol": "mcp.gateway.spring.webflux.McpInvalidRequestObserver",
+      "oldSignature": null,
+      "newSignature": "mcp.gateway.spring.webflux.McpInvalidRequestObserver :: public abstract void rejected(java.lang.String, java.lang.String, java.lang.String);",
+      "classification": "compatible-addition",
+      "releaseNotesAnchor": "#0.7.0-api-binary-deltas",
+      "maintainerApproval": null
+    },
+    {
+      "artifact": "mcp-gateway-spring-webflux",
+      "symbol": "mcp.gateway.spring.webflux.McpInvalidRequestObserver",
+      "oldSignature": null,
+      "newSignature": "mcp.gateway.spring.webflux.McpInvalidRequestObserver :: public static mcp.gateway.spring.webflux.McpInvalidRequestObserver noop();",
+      "classification": "compatible-addition",
+      "releaseNotesAnchor": "#0.7.0-api-binary-deltas",
+      "maintainerApproval": null
+    }
+  ]
 }

@@ -33,6 +33,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
     private final McpAuthorizationObserver authorizationObserver;
     private final McpProtectionRejectionObserver rejectionObserver;
     private final McpGatewayCorrelationIdResolver correlationIdResolver;
+    private final McpInvalidRequestObserver invalidRequestObserver;
 
     /**
      * Creates a filter with default scope extraction and no-op observations.
@@ -83,6 +84,44 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                                              McpAuthorizationObserver authorizationObserver,
                                              McpProtectionRejectionObserver rejectionObserver,
                                              McpGatewayCorrelationIdResolver correlationIdResolver) {
+        this(
+                objectMapper,
+                properties,
+                authorizationEvaluator,
+                protectionEvaluator,
+                contextResolver,
+                grantedScopesExtractor,
+                authorizationObserver,
+                rejectionObserver,
+                correlationIdResolver,
+                McpInvalidRequestObserver.noop()
+        );
+    }
+
+    /**
+     * Creates a filter.
+     *
+     * @param objectMapper JSON mapper used for parsing and rejection responses
+     * @param properties WebFlux adapter properties
+     * @param authorizationEvaluator authorization evaluator backed by core contracts
+     * @param protectionEvaluator protection evaluator backed by core contracts
+     * @param contextResolver resolver that maps the request into core execution context
+     * @param grantedScopesExtractor extracts granted scopes from Spring Security authentication
+     * @param authorizationObserver receives authorization observations
+     * @param rejectionObserver receives protection rejection observations
+     * @param correlationIdResolver resolves correlation IDs for fallback responses
+     * @param invalidRequestObserver receives invalid request observations
+     */
+    public McpGatewayWebFluxGovernanceFilter(ObjectMapper objectMapper,
+                                             McpGatewayWebFluxProperties properties,
+                                             McpGatewayAuthorizationEvaluator authorizationEvaluator,
+                                             McpGatewayAbuseProtectionEvaluator protectionEvaluator,
+                                             McpGatewayWebFluxContextResolver contextResolver,
+                                             McpGrantedScopesExtractor grantedScopesExtractor,
+                                             McpAuthorizationObserver authorizationObserver,
+                                             McpProtectionRejectionObserver rejectionObserver,
+                                             McpGatewayCorrelationIdResolver correlationIdResolver,
+                                             McpInvalidRequestObserver invalidRequestObserver) {
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
         this.parser = new McpJsonRpcToolInvocationParser(objectMapper);
         this.properties = properties == null ? McpGatewayWebFluxProperties.defaults() : properties;
@@ -97,6 +136,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
         this.correlationIdResolver = correlationIdResolver == null
                 ? McpGatewayCorrelationIdResolver.defaultResolver()
                 : correlationIdResolver;
+        this.invalidRequestObserver = invalidRequestObserver == null ? McpInvalidRequestObserver.noop() : invalidRequestObserver;
     }
 
     @Override
@@ -108,51 +148,68 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
             return writePayloadTooLarge(exchange);
         }
 
-        return exchange.getPrincipal()
-                .cast(Authentication.class)
-                .map(Optional::of)
-                .defaultIfEmpty(Optional.empty())
-                .flatMap(authentication -> cacheAndEvaluate(exchange, chain, authentication.orElse(null)));
+        return cacheAndEvaluate(exchange, chain);
     }
 
     private Mono<Void> cacheAndEvaluate(ServerWebExchange exchange,
-                                        WebFilterChain chain,
-                                        Authentication authentication) {
+                                        WebFilterChain chain) {
         return McpGatewayWebFluxRequestBodies.read(exchange, properties.maxBodyBytes())
                 .flatMap(bodyBytes -> {
-                    McpToolInvocation invocation = parser.parse(bodyBytes);
-                    GatewayToolExecutionContext context = contextResolver.resolve(authentication, exchange, invocation);
-                    List<String> grantedScopes = grantedScopesExtractor.extract(authentication);
-                    GatewayToolGovernanceDecision decision = GatewayToolGovernance.evaluate(
-                            context,
-                            grantedScopes,
-                            authorizationEvaluator,
-                            protectionEvaluator
-                    );
-
-                    recordAuthorization(decision, context);
-
-                    if (decision.allowed()) {
-                        return chain.filter(McpGatewayWebFluxRequestBodies.decorate(exchange, bodyBytes));
+                    McpJsonRpcRequestClassification classification = parser.classify(bodyBytes);
+                    if (!classification.valid()) {
+                        return writeInvalidRequest(exchange, classification.rejectionReason());
                     }
-                    if (decision.protectionDecision() != null && !decision.protectionDecision().allowed()) {
-                        rejectionObserver.rejected(decision.protectionDecision(), context);
-                        return McpGatewayWebFluxResponses.protectionRejected(
-                                exchange,
-                                objectMapper,
-                                decision.protectionDecision(),
-                                context == null ? correlationIdResolver.resolve(exchange) : context.correlationId()
-                        );
-                    }
-                    return McpGatewayWebFluxResponses.forbidden(
-                            exchange,
-                            objectMapper,
-                            decision.authorizationDecision(),
-                            decision.reason().code(),
-                            context == null ? correlationIdResolver.resolve(exchange) : context.correlationId()
-                    );
+                    McpToolInvocation invocation = classification.invocation();
+                    return exchange.getPrincipal()
+                            .cast(Authentication.class)
+                            .map(Optional::of)
+                            .defaultIfEmpty(Optional.empty())
+                            .flatMap(authentication -> evaluate(
+                                    exchange,
+                                    chain,
+                                    authentication.orElse(null),
+                                    bodyBytes,
+                                    invocation
+                            ));
                 })
                 .onErrorResume(DataBufferLimitException.class, ignored -> writePayloadTooLarge(exchange));
+    }
+
+    private Mono<Void> evaluate(ServerWebExchange exchange,
+                                WebFilterChain chain,
+                                Authentication authentication,
+                                byte[] bodyBytes,
+                                McpToolInvocation invocation) {
+        GatewayToolExecutionContext context = contextResolver.resolve(authentication, exchange, invocation);
+        List<String> grantedScopes = grantedScopesExtractor.extract(authentication);
+        GatewayToolGovernanceDecision decision = GatewayToolGovernance.evaluate(
+                context,
+                grantedScopes,
+                authorizationEvaluator,
+                protectionEvaluator
+        );
+
+        recordAuthorization(decision, context);
+
+        if (decision.allowed()) {
+            return chain.filter(McpGatewayWebFluxRequestBodies.decorate(exchange, bodyBytes));
+        }
+        if (decision.protectionDecision() != null && !decision.protectionDecision().allowed()) {
+            rejectionObserver.rejected(decision.protectionDecision(), context);
+            return McpGatewayWebFluxResponses.protectionRejected(
+                    exchange,
+                    objectMapper,
+                    decision.protectionDecision(),
+                    context == null ? correlationIdResolver.resolve(exchange) : context.correlationId()
+            );
+        }
+        return McpGatewayWebFluxResponses.forbidden(
+                exchange,
+                objectMapper,
+                decision.authorizationDecision(),
+                decision.reason().code(),
+                context == null ? correlationIdResolver.resolve(exchange) : context.correlationId()
+        );
     }
 
     private boolean governanceEnabled() {
@@ -201,11 +258,33 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
     }
 
     private Mono<Void> writePayloadTooLarge(ServerWebExchange exchange) {
+        String correlationId = correlationIdResolver.resolve(exchange);
+        invalidRequestObserver.rejected(
+                "request_body_too_large",
+                exchange.getRequest().getId(),
+                correlationId
+        );
         return McpGatewayWebFluxResponses.payloadTooLarge(
                 exchange,
                 objectMapper,
                 properties.maxBodyBytes(),
-                correlationIdResolver.resolve(exchange)
+                correlationId
+        );
+    }
+
+    private Mono<Void> writeInvalidRequest(ServerWebExchange exchange,
+                                           McpJsonRpcRequestRejectionReason reason) {
+        String correlationId = correlationIdResolver.resolve(exchange);
+        invalidRequestObserver.rejected(
+                reason.code(),
+                exchange.getRequest().getId(),
+                correlationId
+        );
+        return McpGatewayWebFluxResponses.invalidRequest(
+                exchange,
+                objectMapper,
+                reason.code(),
+                correlationId
         );
     }
 

@@ -82,6 +82,23 @@ final class McpGatewayWebFluxResponses {
         return writeJson(exchange, objectMapper, body, "{\"error\":\"request_body_too_large\"}");
     }
 
+    static Mono<Void> invalidRequest(ServerWebExchange exchange,
+                                     ObjectMapper objectMapper,
+                                     String reason,
+                                     String correlationId) {
+        exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
+        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "invalid_json_rpc_request");
+        body.put("reason", reason);
+        body.put("correlationId", correlationId);
+        body.put("requestId", exchange.getRequest().getId());
+        return writeJson(exchange, objectMapper, body, "{\"error\":\"invalid_json_rpc_request\"}");
+    }
+
     private static Mono<Void> writeJson(ServerWebExchange exchange,
                                         ObjectMapper objectMapper,
                                         Map<String, Object> body,

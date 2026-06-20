@@ -1,7 +1,9 @@
 package mcp.gateway.spring.webflux;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.util.Objects;
 import mcp.gateway.core.invocation.McpToolInvocation;
 
@@ -27,26 +29,70 @@ public final class McpJsonRpcToolInvocationParser {
      * @return normalized invocation, or unknown when parsing fails
      */
     public McpToolInvocation parse(byte[] bodyBytes) {
-        if (bodyBytes == null || bodyBytes.length == 0) {
-            return McpToolInvocation.unknown();
-        }
-
-        try {
-            JsonNode root = objectMapper.readTree(bodyBytes);
-            if (root == null || !root.isObject()) {
-                return McpToolInvocation.unknown();
-            }
-
-            String method = textValue(root.get("method"));
-            JsonNode params = root.get("params");
-            String toolName = params != null ? textValue(params.get("name")) : null;
-            return McpToolInvocation.fromJsonRpc(method, toolName);
-        } catch (Exception e) {
-            return McpToolInvocation.unknown();
-        }
+        return classify(bodyBytes).invocation();
     }
 
-    private String textValue(JsonNode node) {
-        return node == null || node.isNull() ? null : node.asText(null);
+    McpJsonRpcRequestClassification classify(byte[] bodyBytes) {
+        if (emptyBody(bodyBytes)) {
+            return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.EMPTY_BODY);
+        }
+
+        JsonNode root;
+        try (JsonParser jsonParser = objectMapper.getFactory().createParser(bodyBytes)) {
+            root = objectMapper.readTree(jsonParser);
+            if (jsonParser.nextToken() != null) {
+                return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
+            }
+        } catch (IOException e) {
+            return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
+        }
+
+        if (root == null || root.isNull() || root.isValueNode()) {
+            return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_REQUEST_SHAPE);
+        }
+        if (root.isArray()) {
+            return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.BATCH_NOT_SUPPORTED);
+        }
+        if (!root.isObject()) {
+            return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_REQUEST_SHAPE);
+        }
+
+        JsonNode methodNode = root.get("method");
+        if (methodNode == null || methodNode.isNull()) {
+            return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.MISSING_METHOD);
+        }
+        if (!methodNode.isTextual() || methodNode.textValue().isBlank()) {
+            return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_METHOD);
+        }
+
+        String method = methodNode.textValue().trim();
+        if (!McpToolInvocation.METHOD_TOOLS_CALL.equals(method)) {
+            return McpJsonRpcRequestClassification.valid(McpToolInvocation.fromJsonRpc(method, null));
+        }
+
+        JsonNode params = root.get("params");
+        if (params == null || params.isNull() || !params.isObject()) {
+            return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_TOOL_CALL_PARAMS);
+        }
+        JsonNode toolNameNode = params.get("name");
+        if (toolNameNode == null || toolNameNode.isNull()) {
+            return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.MISSING_TOOL_NAME);
+        }
+        if (!toolNameNode.isTextual() || toolNameNode.textValue().isBlank()) {
+            return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
+        }
+        return McpJsonRpcRequestClassification.valid(McpToolInvocation.fromJsonRpc(method, toolNameNode.textValue()));
+    }
+
+    private boolean emptyBody(byte[] bodyBytes) {
+        if (bodyBytes == null || bodyBytes.length == 0) {
+            return true;
+        }
+        for (byte value : bodyBytes) {
+            if (value != 0x20 && value != 0x09 && value != 0x0a && value != 0x0d) {
+                return false;
+            }
+        }
+        return true;
     }
 }

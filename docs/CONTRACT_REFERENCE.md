@@ -353,6 +353,34 @@ The adapter parses MCP JSON-RPC requests from a WebFlux exchange and applies
 core decisions before the request reaches your MCP runtime. It is not Spring
 Boot auto-configuration.
 
+Governance is active when authorization policy is enabled or abuse protection is
+enabled. When governance is active, the adapter rejects invalid MCP JSON-RPC
+request shapes before principal lookup, context resolution, scope extraction,
+authorization, protection, or downstream body replay. Rejected invalid shapes
+return adapter JSON with HTTP `400`, `Content-Type: application/json`, `error`
+set to `invalid_json_rpc_request`, a low-cardinality `reason`, ISO-8601
+`timestamp`, resolved `correlationId`, and the server request id as `requestId`.
+JSON-RPC `id` is never reflected as `requestId`.
+
+For `0.7.0`, the adapter does not require or validate the JSON-RPC `jsonrpc`
+version field. That protocol validation remains the downstream runtime's
+responsibility.
+
+When neither authorization nor protection governance is active, the adapter does
+not validate, buffer, or replay MCP request bodies. Invalid JSON-RPC bodies,
+batch bodies, and bodies larger than `maxBodyBytes` pass downstream unchanged.
+
+Valid non-tool JSON-RPC methods are parsed as non-authorizable invocations:
+authorization is skipped, and protection still runs when enabled.
+
+Invalid request reasons are:
+
+| Reason | Meaning |
+| --- | --- |
+| `invalid_json_rpc_request` | Body cannot be parsed as one complete JSON value. |
+| `batch_not_supported` | Body is a JSON-RPC batch array. |
+| `invalid_request_shape` | Body is empty, not an object request, lacks a non-blank string `method`, or has invalid `tools/call` params/name shape. |
+
 `McpGatewayWebFluxProperties` contains:
 
 | Field | Meaning |
