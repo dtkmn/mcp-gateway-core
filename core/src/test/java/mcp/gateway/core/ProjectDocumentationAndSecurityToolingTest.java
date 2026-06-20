@@ -18,6 +18,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(readme.contains("docs/ROADMAP.md"));
         assertTrue(readme.contains("SECURITY.md"));
         assertTrue(readme.contains("docs/RELEASE_POLICY.md"));
+        assertTrue(readme.contains("docs/RELEASE_NOTES.md"));
         assertTrue(readme.contains("docs/COMPATIBILITY.md"));
         assertTrue(readme.contains("docs/GETTING_STARTED.md"));
         assertTrue(readme.contains("docs/CONTRACT_REFERENCE.md"));
@@ -57,6 +58,9 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(pagesWorkflow.contains("node-version: 24"));
         assertTrue(syncScript.contains("docs/GETTING_STARTED.md"));
         assertTrue(syncScript.contains("docs/CONTRACT_REFERENCE.md"));
+        assertTrue(syncScript.contains("docs/RELEASE_NOTES.md"));
+        assertTrue(astroConfig.contains("maintainers/release-notes"));
+        assertTrue(indexPage.contains("[Release notes](maintainers/release-notes/)"));
         assertTrue(syncScript.contains("editUrl"));
         assertTrue(verifyScript.contains("https://danieltse.org"));
         assertTrue(verifyScript.contains("/mcp-gateway-core"));

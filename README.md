@@ -196,6 +196,7 @@ Maven:
 - [Getting started](docs/GETTING_STARTED.md)
 - [Contract reference](docs/CONTRACT_REFERENCE.md)
 - [Release policy](docs/RELEASE_POLICY.md)
+- [Release notes](docs/RELEASE_NOTES.md)
 - [Compatibility policy](docs/COMPATIBILITY.md)
 - [Central validation upload](docs/CENTRAL_VALIDATION_UPLOAD.md)
 - [Module map](docs/MODULES.md)
