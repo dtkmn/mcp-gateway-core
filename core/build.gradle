@@ -10,8 +10,10 @@ version = providers.gradleProperty('gatewayCoreVersion')
         .orElse('0.6.0')
         .get()
 def gatewayCoreArtifactId = 'mcp-gateway-core'
-def gatewayCorePublicationPath = "${project.group.toString().replace('.', '/')}/${gatewayCoreArtifactId}/${project.version}"
-def gatewayCoreCentralBundleName = "${gatewayCoreArtifactId}-${project.version}-central-portal-bundle.zip"
+def gatewayCoreGroupId = project.group.toString()
+def gatewayCorePublicationVersion = project.version.toString()
+def gatewayCorePublicationPath = "${gatewayCoreGroupId.replace('.', '/')}/${gatewayCoreArtifactId}/${gatewayCorePublicationVersion}"
+def gatewayCoreCentralBundleName = "${gatewayCoreArtifactId}-${gatewayCorePublicationVersion}-central-portal-bundle.zip"
 def gatewayJavaRelease = 17
 def gatewayJavaClassFileMajorVersion = 61
 
@@ -226,7 +228,7 @@ def gatewayCoreSignedDryRunGpgHome = {
 }
 
 def gatewayCorePublishedFileIn = { File publicationDir, String suffix ->
-    new File(publicationDir, "${gatewayCoreArtifactId}-${project.version}${suffix}")
+    new File(publicationDir, "${gatewayCoreArtifactId}-${gatewayCorePublicationVersion}${suffix}")
 }
 
 def gatewayCoreRequiredArtifacts = { File publicationDir ->
@@ -255,9 +257,9 @@ def verifyChecksumFile = { File artifact, String algorithm, String extension ->
 def verifyPomMetadata = { File pom ->
     def parsed = new groovy.xml.XmlSlurper(false, false).parse(pom)
     Map<String, String> requiredText = [
-            groupId    : project.group.toString(),
+            groupId    : gatewayCoreGroupId,
             artifactId : gatewayCoreArtifactId,
-            version    : project.version.toString(),
+            version    : gatewayCorePublicationVersion,
             name       : 'MCP Gateway Core',
             description: 'Java governance contracts for MCP tool gateways; a library layer, not a proxy data plane.',
             url        : 'https://github.com/dtkmn/mcp-gateway-core'
@@ -365,7 +367,7 @@ def signDryRunArtifact = { File gpgHome, File artifact ->
 }
 
 def verifyCentralPortalBundleShape = { File publicationDir, File bundle, boolean requireSignatures, File verificationGpgHome = null ->
-    if (project.version.toString().endsWith('-SNAPSHOT')) {
+    if (gatewayCorePublicationVersion.endsWith('-SNAPSHOT')) {
         throw new GradleException('Central Portal bundle proof requires a release version, not a SNAPSHOT version.')
     }
 

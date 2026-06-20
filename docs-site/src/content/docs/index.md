@@ -31,6 +31,7 @@ scanner integration, UI, or service mesh.
 | Understand every field and enum value | [Contract reference](reference/contract-reference/) |
 | See package ownership boundaries | [Module map](reference/modules/) |
 | Check compatibility promises and non-promises | [Compatibility](reference/compatibility/) |
+| Check release delta classifications | [Release notes](maintainers/release-notes/) |
 | Understand where this project is going | [Roadmap](project/roadmap/) |
 
 ## Coordinates

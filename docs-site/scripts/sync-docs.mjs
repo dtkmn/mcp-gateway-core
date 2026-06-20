@@ -50,6 +50,12 @@ const pages = [
     description: 'Public-preview release gates for maintainers.',
   },
   {
+    source: 'docs/RELEASE_NOTES.md',
+    target: 'maintainers/release-notes.md',
+    title: 'Release Notes',
+    description: 'Public-preview release notes and accepted API delta anchors.',
+  },
+  {
     source: 'docs/CENTRAL_VALIDATION_UPLOAD.md',
     target: 'maintainers/central-validation-upload.md',
     title: 'Central Validation Upload',

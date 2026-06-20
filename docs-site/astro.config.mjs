@@ -46,6 +46,7 @@ export default defineConfig({
           label: 'Maintainers',
           items: [
             'maintainers/release-policy',
+            'maintainers/release-notes',
             'maintainers/central-validation-upload',
           ],
         },

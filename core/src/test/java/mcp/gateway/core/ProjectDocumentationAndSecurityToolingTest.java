@@ -18,6 +18,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(readme.contains("docs/ROADMAP.md"));
         assertTrue(readme.contains("SECURITY.md"));
         assertTrue(readme.contains("docs/RELEASE_POLICY.md"));
+        assertTrue(readme.contains("docs/RELEASE_NOTES.md"));
         assertTrue(readme.contains("docs/COMPATIBILITY.md"));
         assertTrue(readme.contains("docs/GETTING_STARTED.md"));
         assertTrue(readme.contains("docs/CONTRACT_REFERENCE.md"));
@@ -57,6 +58,9 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(pagesWorkflow.contains("node-version: 24"));
         assertTrue(syncScript.contains("docs/GETTING_STARTED.md"));
         assertTrue(syncScript.contains("docs/CONTRACT_REFERENCE.md"));
+        assertTrue(syncScript.contains("docs/RELEASE_NOTES.md"));
+        assertTrue(astroConfig.contains("maintainers/release-notes"));
+        assertTrue(indexPage.contains("[Release notes](maintainers/release-notes/)"));
         assertTrue(syncScript.contains("editUrl"));
         assertTrue(verifyScript.contains("https://danieltse.org"));
         assertTrue(verifyScript.contains("/mcp-gateway-core"));
@@ -131,6 +135,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         String security = Files.readString(Path.of("SECURITY.md"));
         String readme = Files.readString(Path.of("README.md"));
         String releasePolicy = Files.readString(Path.of("docs/RELEASE_POLICY.md"));
+        String ci = Files.readString(Path.of(".github/workflows/ci.yml"));
         List<Path> workflows;
         try (var files = Files.list(Path.of(".github/workflows"))) {
             workflows = files
@@ -165,6 +170,14 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(security.contains("If `SNYK_TOKEN` is missing, the workflow fails."));
         assertTrue(readme.contains("fails visibly when the token is absent"));
         assertTrue(releasePolicy.contains("does not upload artifacts to Central"));
+        assertTrue(readme.contains("./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail"));
+        assertTrue(releasePolicy.contains("./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail"));
+        assertTrue(ci.contains("./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail"));
+        assertTrue(ci.contains("./bin/java17-source-compat-0.6-consumer.sh"));
+        assertTrue(releasePolicy.contains("bin/java17-source-compat-0.6-consumer.sh"));
+        assertTrue(releasePolicy.contains("temporary external Gradle project"));
+        assertTrue(releasePolicy.contains("accepted API/binary deltas"));
+        assertTrue(releasePolicy.contains("mcp.gateway.spring.webflux.*"));
 
         for (Path workflow : workflows) {
             String content = Files.readString(workflow);

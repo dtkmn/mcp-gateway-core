@@ -11,12 +11,14 @@ version = providers.gradleProperty('gatewayCoreVersion')
         .get()
 
 def springWebFluxArtifactId = 'mcp-gateway-spring-webflux'
+def springWebFluxGroupId = project.group.toString()
+def springWebFluxPublicationVersion = project.version.toString()
 def springFrameworkVersion = providers.gradleProperty('springFrameworkVersion').orElse('7.0.8').get()
 def springSecurityVersion = providers.gradleProperty('springSecurityVersion').orElse('7.0.6').get()
 def jacksonDatabindVersion = providers.gradleProperty('jacksonDatabindVersion').orElse('2.21.2').get()
 def reactorVersion = providers.gradleProperty('reactorVersion').orElse('3.8.5').get()
-def publicationPath = "${project.group.toString().replace('.', '/')}/${springWebFluxArtifactId}/${project.version}"
-def springWebFluxCentralBundleName = "${springWebFluxArtifactId}-${project.version}-central-portal-bundle.zip"
+def publicationPath = "${springWebFluxGroupId.replace('.', '/')}/${springWebFluxArtifactId}/${springWebFluxPublicationVersion}"
+def springWebFluxCentralBundleName = "${springWebFluxArtifactId}-${springWebFluxPublicationVersion}-central-portal-bundle.zip"
 def gatewayJavaRelease = 17
 def gatewayJavaClassFileMajorVersion = 61
 def springWebFluxPublicationRoot = {
@@ -61,7 +63,7 @@ def springWebFluxSignedDryRunGpgHome = {
     new File(springWebFluxShortTempDirectory(), "mgw-gpg-${projectHash}")
 }
 def springWebFluxPublishedFileIn = { File publicationDir, String suffix ->
-    new File(publicationDir, "${springWebFluxArtifactId}-${project.version}${suffix}")
+    new File(publicationDir, "${springWebFluxArtifactId}-${springWebFluxPublicationVersion}${suffix}")
 }
 def springWebFluxRequiredArtifacts = { File publicationDir ->
     [
@@ -297,9 +299,9 @@ def verifyChecksumFile = { File artifact, String algorithm, String extension ->
 def verifyPomMetadata = { File pom ->
     def parsed = new groovy.xml.XmlSlurper(false, false).parse(pom)
     Map<String, String> requiredText = [
-            groupId    : project.group.toString(),
+            groupId    : springWebFluxGroupId,
             artifactId : springWebFluxArtifactId,
-            version    : project.version.toString(),
+            version    : springWebFluxPublicationVersion,
             name       : 'MCP Gateway Spring WebFlux Adapter',
             description: 'Spring WebFlux adapter for applying MCP Gateway Core governance contracts to MCP HTTP traffic.',
             url        : 'https://github.com/dtkmn/mcp-gateway-core'
@@ -311,9 +313,9 @@ def verifyPomMetadata = { File pom ->
         }
     }
     boolean hasCoreDependency = parsed.dependencies.dependency.any {
-        it.groupId.text() == project.group.toString()
+        it.groupId.text() == springWebFluxGroupId
                 && it.artifactId.text() == 'mcp-gateway-core'
-                && it.version.text() == project.version.toString()
+                && it.version.text() == springWebFluxPublicationVersion
     }
     if (!hasCoreDependency) {
         throw new GradleException("Central POM ${pom.name} must declare the mcp-gateway-core dependency.")
@@ -413,7 +415,7 @@ def signDryRunArtifact = { File gpgHome, File artifact ->
 }
 
 def verifyCentralPortalBundleShape = { File publicationDir, File bundle, boolean requireSignatures, File verificationGpgHome = null ->
-    if (project.version.toString().endsWith('-SNAPSHOT')) {
+    if (springWebFluxPublicationVersion.endsWith('-SNAPSHOT')) {
         throw new GradleException('Central Portal bundle proof requires a release version, not a SNAPSHOT version.')
     }
 
@@ -541,8 +543,8 @@ tasks.register('verifyGatewaySpringWebFluxPublication') {
 
     doLast {
         File publicationDir = springWebFluxPublicationDirectory()
-        File jarFile = new File(publicationDir, "${springWebFluxArtifactId}-${project.version}.jar")
-        File pomFile = new File(publicationDir, "${springWebFluxArtifactId}-${project.version}.pom")
+        File jarFile = new File(publicationDir, "${springWebFluxArtifactId}-${springWebFluxPublicationVersion}.jar")
+        File pomFile = new File(publicationDir, "${springWebFluxArtifactId}-${springWebFluxPublicationVersion}.pom")
         if (!jarFile.isFile()) {
             throw new GradleException("Missing adapter publication JAR: ${jarFile}")
         }

@@ -13,12 +13,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - run: ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace
+      - run: ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
       - run: ./bin/java17-consumer-smoke.sh
+      - run: ./bin/java17-source-compat-0.6-consumer.sh
       - uses: actions/setup-node@v6
         with:
           node-version: '24'

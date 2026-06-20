@@ -1,0 +1,61 @@
+mcp.gateway.spring.webflux.McpAuthorizationObservation :: public final boolean equals(java.lang.Object);
+mcp.gateway.spring.webflux.McpAuthorizationObservation :: public final class mcp.gateway.spring.webflux.McpAuthorizationObservation extends java.lang.Record {
+mcp.gateway.spring.webflux.McpAuthorizationObservation :: public final int hashCode();
+mcp.gateway.spring.webflux.McpAuthorizationObservation :: public final java.lang.String toString();
+mcp.gateway.spring.webflux.McpAuthorizationObservation :: public java.lang.String actionName();
+mcp.gateway.spring.webflux.McpAuthorizationObservation :: public java.lang.String outcome();
+mcp.gateway.spring.webflux.McpAuthorizationObservation :: public java.lang.String reason();
+mcp.gateway.spring.webflux.McpAuthorizationObservation :: public java.util.List<java.lang.String> grantedScopes();
+mcp.gateway.spring.webflux.McpAuthorizationObservation :: public java.util.List<java.lang.String> requiredScopes();
+mcp.gateway.spring.webflux.McpAuthorizationObservation :: public mcp.gateway.core.context.GatewayToolExecutionContext context();
+mcp.gateway.spring.webflux.McpAuthorizationObservation :: public mcp.gateway.spring.webflux.McpAuthorizationObservation(java.lang.String, java.lang.String, java.lang.String, java.util.List<java.lang.String>, java.util.List<java.lang.String>, mcp.gateway.core.context.GatewayToolExecutionContext);
+mcp.gateway.spring.webflux.McpAuthorizationObserver :: public abstract void record(mcp.gateway.spring.webflux.McpAuthorizationObservation);
+mcp.gateway.spring.webflux.McpAuthorizationObserver :: public interface mcp.gateway.spring.webflux.McpAuthorizationObserver {
+mcp.gateway.spring.webflux.McpAuthorizationObserver :: public static mcp.gateway.spring.webflux.McpAuthorizationObserver noop();
+mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator :: public abstract boolean enabled();
+mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator :: public abstract mcp.gateway.core.protection.McpAbuseProtectionDecision evaluate(mcp.gateway.core.context.GatewayToolExecutionContext);
+mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator :: public interface mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator extends mcp.gateway.core.governance.GatewayToolProtectionEvaluator {
+mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator :: public abstract mcp.gateway.core.authz.ToolAuthorizationDecision authorize(java.util.Collection<java.lang.String>, mcp.gateway.core.context.GatewayToolExecutionContext);
+mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator :: public abstract mcp.gateway.spring.webflux.McpGatewayAuthorizationMode mode();
+mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator :: public default boolean enabled();
+mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator :: public default boolean enforced();
+mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator :: public default boolean warnOnly();
+mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator :: public default mcp.gateway.core.governance.GatewayToolAuthorizationPolicy policy();
+mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator :: public interface mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator extends mcp.gateway.core.governance.GatewayToolAuthorizationEvaluator {
+mcp.gateway.spring.webflux.McpGatewayAuthorizationMode :: public final class mcp.gateway.spring.webflux.McpGatewayAuthorizationMode extends java.lang.Enum<mcp.gateway.spring.webflux.McpGatewayAuthorizationMode> {
+mcp.gateway.spring.webflux.McpGatewayAuthorizationMode :: public static final mcp.gateway.spring.webflux.McpGatewayAuthorizationMode DISABLED;
+mcp.gateway.spring.webflux.McpGatewayAuthorizationMode :: public static final mcp.gateway.spring.webflux.McpGatewayAuthorizationMode ENFORCE;
+mcp.gateway.spring.webflux.McpGatewayAuthorizationMode :: public static final mcp.gateway.spring.webflux.McpGatewayAuthorizationMode WARN;
+mcp.gateway.spring.webflux.McpGatewayAuthorizationMode :: public static mcp.gateway.spring.webflux.McpGatewayAuthorizationMode valueOf(java.lang.String);
+mcp.gateway.spring.webflux.McpGatewayAuthorizationMode :: public static mcp.gateway.spring.webflux.McpGatewayAuthorizationMode[] values();
+mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver :: public abstract java.lang.String resolve(org.springframework.web.server.ServerWebExchange);
+mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver :: public interface mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver {
+mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver :: public static mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver defaultResolver();
+mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver :: public static mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver fromHeader(java.lang.String);
+mcp.gateway.spring.webflux.McpGatewayWebFluxContextResolver :: public abstract mcp.gateway.core.context.GatewayToolExecutionContext resolve(org.springframework.security.core.Authentication, org.springframework.web.server.ServerWebExchange, mcp.gateway.core.invocation.McpToolInvocation);
+mcp.gateway.spring.webflux.McpGatewayWebFluxContextResolver :: public interface mcp.gateway.spring.webflux.McpGatewayWebFluxContextResolver {
+mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter :: public final class mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter implements org.springframework.web.server.WebFilter,org.springframework.core.Ordered {
+mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter :: public int getOrder();
+mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter :: public mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter(com.fasterxml.jackson.databind.ObjectMapper, mcp.gateway.spring.webflux.McpGatewayWebFluxProperties, mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator, mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator, mcp.gateway.spring.webflux.McpGatewayWebFluxContextResolver);
+mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter :: public mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter(com.fasterxml.jackson.databind.ObjectMapper, mcp.gateway.spring.webflux.McpGatewayWebFluxProperties, mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator, mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator, mcp.gateway.spring.webflux.McpGatewayWebFluxContextResolver, mcp.gateway.spring.webflux.McpGrantedScopesExtractor, mcp.gateway.spring.webflux.McpAuthorizationObserver, mcp.gateway.spring.webflux.McpProtectionRejectionObserver, mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver);
+mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter :: public reactor.core.publisher.Mono<java.lang.Void> filter(org.springframework.web.server.ServerWebExchange, org.springframework.web.server.WebFilterChain);
+mcp.gateway.spring.webflux.McpGatewayWebFluxProperties :: public final boolean equals(java.lang.Object);
+mcp.gateway.spring.webflux.McpGatewayWebFluxProperties :: public final class mcp.gateway.spring.webflux.McpGatewayWebFluxProperties extends java.lang.Record {
+mcp.gateway.spring.webflux.McpGatewayWebFluxProperties :: public final int hashCode();
+mcp.gateway.spring.webflux.McpGatewayWebFluxProperties :: public final java.lang.String toString();
+mcp.gateway.spring.webflux.McpGatewayWebFluxProperties :: public int governanceFilterOrder();
+mcp.gateway.spring.webflux.McpGatewayWebFluxProperties :: public int maxBodyBytes();
+mcp.gateway.spring.webflux.McpGatewayWebFluxProperties :: public java.lang.String mcpEndpoint();
+mcp.gateway.spring.webflux.McpGatewayWebFluxProperties :: public mcp.gateway.spring.webflux.McpGatewayWebFluxProperties(java.lang.String, int, int);
+mcp.gateway.spring.webflux.McpGatewayWebFluxProperties :: public static final int DEFAULT_MAX_BODY_BYTES;
+mcp.gateway.spring.webflux.McpGatewayWebFluxProperties :: public static final java.lang.String DEFAULT_MCP_ENDPOINT;
+mcp.gateway.spring.webflux.McpGatewayWebFluxProperties :: public static mcp.gateway.spring.webflux.McpGatewayWebFluxProperties defaults();
+mcp.gateway.spring.webflux.McpGrantedScopesExtractor :: public abstract java.util.List<java.lang.String> extract(org.springframework.security.core.Authentication);
+mcp.gateway.spring.webflux.McpGrantedScopesExtractor :: public interface mcp.gateway.spring.webflux.McpGrantedScopesExtractor {
+mcp.gateway.spring.webflux.McpGrantedScopesExtractor :: public static mcp.gateway.spring.webflux.McpGrantedScopesExtractor springSecurityScopes();
+mcp.gateway.spring.webflux.McpJsonRpcToolInvocationParser :: public final class mcp.gateway.spring.webflux.McpJsonRpcToolInvocationParser {
+mcp.gateway.spring.webflux.McpJsonRpcToolInvocationParser :: public mcp.gateway.core.invocation.McpToolInvocation parse(byte[]);
+mcp.gateway.spring.webflux.McpJsonRpcToolInvocationParser :: public mcp.gateway.spring.webflux.McpJsonRpcToolInvocationParser(com.fasterxml.jackson.databind.ObjectMapper);
+mcp.gateway.spring.webflux.McpProtectionRejectionObserver :: public abstract void rejected(mcp.gateway.core.protection.McpAbuseProtectionDecision, mcp.gateway.core.context.GatewayToolExecutionContext);
+mcp.gateway.spring.webflux.McpProtectionRejectionObserver :: public interface mcp.gateway.spring.webflux.McpProtectionRejectionObserver {
+mcp.gateway.spring.webflux.McpProtectionRejectionObserver :: public static mcp.gateway.spring.webflux.McpProtectionRejectionObserver noop();

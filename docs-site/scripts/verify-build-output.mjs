@@ -35,6 +35,7 @@ for (const href of [
   'reference/modules/',
   'reference/compatibility/',
   'project/roadmap/',
+  'maintainers/release-notes/',
 ]) {
   assertContains(indexHtml, `href="${href}"`, `home page should link to ${href} relative to the canonical page`);
 }
@@ -57,6 +58,7 @@ for (const url of [
   `${homeUrl}reference/modules/`,
   `${homeUrl}reference/compatibility/`,
   `${homeUrl}project/roadmap/`,
+  `${homeUrl}maintainers/release-notes/`,
 ]) {
   assertContains(sitemapLocs, url, `sitemap should include ${url}`);
 }
