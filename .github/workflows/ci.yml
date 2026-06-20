@@ -13,7 +13,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - run: ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace
+      - run: ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
       - uses: actions/setup-java@v5
         with:
           distribution: temurin

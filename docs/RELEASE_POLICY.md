@@ -24,12 +24,13 @@ stable release gate exists.
 Before publishing any public-preview artifact, CI must pass:
 
 ```bash
-./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace
+./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
 ```
 
 That gate proves:
 
 - unit tests pass;
+- Gradle deprecations fail the build instead of becoming release-prep noise;
 - accepted API/binary deltas are machine-readable and release-note linked;
 - public/protected API signatures remain compatible with the frozen `0.6.0`
   baseline unless an intentional delta is accepted;

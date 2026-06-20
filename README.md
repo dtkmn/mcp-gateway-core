@@ -137,13 +137,14 @@ published artifact.
 ## Build
 
 ```bash
-./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace
+./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
 ```
 
 This command runs the core and adapter builds, forbidden-coupling checks,
 closed-world JAR checks, Java 17 bytecode checks, adapter runtime-classpath
-bytecode checks, core `jdeps`, unsigned Central Portal bundle validation, and
-signed dry-run bundle validation with an ephemeral local GPG key.
+bytecode checks, core `jdeps`, Gradle deprecation enforcement, unsigned Central
+Portal bundle validation, and signed dry-run bundle validation with an ephemeral
+local GPG key.
 
 ## Coordinates
 
