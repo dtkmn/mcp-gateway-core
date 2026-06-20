@@ -403,6 +403,8 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicBoolean scopesExtracted = new AtomicBoolean(false);
         AtomicBoolean authorizationCalled = new AtomicBoolean(false);
         AtomicBoolean protectionCalled = new AtomicBoolean(false);
+        AtomicBoolean authorizationObserved = new AtomicBoolean(false);
+        AtomicBoolean protectionObserved = new AtomicBoolean(false);
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         AtomicReference<String> observedReason = new AtomicReference<>();
         AtomicReference<String> observedRequestId = new AtomicReference<>();
@@ -443,8 +445,8 @@ class McpGatewayWebFluxGovernanceFilterTest {
                     scopesExtracted.set(true);
                     return List.of("demo:run");
                 },
-                McpAuthorizationObserver.noop(),
-                McpProtectionRejectionObserver.noop(),
+                observation -> authorizationObserved.set(true),
+                (decision, context) -> protectionObserved.set(true),
                 McpGatewayCorrelationIdResolver.defaultResolver(),
                 (reason, requestId, correlationId) -> {
                     observedReason.set(reason);
@@ -467,6 +469,8 @@ class McpGatewayWebFluxGovernanceFilterTest {
         assertFalse(scopesExtracted.get());
         assertFalse(authorizationCalled.get());
         assertFalse(protectionCalled.get());
+        assertFalse(authorizationObserved.get());
+        assertFalse(protectionObserved.get());
         assertFalse(downstreamCalled.get());
         assertEquals("invalid_request_shape", observedReason.get());
         assertEquals(exchange.getRequest().getId(), observedRequestId.get());
