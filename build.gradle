@@ -25,6 +25,7 @@ tasks.named('check') {
     dependsOn ':core:check'
     dependsOn ':adapters:spring-webflux:check'
     dependsOn 'verifyAcceptedApiDeltas'
+    dependsOn 'verifyPublicApiSnapshots'
 }
 
 tasks.named('build') {
@@ -36,6 +37,7 @@ tasks.register('verifyGatewayPublicPreviewPublication') {
     group = 'verification'
     description = 'Runs public-preview verification for all published gateway artifacts.'
     dependsOn 'verifyAcceptedApiDeltas'
+    dependsOn 'verifyPublicApiSnapshots'
     dependsOn ':core:verifyGatewayCorePublicPreviewPublication'
     dependsOn ':adapters:spring-webflux:verifyGatewaySpringWebFluxPublicPreviewPublication'
 }
@@ -127,8 +129,65 @@ tasks.register('verifyAcceptedApiDeltas') {
                 if (delta.newSignature instanceof String && delta.newSignature.isBlank()) {
                     throw new GradleException("Breaking change delta ${index} newSignature must not be blank when present.")
                 }
-                requiredString(delta, 'maintainerApproval', index)
+                requireMaintainerApproval(delta, index)
             }
+        }
+    }
+}
+
+tasks.register('verifyPublicApiSnapshots') {
+    group = 'verification'
+    description = 'Verifies current public/protected API signatures against the frozen 0.6.0 baseline.'
+    dependsOn 'verifyAcceptedApiDeltas'
+    dependsOn ':core:jar'
+    dependsOn ':adapters:spring-webflux:jar'
+
+    def artifacts = [
+            [
+                    artifact      : 'mcp-gateway-core',
+                    jar           : project(':core').tasks.named('jar').flatMap { it.archiveFile },
+                    packagePrefix : 'mcp.gateway.core',
+                    resourcePrefix: 'mcp/gateway/core',
+                    baseline      : layout.projectDirectory.file('compatibility/api-baseline/0.6.0/mcp-gateway-core.txt')
+            ],
+            [
+                    artifact      : 'mcp-gateway-spring-webflux',
+                    jar           : project(':adapters:spring-webflux').tasks.named('jar').flatMap { it.archiveFile },
+                    packagePrefix : 'mcp.gateway.spring.webflux',
+                    resourcePrefix: 'mcp/gateway/spring/webflux',
+                    baseline      : layout.projectDirectory.file('compatibility/api-baseline/0.6.0/mcp-gateway-spring-webflux.txt')
+            ]
+    ]
+    def acceptedDeltasFile = layout.projectDirectory.file('compatibility/accepted-api-deltas-0.7.0.json')
+
+    inputs.file acceptedDeltasFile
+    artifacts.each { artifact ->
+        inputs.file artifact.baseline
+        inputs.file artifact.jar
+    }
+
+    doLast {
+        List<Map> acceptedDeltas = acceptedApiDeltas(acceptedDeltasFile.asFile)
+        artifacts.each { artifact ->
+            File jarFile = artifact.jar.get().asFile
+            File baselineFile = artifact.baseline.asFile
+            if (!baselineFile.isFile()) {
+                throw new GradleException("Missing ${artifact.artifact} API baseline: ${baselineFile}")
+            }
+            Set<String> baseline = apiSnapshotLines(baselineFile) as Set
+            Set<String> current = publicApiSnapshot(jarFile, artifact.resourcePrefix) as Set
+            Set<String> additions = new TreeSet<>(current)
+            additions.removeAll(baseline)
+            Set<String> removals = new TreeSet<>(baseline)
+            removals.removeAll(current)
+
+            enforceAcceptedApiDeltas(
+                    artifact.artifact,
+                    artifact.packagePrefix,
+                    additions,
+                    removals,
+                    acceptedDeltas.findAll { it.artifact == artifact.artifact }
+            )
         }
     }
 }
@@ -145,4 +204,165 @@ def requiredString(Map delta, String key, int index) {
         throw new GradleException("Accepted API delta ${index} field '${key}' must be a non-blank string.")
     }
     value
+}
+
+def requireMaintainerApproval(Map delta, int index) {
+    def approval = delta.maintainerApproval
+    if (!(approval instanceof Map)) {
+        throw new GradleException("Breaking change delta ${index} maintainerApproval must be an object.")
+    }
+    Set<String> allowedKeys = ['approver', 'url', 'approvedAt'] as Set
+    Set<String> actualKeys = approval.keySet() as Set
+    if (actualKeys != allowedKeys) {
+        throw new GradleException("Breaking change delta ${index} maintainerApproval must contain exactly ${allowedKeys}.")
+    }
+    String approver = requiredString(approval, 'approver', index)
+    String url = requiredString(approval, 'url', index)
+    String approvedAt = requiredString(approval, 'approvedAt', index)
+    if (!approver.startsWith('@')) {
+        throw new GradleException("Breaking change delta ${index} maintainerApproval.approver must be a GitHub handle starting with @.")
+    }
+    if (!url.startsWith('https://github.com/')) {
+        throw new GradleException("Breaking change delta ${index} maintainerApproval.url must be a GitHub URL.")
+    }
+    try {
+        java.time.Instant.parse(approvedAt)
+    } catch (Exception ignored) {
+        throw new GradleException("Breaking change delta ${index} maintainerApproval.approvedAt must be an ISO-8601 instant.")
+    }
+}
+
+def acceptedApiDeltas(File acceptedDeltas) {
+    def parsed = new groovy.json.JsonSlurper().parse(acceptedDeltas)
+    if (!(parsed instanceof Map) || !(parsed.deltas instanceof List)) {
+        throw new GradleException('Accepted API deltas file must contain a deltas array.')
+    }
+    parsed.deltas
+}
+
+def apiSnapshotLines(File snapshotFile) {
+    snapshotFile.readLines('UTF-8')
+            .collect { it.trim() }
+            .findAll { !it.isEmpty() && !it.startsWith('#') }
+}
+
+def publicApiSnapshot(File jarFile, String resourcePrefix) {
+    List<String> classNames = []
+    new java.util.zip.ZipFile(jarFile).withCloseable { jar ->
+        jar.entries().each { entry ->
+            if (!entry.name.startsWith("${resourcePrefix}/") || !entry.name.endsWith('.class')) {
+                return
+            }
+            classNames.add(entry.name
+                    .replace('/', '.')
+                    .replaceAll(/[.]class$/, ''))
+        }
+    }
+    classNames.sort().collectMany { className ->
+        javapPublicApiLines(jarFile, className)
+    }.sort()
+}
+
+def javapPublicApiLines(File jarFile, String className) {
+    Process process = new ProcessBuilder('javap', '-protected', '-classpath', jarFile.absolutePath, className)
+            .redirectErrorStream(true)
+            .start()
+    String output = process.inputStream.getText('UTF-8')
+    int exitCode = process.waitFor()
+    if (exitCode != 0) {
+        throw new GradleException("javap failed for ${className} in ${jarFile.name}: ${output}")
+    }
+
+    boolean publicType = false
+    List<String> lines = []
+    output.readLines().each { rawLine ->
+        String line = rawLine.trim()
+        if (line.isEmpty()
+                || line.startsWith('Compiled from ')
+                || line == '{'
+                || line == '}') {
+            return
+        }
+        if (!line.startsWith('public ') && !line.startsWith('protected ')) {
+            return
+        }
+        if (!publicType && publicApiTypeDeclaration(line)) {
+            publicType = true
+            lines.add("${className} :: ${line}".toString())
+            return
+        }
+        if (publicType) {
+            lines.add("${className} :: ${line}".toString())
+        }
+    }
+    lines
+}
+
+def publicApiTypeDeclaration(String line) {
+    line.contains(' class ')
+            || line.contains(' interface ')
+            || line.contains(' enum ')
+            || line.contains(' record ')
+            || line.startsWith('public @interface ')
+}
+
+def enforceAcceptedApiDeltas(String artifact,
+                             String packagePrefix,
+                             Set<String> additions,
+                             Set<String> removals,
+                             List<Map> acceptedDeltas) {
+    acceptedDeltas.eachWithIndex { delta, index ->
+        String symbol = requiredString(delta, 'symbol', index)
+        if (!symbol.startsWith(packagePrefix)) {
+            throw new GradleException("${artifact} accepted API delta ${index} symbol must be under ${packagePrefix}: ${symbol}")
+        }
+
+        String classification = requiredString(delta, 'classification', index)
+        if (classification == 'compatible-addition') {
+            String newSignature = requiredString(delta, 'newSignature', index)
+            requireSignatureOwnedBySymbol(artifact, index, symbol, newSignature, 'newSignature')
+            if (!additions.remove(newSignature)) {
+                throw new GradleException("${artifact} accepted compatible addition is stale or incorrect: ${newSignature}")
+            }
+            return
+        }
+
+        if (classification == 'breaking-change') {
+            String oldSignature = requiredString(delta, 'oldSignature', index)
+            requireSignatureOwnedBySymbol(artifact, index, symbol, oldSignature, 'oldSignature')
+            if (!removals.remove(oldSignature)) {
+                throw new GradleException("${artifact} accepted breaking-change oldSignature is stale or incorrect: ${oldSignature}")
+            }
+            if (delta.newSignature != null) {
+                String newSignature = requiredString(delta, 'newSignature', index)
+                requireSignatureOwnedBySymbol(artifact, index, symbol, newSignature, 'newSignature')
+                if (!additions.remove(newSignature)) {
+                    throw new GradleException("${artifact} accepted breaking-change newSignature is stale or incorrect: ${newSignature}")
+                }
+            }
+            return
+        }
+
+        throw new GradleException("${artifact} accepted API delta ${index} has unsupported classification: ${classification}")
+    }
+
+    if (!additions.isEmpty() || !removals.isEmpty()) {
+        StringBuilder message = new StringBuilder("${artifact} public API differs from the 0.6.0 baseline.")
+        if (!additions.isEmpty()) {
+            message.append("\nUnaccepted additions:")
+            additions.take(20).each { message.append("\n+ ").append(it) }
+        }
+        if (!removals.isEmpty()) {
+            message.append("\nUnaccepted removals:")
+            removals.take(20).each { message.append("\n- ").append(it) }
+        }
+        message.append("\nAdd each intentional delta to compatibility/accepted-api-deltas-0.7.0.json and docs/RELEASE_NOTES.md.")
+        throw new GradleException(message.toString())
+    }
+}
+
+def requireSignatureOwnedBySymbol(String artifact, int index, String symbol, String signature, String fieldName) {
+    if (!signature.startsWith("${symbol} :: ".toString())) {
+        throw new GradleException("${artifact} accepted API delta ${index} ${fieldName} must start with '${symbol} :: '.")
+    }
 }

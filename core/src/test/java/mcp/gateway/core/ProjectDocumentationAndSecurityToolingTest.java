@@ -173,6 +173,8 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(ci.contains("./bin/java17-source-compat-0.6-consumer.sh"));
         assertTrue(releasePolicy.contains("bin/java17-source-compat-0.6-consumer.sh"));
         assertTrue(releasePolicy.contains("temporary external Gradle project"));
+        assertTrue(releasePolicy.contains("accepted API/binary deltas"));
+        assertTrue(releasePolicy.contains("mcp.gateway.spring.webflux.*"));
 
         for (Path workflow : workflows) {
             String content = Files.readString(workflow);

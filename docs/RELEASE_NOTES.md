@@ -14,7 +14,11 @@ No accepted API or binary deltas have been recorded yet.
 Future API or binary deltas must be listed in
 `compatibility/accepted-api-deltas-0.7.0.json` and linked to this file with an
 explicit release-notes anchor. API and binary delta classifications are limited
-to `compatible-addition` and `breaking-change`.
+to `compatible-addition` and `breaking-change`. Breaking changes must include
+structured maintainer approval with `approver`, `url`, and `approvedAt`;
+compatible additions must use `null` maintainer approval. Each delta `symbol`
+is the owning class and every recorded signature must start with
+`<symbol> :: `.
 
 <a id="0.7.0-behavior-clarifications"></a>
 ### Behavior Clarifications

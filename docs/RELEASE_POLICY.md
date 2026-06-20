@@ -30,6 +30,9 @@ Before publishing any public-preview artifact, CI must pass:
 That gate proves:
 
 - unit tests pass;
+- accepted API/binary deltas are machine-readable and release-note linked;
+- public/protected API signatures remain compatible with the frozen `0.6.0`
+  baseline unless an intentional delta is accepted;
 - the core JAR contains only `mcp/gateway/core/**` classes and manifest metadata;
 - `jdeps` reports only `java.base`;
 - adapter JARs contain only their adapter package classes and manifest metadata;
@@ -48,6 +51,10 @@ downstream consumer against the staged `mcp-gateway-core` and
 compiles frozen `0.6.0` consumer source from a temporary external Gradle project
 that resolves `io.github.dtkmn` artifacts exclusively from the staged
 publication repository.
+
+The API snapshot gate is scoped to public/protected members under
+`mcp.gateway.core.*` and `mcp.gateway.spring.webflux.*`. It fails on
+unaccepted additions, unaccepted removals, and stale accepted deltas.
 
 The separate Snyk workflow is an external dependency scan for the Gradle
 project graph. It is enforced when the workflow runs: missing `SNYK_TOKEN`

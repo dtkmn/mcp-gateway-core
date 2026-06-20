@@ -1,0 +1,424 @@
+mcp.gateway.core.audit.GatewayAuditEmitter :: public final class mcp.gateway.core.audit.GatewayAuditEmitter {
+mcp.gateway.core.audit.GatewayAuditEmitter :: public static mcp.gateway.core.audit.GatewayAuditEmitter of(mcp.gateway.core.audit.GatewayAuditSink);
+mcp.gateway.core.audit.GatewayAuditEmitter :: public void emit(java.lang.String, java.lang.String, java.lang.String, java.util.Map<java.lang.String, java.lang.Object>);
+mcp.gateway.core.audit.GatewayAuditEmitter :: public void emit(mcp.gateway.core.audit.GatewayAuditEvent);
+mcp.gateway.core.audit.GatewayAuditEvent :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.audit.GatewayAuditEvent :: public final class mcp.gateway.core.audit.GatewayAuditEvent extends java.lang.Record {
+mcp.gateway.core.audit.GatewayAuditEvent :: public final int hashCode();
+mcp.gateway.core.audit.GatewayAuditEvent :: public final java.lang.String toString();
+mcp.gateway.core.audit.GatewayAuditEvent :: public java.lang.String outcome();
+mcp.gateway.core.audit.GatewayAuditEvent :: public java.lang.String principal();
+mcp.gateway.core.audit.GatewayAuditEvent :: public java.lang.String type();
+mcp.gateway.core.audit.GatewayAuditEvent :: public java.util.Map<java.lang.String, java.lang.Object> details();
+mcp.gateway.core.audit.GatewayAuditEvent :: public mcp.gateway.core.audit.GatewayAuditEvent(java.lang.String, java.lang.String, java.lang.String, java.util.Map<java.lang.String, java.lang.Object>);
+mcp.gateway.core.audit.GatewayAuditEvent :: public static mcp.gateway.core.audit.GatewayAuditEvent of(java.lang.String, java.lang.String, java.lang.String, java.util.Map<java.lang.String, java.lang.Object>);
+mcp.gateway.core.audit.GatewayAuditSink :: public abstract void publish(mcp.gateway.core.audit.GatewayAuditEvent);
+mcp.gateway.core.audit.GatewayAuditSink :: public default void publish(java.lang.String, java.lang.String, java.lang.String, java.util.Map<java.lang.String, java.lang.Object>);
+mcp.gateway.core.audit.GatewayAuditSink :: public interface mcp.gateway.core.audit.GatewayAuditSink {
+mcp.gateway.core.audit.GatewayAuditSink :: public static mcp.gateway.core.audit.GatewayAuditSink noop();
+mcp.gateway.core.authz.McpToolAccessRegistry :: public boolean hasCapability(java.lang.String, mcp.gateway.core.tool.McpToolCapability);
+mcp.gateway.core.authz.McpToolAccessRegistry :: public final class mcp.gateway.core.authz.McpToolAccessRegistry {
+mcp.gateway.core.authz.McpToolAccessRegistry :: public java.util.List<mcp.gateway.core.tool.McpToolDescriptor> descriptorsForSurface(mcp.gateway.core.tool.McpToolSurface);
+mcp.gateway.core.authz.McpToolAccessRegistry :: public java.util.Map<java.lang.String, java.util.List<java.lang.String>> requiredScopesByTool();
+mcp.gateway.core.authz.McpToolAccessRegistry :: public java.util.Optional<java.util.List<java.lang.String>> requiredScopes(java.lang.String);
+mcp.gateway.core.authz.McpToolAccessRegistry :: public java.util.Optional<mcp.gateway.core.authz.ToolAuthorizationRequirement> requirement(java.lang.String);
+mcp.gateway.core.authz.McpToolAccessRegistry :: public java.util.Set<java.lang.String> namesWithCapability(mcp.gateway.core.tool.McpToolCapability);
+mcp.gateway.core.authz.McpToolAccessRegistry :: public mcp.gateway.core.tool.McpToolRegistry toolRegistry();
+mcp.gateway.core.authz.McpToolAccessRegistry :: public static mcp.gateway.core.authz.McpToolAccessRegistry of(java.util.Collection<mcp.gateway.core.authz.McpToolAccessRule>);
+mcp.gateway.core.authz.McpToolAccessRule :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.authz.McpToolAccessRule :: public final class mcp.gateway.core.authz.McpToolAccessRule extends java.lang.Record {
+mcp.gateway.core.authz.McpToolAccessRule :: public final int hashCode();
+mcp.gateway.core.authz.McpToolAccessRule :: public final java.lang.String toString();
+mcp.gateway.core.authz.McpToolAccessRule :: public java.lang.String toolName();
+mcp.gateway.core.authz.McpToolAccessRule :: public java.util.List<java.lang.String> requiredScopes();
+mcp.gateway.core.authz.McpToolAccessRule :: public java.util.Set<mcp.gateway.core.tool.McpToolCapability> capabilities();
+mcp.gateway.core.authz.McpToolAccessRule :: public mcp.gateway.core.authz.McpToolAccessRule(java.lang.String, mcp.gateway.core.tool.McpToolSurface, java.util.List<java.lang.String>, java.util.Set<mcp.gateway.core.tool.McpToolCapability>);
+mcp.gateway.core.authz.McpToolAccessRule :: public mcp.gateway.core.authz.ToolAuthorizationRequirement requirement();
+mcp.gateway.core.authz.McpToolAccessRule :: public mcp.gateway.core.tool.McpToolDescriptor descriptor();
+mcp.gateway.core.authz.McpToolAccessRule :: public mcp.gateway.core.tool.McpToolSurface surface();
+mcp.gateway.core.authz.McpToolAccessRule :: public static mcp.gateway.core.authz.McpToolAccessRule of(java.lang.String, mcp.gateway.core.tool.McpToolSurface, java.util.Collection<java.lang.String>);
+mcp.gateway.core.authz.McpToolAccessRule :: public static mcp.gateway.core.authz.McpToolAccessRule$Builder builder(java.lang.String, mcp.gateway.core.tool.McpToolSurface);
+mcp.gateway.core.authz.McpToolAccessRule$Builder :: public final class mcp.gateway.core.authz.McpToolAccessRule$Builder {
+mcp.gateway.core.authz.McpToolAccessRule$Builder :: public mcp.gateway.core.authz.McpToolAccessRule build();
+mcp.gateway.core.authz.McpToolAccessRule$Builder :: public mcp.gateway.core.authz.McpToolAccessRule$Builder capabilities(java.util.Collection<mcp.gateway.core.tool.McpToolCapability>);
+mcp.gateway.core.authz.McpToolAccessRule$Builder :: public mcp.gateway.core.authz.McpToolAccessRule$Builder capability(java.lang.String);
+mcp.gateway.core.authz.McpToolAccessRule$Builder :: public mcp.gateway.core.authz.McpToolAccessRule$Builder capability(mcp.gateway.core.tool.McpToolCapability);
+mcp.gateway.core.authz.McpToolAccessRule$Builder :: public mcp.gateway.core.authz.McpToolAccessRule$Builder requiredScope(java.lang.String);
+mcp.gateway.core.authz.McpToolAccessRule$Builder :: public mcp.gateway.core.authz.McpToolAccessRule$Builder requiredScopes(java.util.Collection<java.lang.String>);
+mcp.gateway.core.authz.McpToolAuthorizer :: public final class mcp.gateway.core.authz.McpToolAuthorizer {
+mcp.gateway.core.authz.McpToolAuthorizer :: public mcp.gateway.core.authz.ToolAuthorizationDecision authorize(mcp.gateway.core.context.GatewayToolExecutionContext, java.util.Collection<java.lang.String>, boolean, boolean);
+mcp.gateway.core.authz.McpToolAuthorizer :: public mcp.gateway.core.authz.ToolAuthorizationDecision authorizeToolCall(java.lang.String, java.util.Collection<java.lang.String>, boolean, boolean);
+mcp.gateway.core.authz.McpToolAuthorizer :: public mcp.gateway.core.authz.ToolAuthorizationDecision authorizeToolsList(java.util.Collection<java.lang.String>, boolean, boolean);
+mcp.gateway.core.authz.McpToolAuthorizer :: public static final java.lang.String TOOLS_LIST_ACTION;
+mcp.gateway.core.authz.McpToolAuthorizer :: public static final java.lang.String UNKNOWN_ACTION;
+mcp.gateway.core.authz.McpToolAuthorizer :: public static mcp.gateway.core.authz.McpToolAuthorizer of(mcp.gateway.core.authz.McpToolAccessRegistry, java.util.Collection<java.lang.String>);
+mcp.gateway.core.authz.ToolAuthorizationDecision :: public boolean allowed();
+mcp.gateway.core.authz.ToolAuthorizationDecision :: public boolean mapped();
+mcp.gateway.core.authz.ToolAuthorizationDecision :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.authz.ToolAuthorizationDecision :: public final class mcp.gateway.core.authz.ToolAuthorizationDecision extends java.lang.Record {
+mcp.gateway.core.authz.ToolAuthorizationDecision :: public final int hashCode();
+mcp.gateway.core.authz.ToolAuthorizationDecision :: public final java.lang.String toString();
+mcp.gateway.core.authz.ToolAuthorizationDecision :: public java.lang.String actionName();
+mcp.gateway.core.authz.ToolAuthorizationDecision :: public java.util.List<java.lang.String> grantedScopes();
+mcp.gateway.core.authz.ToolAuthorizationDecision :: public java.util.List<java.lang.String> missingScopes();
+mcp.gateway.core.authz.ToolAuthorizationDecision :: public java.util.List<java.lang.String> requiredScopes();
+mcp.gateway.core.authz.ToolAuthorizationDecision :: public mcp.gateway.core.authz.ToolAuthorizationDecision(boolean, boolean, java.lang.String, java.util.List<java.lang.String>, java.util.List<java.lang.String>, java.util.List<java.lang.String>);
+mcp.gateway.core.authz.ToolAuthorizationPipeline :: public final class mcp.gateway.core.authz.ToolAuthorizationPipeline {
+mcp.gateway.core.authz.ToolAuthorizationPipeline :: public static mcp.gateway.core.authz.ToolAuthorizationDecision evaluate(mcp.gateway.core.authz.ToolAuthorizationRequest, mcp.gateway.core.authz.ToolAuthorizationRequirement);
+mcp.gateway.core.authz.ToolAuthorizationRequest :: public boolean wildcardAllowed();
+mcp.gateway.core.authz.ToolAuthorizationRequest :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.authz.ToolAuthorizationRequest :: public final class mcp.gateway.core.authz.ToolAuthorizationRequest extends java.lang.Record {
+mcp.gateway.core.authz.ToolAuthorizationRequest :: public final int hashCode();
+mcp.gateway.core.authz.ToolAuthorizationRequest :: public final java.lang.String toString();
+mcp.gateway.core.authz.ToolAuthorizationRequest :: public java.lang.String actionName();
+mcp.gateway.core.authz.ToolAuthorizationRequest :: public java.util.List<java.lang.String> grantedScopes();
+mcp.gateway.core.authz.ToolAuthorizationRequest :: public mcp.gateway.core.authz.ToolAuthorizationRequest(java.lang.String, java.util.List<java.lang.String>, boolean);
+mcp.gateway.core.authz.ToolAuthorizationRequest :: public static java.util.List<java.lang.String> normalizeScopes(java.util.Collection<java.lang.String>);
+mcp.gateway.core.authz.ToolAuthorizationRequest :: public static mcp.gateway.core.authz.ToolAuthorizationRequest of(java.lang.String, java.util.Collection<java.lang.String>, boolean);
+mcp.gateway.core.authz.ToolAuthorizationRequirement :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.authz.ToolAuthorizationRequirement :: public final class mcp.gateway.core.authz.ToolAuthorizationRequirement extends java.lang.Record {
+mcp.gateway.core.authz.ToolAuthorizationRequirement :: public final int hashCode();
+mcp.gateway.core.authz.ToolAuthorizationRequirement :: public final java.lang.String toString();
+mcp.gateway.core.authz.ToolAuthorizationRequirement :: public java.lang.String actionName();
+mcp.gateway.core.authz.ToolAuthorizationRequirement :: public java.util.List<java.lang.String> requiredScopes();
+mcp.gateway.core.authz.ToolAuthorizationRequirement :: public mcp.gateway.core.authz.ToolAuthorizationRequirement(java.lang.String, java.util.List<java.lang.String>);
+mcp.gateway.core.authz.ToolAuthorizationRequirement :: public static mcp.gateway.core.authz.ToolAuthorizationRequirement of(java.lang.String, java.util.Collection<java.lang.String>);
+mcp.gateway.core.context.GatewayExecutionContext :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.context.GatewayExecutionContext :: public final class mcp.gateway.core.context.GatewayExecutionContext extends java.lang.Record {
+mcp.gateway.core.context.GatewayExecutionContext :: public final int hashCode();
+mcp.gateway.core.context.GatewayExecutionContext :: public final java.lang.String toString();
+mcp.gateway.core.context.GatewayExecutionContext :: public java.lang.String correlationId();
+mcp.gateway.core.context.GatewayExecutionContext :: public java.lang.String principalId();
+mcp.gateway.core.context.GatewayExecutionContext :: public java.lang.String workspaceId();
+mcp.gateway.core.context.GatewayExecutionContext :: public mcp.gateway.core.context.GatewayExecutionContext(mcp.gateway.core.context.GatewayPrincipal, mcp.gateway.core.context.GatewayWorkspace, java.lang.String);
+mcp.gateway.core.context.GatewayExecutionContext :: public mcp.gateway.core.context.GatewayPrincipal principal();
+mcp.gateway.core.context.GatewayExecutionContext :: public mcp.gateway.core.context.GatewayWorkspace workspace();
+mcp.gateway.core.context.GatewayExecutionContext :: public static mcp.gateway.core.context.GatewayExecutionContext of(java.lang.String, java.lang.String, java.lang.String);
+mcp.gateway.core.context.GatewayExecutionContext :: public static mcp.gateway.core.context.GatewayExecutionContext unknown();
+mcp.gateway.core.context.GatewayPrincipal :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.context.GatewayPrincipal :: public final class mcp.gateway.core.context.GatewayPrincipal extends java.lang.Record {
+mcp.gateway.core.context.GatewayPrincipal :: public final int hashCode();
+mcp.gateway.core.context.GatewayPrincipal :: public final java.lang.String toString();
+mcp.gateway.core.context.GatewayPrincipal :: public java.lang.String id();
+mcp.gateway.core.context.GatewayPrincipal :: public mcp.gateway.core.context.GatewayPrincipal(java.lang.String);
+mcp.gateway.core.context.GatewayPrincipal :: public static final java.lang.String ANONYMOUS_ID;
+mcp.gateway.core.context.GatewayPrincipal :: public static mcp.gateway.core.context.GatewayPrincipal anonymous();
+mcp.gateway.core.context.GatewayPrincipal :: public static mcp.gateway.core.context.GatewayPrincipal of(java.lang.String);
+mcp.gateway.core.context.GatewayToolExecutionContext :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.context.GatewayToolExecutionContext :: public final class mcp.gateway.core.context.GatewayToolExecutionContext extends java.lang.Record {
+mcp.gateway.core.context.GatewayToolExecutionContext :: public final int hashCode();
+mcp.gateway.core.context.GatewayToolExecutionContext :: public final java.lang.String toString();
+mcp.gateway.core.context.GatewayToolExecutionContext :: public java.lang.String actionName();
+mcp.gateway.core.context.GatewayToolExecutionContext :: public java.lang.String correlationId();
+mcp.gateway.core.context.GatewayToolExecutionContext :: public java.lang.String method();
+mcp.gateway.core.context.GatewayToolExecutionContext :: public java.lang.String principalId();
+mcp.gateway.core.context.GatewayToolExecutionContext :: public java.lang.String target();
+mcp.gateway.core.context.GatewayToolExecutionContext :: public java.lang.String toolName();
+mcp.gateway.core.context.GatewayToolExecutionContext :: public java.lang.String workspaceId();
+mcp.gateway.core.context.GatewayToolExecutionContext :: public mcp.gateway.core.context.GatewayExecutionContext executionContext();
+mcp.gateway.core.context.GatewayToolExecutionContext :: public mcp.gateway.core.context.GatewayToolExecutionContext(mcp.gateway.core.context.GatewayExecutionContext, mcp.gateway.core.invocation.McpToolInvocation, java.lang.String);
+mcp.gateway.core.context.GatewayToolExecutionContext :: public mcp.gateway.core.invocation.McpToolInvocation invocation();
+mcp.gateway.core.context.GatewayToolExecutionContext :: public static mcp.gateway.core.context.GatewayToolExecutionContext of(java.lang.String, java.lang.String, java.lang.String, mcp.gateway.core.invocation.McpToolInvocation, java.lang.String);
+mcp.gateway.core.context.GatewayToolExecutionContext :: public static mcp.gateway.core.context.GatewayToolExecutionContext of(mcp.gateway.core.context.GatewayExecutionContext, mcp.gateway.core.invocation.McpToolInvocation, java.lang.String);
+mcp.gateway.core.context.GatewayWorkspace :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.context.GatewayWorkspace :: public final class mcp.gateway.core.context.GatewayWorkspace extends java.lang.Record {
+mcp.gateway.core.context.GatewayWorkspace :: public final int hashCode();
+mcp.gateway.core.context.GatewayWorkspace :: public final java.lang.String toString();
+mcp.gateway.core.context.GatewayWorkspace :: public java.lang.String id();
+mcp.gateway.core.context.GatewayWorkspace :: public mcp.gateway.core.context.GatewayWorkspace(java.lang.String);
+mcp.gateway.core.context.GatewayWorkspace :: public static final java.lang.String DEFAULT_ID;
+mcp.gateway.core.context.GatewayWorkspace :: public static mcp.gateway.core.context.GatewayWorkspace defaultWorkspace();
+mcp.gateway.core.context.GatewayWorkspace :: public static mcp.gateway.core.context.GatewayWorkspace of(java.lang.String);
+mcp.gateway.core.governance.GatewayToolAuthorizationEvaluator :: public abstract mcp.gateway.core.authz.ToolAuthorizationDecision authorize(java.util.Collection<java.lang.String>, mcp.gateway.core.context.GatewayToolExecutionContext);
+mcp.gateway.core.governance.GatewayToolAuthorizationEvaluator :: public abstract mcp.gateway.core.governance.GatewayToolAuthorizationPolicy policy();
+mcp.gateway.core.governance.GatewayToolAuthorizationEvaluator :: public interface mcp.gateway.core.governance.GatewayToolAuthorizationEvaluator {
+mcp.gateway.core.governance.GatewayToolAuthorizationPolicy :: public boolean enabled();
+mcp.gateway.core.governance.GatewayToolAuthorizationPolicy :: public boolean rejectDenied();
+mcp.gateway.core.governance.GatewayToolAuthorizationPolicy :: public boolean rejectUnmapped();
+mcp.gateway.core.governance.GatewayToolAuthorizationPolicy :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.governance.GatewayToolAuthorizationPolicy :: public final class mcp.gateway.core.governance.GatewayToolAuthorizationPolicy extends java.lang.Record {
+mcp.gateway.core.governance.GatewayToolAuthorizationPolicy :: public final int hashCode();
+mcp.gateway.core.governance.GatewayToolAuthorizationPolicy :: public final java.lang.String toString();
+mcp.gateway.core.governance.GatewayToolAuthorizationPolicy :: public mcp.gateway.core.governance.GatewayToolAuthorizationPolicy(boolean, boolean, boolean);
+mcp.gateway.core.governance.GatewayToolAuthorizationPolicy :: public static mcp.gateway.core.governance.GatewayToolAuthorizationPolicy disabled();
+mcp.gateway.core.governance.GatewayToolAuthorizationPolicy :: public static mcp.gateway.core.governance.GatewayToolAuthorizationPolicy enforce();
+mcp.gateway.core.governance.GatewayToolAuthorizationPolicy :: public static mcp.gateway.core.governance.GatewayToolAuthorizationPolicy warn();
+mcp.gateway.core.governance.GatewayToolGovernance :: public final class mcp.gateway.core.governance.GatewayToolGovernance {
+mcp.gateway.core.governance.GatewayToolGovernance :: public static mcp.gateway.core.governance.GatewayToolGovernanceDecision evaluate(mcp.gateway.core.context.GatewayToolExecutionContext, java.util.Collection<java.lang.String>, mcp.gateway.core.governance.GatewayToolAuthorizationEvaluator, mcp.gateway.core.governance.GatewayToolProtectionEvaluator);
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public boolean allowed();
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public boolean hasAuthorizationObservation();
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public final class mcp.gateway.core.governance.GatewayToolGovernanceDecision extends java.lang.Record {
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public final int hashCode();
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public final java.lang.String toString();
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public mcp.gateway.core.authz.ToolAuthorizationDecision authorizationDecision();
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public mcp.gateway.core.governance.GatewayToolGovernanceDecision(mcp.gateway.core.governance.GatewayToolGovernanceOutcome, mcp.gateway.core.governance.GatewayToolGovernanceReason, mcp.gateway.core.authz.ToolAuthorizationDecision, mcp.gateway.core.governance.GatewayToolGovernanceOutcome, mcp.gateway.core.governance.GatewayToolGovernanceReason, mcp.gateway.core.protection.McpAbuseProtectionDecision);
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public mcp.gateway.core.governance.GatewayToolGovernanceOutcome authorizationObservationOutcome();
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public mcp.gateway.core.governance.GatewayToolGovernanceOutcome outcome();
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public mcp.gateway.core.governance.GatewayToolGovernanceReason authorizationObservationReason();
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public mcp.gateway.core.governance.GatewayToolGovernanceReason reason();
+mcp.gateway.core.governance.GatewayToolGovernanceDecision :: public mcp.gateway.core.protection.McpAbuseProtectionDecision protectionDecision();
+mcp.gateway.core.governance.GatewayToolGovernanceOutcome :: public final class mcp.gateway.core.governance.GatewayToolGovernanceOutcome extends java.lang.Enum<mcp.gateway.core.governance.GatewayToolGovernanceOutcome> {
+mcp.gateway.core.governance.GatewayToolGovernanceOutcome :: public static final mcp.gateway.core.governance.GatewayToolGovernanceOutcome ALLOW;
+mcp.gateway.core.governance.GatewayToolGovernanceOutcome :: public static final mcp.gateway.core.governance.GatewayToolGovernanceOutcome REJECT;
+mcp.gateway.core.governance.GatewayToolGovernanceOutcome :: public static final mcp.gateway.core.governance.GatewayToolGovernanceOutcome WARN;
+mcp.gateway.core.governance.GatewayToolGovernanceOutcome :: public static mcp.gateway.core.governance.GatewayToolGovernanceOutcome valueOf(java.lang.String);
+mcp.gateway.core.governance.GatewayToolGovernanceOutcome :: public static mcp.gateway.core.governance.GatewayToolGovernanceOutcome[] values();
+mcp.gateway.core.governance.GatewayToolGovernanceReason :: public final class mcp.gateway.core.governance.GatewayToolGovernanceReason extends java.lang.Enum<mcp.gateway.core.governance.GatewayToolGovernanceReason> {
+mcp.gateway.core.governance.GatewayToolGovernanceReason :: public java.lang.String code();
+mcp.gateway.core.governance.GatewayToolGovernanceReason :: public static final mcp.gateway.core.governance.GatewayToolGovernanceReason GOVERNANCE_PASSED;
+mcp.gateway.core.governance.GatewayToolGovernanceReason :: public static final mcp.gateway.core.governance.GatewayToolGovernanceReason INSUFFICIENT_SCOPE;
+mcp.gateway.core.governance.GatewayToolGovernanceReason :: public static final mcp.gateway.core.governance.GatewayToolGovernanceReason PROTECTION_REJECTED;
+mcp.gateway.core.governance.GatewayToolGovernanceReason :: public static final mcp.gateway.core.governance.GatewayToolGovernanceReason SCOPE_GRANTED;
+mcp.gateway.core.governance.GatewayToolGovernanceReason :: public static final mcp.gateway.core.governance.GatewayToolGovernanceReason UNMAPPED_TOOL;
+mcp.gateway.core.governance.GatewayToolGovernanceReason :: public static mcp.gateway.core.governance.GatewayToolGovernanceReason valueOf(java.lang.String);
+mcp.gateway.core.governance.GatewayToolGovernanceReason :: public static mcp.gateway.core.governance.GatewayToolGovernanceReason[] values();
+mcp.gateway.core.governance.GatewayToolProtectionEvaluator :: public abstract boolean enabled();
+mcp.gateway.core.governance.GatewayToolProtectionEvaluator :: public abstract mcp.gateway.core.protection.McpAbuseProtectionDecision evaluate(mcp.gateway.core.context.GatewayToolExecutionContext);
+mcp.gateway.core.governance.GatewayToolProtectionEvaluator :: public interface mcp.gateway.core.governance.GatewayToolProtectionEvaluator {
+mcp.gateway.core.invocation.McpToolInvocation :: public boolean authorizable();
+mcp.gateway.core.invocation.McpToolInvocation :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.invocation.McpToolInvocation :: public final class mcp.gateway.core.invocation.McpToolInvocation extends java.lang.Record {
+mcp.gateway.core.invocation.McpToolInvocation :: public final int hashCode();
+mcp.gateway.core.invocation.McpToolInvocation :: public final java.lang.String toString();
+mcp.gateway.core.invocation.McpToolInvocation :: public java.lang.String actionName();
+mcp.gateway.core.invocation.McpToolInvocation :: public java.lang.String method();
+mcp.gateway.core.invocation.McpToolInvocation :: public java.lang.String toolName();
+mcp.gateway.core.invocation.McpToolInvocation :: public mcp.gateway.core.invocation.McpToolInvocation(mcp.gateway.core.invocation.McpToolInvocationKind, java.lang.String, java.lang.String);
+mcp.gateway.core.invocation.McpToolInvocation :: public mcp.gateway.core.invocation.McpToolInvocationKind kind();
+mcp.gateway.core.invocation.McpToolInvocation :: public static final java.lang.String METHOD_TOOLS_CALL;
+mcp.gateway.core.invocation.McpToolInvocation :: public static final java.lang.String METHOD_TOOLS_LIST;
+mcp.gateway.core.invocation.McpToolInvocation :: public static mcp.gateway.core.invocation.McpToolInvocation fromJsonRpc(java.lang.String, java.lang.String);
+mcp.gateway.core.invocation.McpToolInvocation :: public static mcp.gateway.core.invocation.McpToolInvocation unknown();
+mcp.gateway.core.invocation.McpToolInvocationKind :: public final class mcp.gateway.core.invocation.McpToolInvocationKind extends java.lang.Enum<mcp.gateway.core.invocation.McpToolInvocationKind> {
+mcp.gateway.core.invocation.McpToolInvocationKind :: public static final mcp.gateway.core.invocation.McpToolInvocationKind OTHER;
+mcp.gateway.core.invocation.McpToolInvocationKind :: public static final mcp.gateway.core.invocation.McpToolInvocationKind TOOLS_LIST;
+mcp.gateway.core.invocation.McpToolInvocationKind :: public static final mcp.gateway.core.invocation.McpToolInvocationKind TOOL_CALL;
+mcp.gateway.core.invocation.McpToolInvocationKind :: public static final mcp.gateway.core.invocation.McpToolInvocationKind UNKNOWN;
+mcp.gateway.core.invocation.McpToolInvocationKind :: public static mcp.gateway.core.invocation.McpToolInvocationKind valueOf(java.lang.String);
+mcp.gateway.core.invocation.McpToolInvocationKind :: public static mcp.gateway.core.invocation.McpToolInvocationKind[] values();
+mcp.gateway.core.logging.CorrelationIds :: public final class mcp.gateway.core.logging.CorrelationIds {
+mcp.gateway.core.logging.CorrelationIds :: public static final java.lang.String CORRELATION_ID_HEADER;
+mcp.gateway.core.logging.CorrelationIds :: public static final java.lang.String LEGACY_REQUEST_ID_HEADER;
+mcp.gateway.core.logging.CorrelationIds :: public static java.lang.String resolve(java.lang.String, java.lang.String);
+mcp.gateway.core.logging.CorrelationIds :: public static java.lang.String sanitize(java.lang.String);
+mcp.gateway.core.policy.ToolPolicyDecision :: public boolean abstained();
+mcp.gateway.core.policy.ToolPolicyDecision :: public boolean allowed();
+mcp.gateway.core.policy.ToolPolicyDecision :: public boolean denied();
+mcp.gateway.core.policy.ToolPolicyDecision :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.policy.ToolPolicyDecision :: public final class mcp.gateway.core.policy.ToolPolicyDecision extends java.lang.Record {
+mcp.gateway.core.policy.ToolPolicyDecision :: public final int hashCode();
+mcp.gateway.core.policy.ToolPolicyDecision :: public final java.lang.String toString();
+mcp.gateway.core.policy.ToolPolicyDecision :: public java.lang.String reason();
+mcp.gateway.core.policy.ToolPolicyDecision :: public java.util.Map<java.lang.String, java.lang.Object> details();
+mcp.gateway.core.policy.ToolPolicyDecision :: public mcp.gateway.core.policy.ToolPolicyDecision(mcp.gateway.core.policy.ToolPolicyOutcome, java.lang.String, java.util.Map<java.lang.String, java.lang.Object>);
+mcp.gateway.core.policy.ToolPolicyDecision :: public mcp.gateway.core.policy.ToolPolicyOutcome outcome();
+mcp.gateway.core.policy.ToolPolicyDecision :: public static mcp.gateway.core.policy.ToolPolicyDecision abstain(java.lang.String);
+mcp.gateway.core.policy.ToolPolicyDecision :: public static mcp.gateway.core.policy.ToolPolicyDecision abstain(java.lang.String, java.util.Map<java.lang.String, java.lang.Object>);
+mcp.gateway.core.policy.ToolPolicyDecision :: public static mcp.gateway.core.policy.ToolPolicyDecision allow(java.lang.String);
+mcp.gateway.core.policy.ToolPolicyDecision :: public static mcp.gateway.core.policy.ToolPolicyDecision allow(java.lang.String, java.util.Map<java.lang.String, java.lang.Object>);
+mcp.gateway.core.policy.ToolPolicyDecision :: public static mcp.gateway.core.policy.ToolPolicyDecision deny(java.lang.String);
+mcp.gateway.core.policy.ToolPolicyDecision :: public static mcp.gateway.core.policy.ToolPolicyDecision deny(java.lang.String, java.util.Map<java.lang.String, java.lang.Object>);
+mcp.gateway.core.policy.ToolPolicyDeniedException :: public class mcp.gateway.core.policy.ToolPolicyDeniedException extends java.lang.RuntimeException {
+mcp.gateway.core.policy.ToolPolicyDeniedException :: public mcp.gateway.core.policy.ToolPolicyDeniedException(java.lang.String);
+mcp.gateway.core.policy.ToolPolicyEvaluationContext :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.policy.ToolPolicyEvaluationContext :: public final class mcp.gateway.core.policy.ToolPolicyEvaluationContext extends java.lang.Record {
+mcp.gateway.core.policy.ToolPolicyEvaluationContext :: public final int hashCode();
+mcp.gateway.core.policy.ToolPolicyEvaluationContext :: public final java.lang.String toString();
+mcp.gateway.core.policy.ToolPolicyEvaluationContext :: public java.lang.String correlationId();
+mcp.gateway.core.policy.ToolPolicyEvaluationContext :: public java.lang.String target();
+mcp.gateway.core.policy.ToolPolicyEvaluationContext :: public java.lang.String toolName();
+mcp.gateway.core.policy.ToolPolicyEvaluationContext :: public mcp.gateway.core.policy.ToolPolicyEvaluationContext(java.lang.String, java.lang.String, java.lang.String);
+mcp.gateway.core.policy.ToolPolicyEvaluationContext :: public static mcp.gateway.core.policy.ToolPolicyEvaluationContext from(mcp.gateway.core.context.GatewayToolExecutionContext);
+mcp.gateway.core.policy.ToolPolicyOutcome :: public final class mcp.gateway.core.policy.ToolPolicyOutcome extends java.lang.Enum<mcp.gateway.core.policy.ToolPolicyOutcome> {
+mcp.gateway.core.policy.ToolPolicyOutcome :: public static final mcp.gateway.core.policy.ToolPolicyOutcome ABSTAIN;
+mcp.gateway.core.policy.ToolPolicyOutcome :: public static final mcp.gateway.core.policy.ToolPolicyOutcome ALLOW;
+mcp.gateway.core.policy.ToolPolicyOutcome :: public static final mcp.gateway.core.policy.ToolPolicyOutcome DENY;
+mcp.gateway.core.policy.ToolPolicyOutcome :: public static mcp.gateway.core.policy.ToolPolicyOutcome valueOf(java.lang.String);
+mcp.gateway.core.policy.ToolPolicyOutcome :: public static mcp.gateway.core.policy.ToolPolicyOutcome[] values();
+mcp.gateway.core.policybundle.PolicyBundleDecision :: public final class mcp.gateway.core.policybundle.PolicyBundleDecision extends java.lang.Enum<mcp.gateway.core.policybundle.PolicyBundleDecision> {
+mcp.gateway.core.policybundle.PolicyBundleDecision :: public java.lang.String wireValue();
+mcp.gateway.core.policybundle.PolicyBundleDecision :: public static final mcp.gateway.core.policybundle.PolicyBundleDecision ALLOW;
+mcp.gateway.core.policybundle.PolicyBundleDecision :: public static final mcp.gateway.core.policybundle.PolicyBundleDecision DENY;
+mcp.gateway.core.policybundle.PolicyBundleDecision :: public static mcp.gateway.core.policybundle.PolicyBundleDecision fromWireValue(java.lang.String);
+mcp.gateway.core.policybundle.PolicyBundleDecision :: public static mcp.gateway.core.policybundle.PolicyBundleDecision valueOf(java.lang.String);
+mcp.gateway.core.policybundle.PolicyBundleDecision :: public static mcp.gateway.core.policybundle.PolicyBundleDecision[] values();
+mcp.gateway.core.policybundle.PolicyBundleDecisionSource :: public final class mcp.gateway.core.policybundle.PolicyBundleDecisionSource extends java.lang.Enum<mcp.gateway.core.policybundle.PolicyBundleDecisionSource> {
+mcp.gateway.core.policybundle.PolicyBundleDecisionSource :: public java.lang.String wireValue();
+mcp.gateway.core.policybundle.PolicyBundleDecisionSource :: public static final mcp.gateway.core.policybundle.PolicyBundleDecisionSource DEFAULT;
+mcp.gateway.core.policybundle.PolicyBundleDecisionSource :: public static final mcp.gateway.core.policybundle.PolicyBundleDecisionSource RULE;
+mcp.gateway.core.policybundle.PolicyBundleDecisionSource :: public static mcp.gateway.core.policybundle.PolicyBundleDecisionSource valueOf(java.lang.String);
+mcp.gateway.core.policybundle.PolicyBundleDecisionSource :: public static mcp.gateway.core.policybundle.PolicyBundleDecisionSource[] values();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationRequest :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.policybundle.PolicyBundleEvaluationRequest :: public final class mcp.gateway.core.policybundle.PolicyBundleEvaluationRequest extends java.lang.Record {
+mcp.gateway.core.policybundle.PolicyBundleEvaluationRequest :: public final int hashCode();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationRequest :: public final java.lang.String toString();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationRequest :: public java.lang.String normalizedHost();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationRequest :: public java.lang.String toolName();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationRequest :: public java.time.ZonedDateTime bundleTime();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationRequest :: public mcp.gateway.core.policybundle.PolicyBundleEvaluationRequest(java.lang.String, java.lang.String, java.time.ZonedDateTime);
+mcp.gateway.core.policybundle.PolicyBundleEvaluationResult :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.policybundle.PolicyBundleEvaluationResult :: public final class mcp.gateway.core.policybundle.PolicyBundleEvaluationResult extends java.lang.Record {
+mcp.gateway.core.policybundle.PolicyBundleEvaluationResult :: public final int hashCode();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationResult :: public final java.lang.String toString();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationResult :: public java.lang.String matchedRuleId();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationResult :: public java.lang.String reason();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationResult :: public java.util.List<mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation> trace();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationResult :: public mcp.gateway.core.policybundle.PolicyBundleDecision decision();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationResult :: public mcp.gateway.core.policybundle.PolicyBundleDecision defaultDecision();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationResult :: public mcp.gateway.core.policybundle.PolicyBundleDecisionSource source();
+mcp.gateway.core.policybundle.PolicyBundleEvaluationResult :: public mcp.gateway.core.policybundle.PolicyBundleEvaluationResult(mcp.gateway.core.policybundle.PolicyBundleDecision, mcp.gateway.core.policybundle.PolicyBundleDecisionSource, java.lang.String, java.lang.String, mcp.gateway.core.policybundle.PolicyBundleDecision, java.util.List<mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation>);
+mcp.gateway.core.policybundle.PolicyBundleEvaluator :: public final class mcp.gateway.core.policybundle.PolicyBundleEvaluator {
+mcp.gateway.core.policybundle.PolicyBundleEvaluator :: public static mcp.gateway.core.policybundle.PolicyBundleEvaluationResult evaluate(mcp.gateway.core.policybundle.PolicyBundleRuleset, mcp.gateway.core.policybundle.PolicyBundleEvaluationRequest);
+mcp.gateway.core.policybundle.PolicyBundleMatch :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.policybundle.PolicyBundleMatch :: public final class mcp.gateway.core.policybundle.PolicyBundleMatch extends java.lang.Record {
+mcp.gateway.core.policybundle.PolicyBundleMatch :: public final int hashCode();
+mcp.gateway.core.policybundle.PolicyBundleMatch :: public final java.lang.String toString();
+mcp.gateway.core.policybundle.PolicyBundleMatch :: public java.util.List<java.lang.String> hosts();
+mcp.gateway.core.policybundle.PolicyBundleMatch :: public java.util.List<java.lang.String> tools();
+mcp.gateway.core.policybundle.PolicyBundleMatch :: public java.util.List<mcp.gateway.core.policybundle.PolicyBundleTimeWindow> timeWindows();
+mcp.gateway.core.policybundle.PolicyBundleMatch :: public mcp.gateway.core.policybundle.PolicyBundleMatch(java.util.List<java.lang.String>, java.util.List<java.lang.String>, java.util.List<mcp.gateway.core.policybundle.PolicyBundleTimeWindow>);
+mcp.gateway.core.policybundle.PolicyBundleMatch :: public static mcp.gateway.core.policybundle.PolicyBundleMatch of(java.util.Collection<java.lang.String>, java.util.Collection<java.lang.String>, java.util.Collection<mcp.gateway.core.policybundle.PolicyBundleTimeWindow>);
+mcp.gateway.core.policybundle.PolicyBundleRule :: public boolean enabled();
+mcp.gateway.core.policybundle.PolicyBundleRule :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.policybundle.PolicyBundleRule :: public final class mcp.gateway.core.policybundle.PolicyBundleRule extends java.lang.Record {
+mcp.gateway.core.policybundle.PolicyBundleRule :: public final int hashCode();
+mcp.gateway.core.policybundle.PolicyBundleRule :: public final java.lang.String toString();
+mcp.gateway.core.policybundle.PolicyBundleRule :: public java.lang.String id();
+mcp.gateway.core.policybundle.PolicyBundleRule :: public java.lang.String reason();
+mcp.gateway.core.policybundle.PolicyBundleRule :: public mcp.gateway.core.policybundle.PolicyBundleDecision decision();
+mcp.gateway.core.policybundle.PolicyBundleRule :: public mcp.gateway.core.policybundle.PolicyBundleMatch match();
+mcp.gateway.core.policybundle.PolicyBundleRule :: public mcp.gateway.core.policybundle.PolicyBundleRule(java.lang.String, mcp.gateway.core.policybundle.PolicyBundleDecision, java.lang.String, boolean, mcp.gateway.core.policybundle.PolicyBundleMatch);
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public boolean enabled();
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public boolean matched();
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public final class mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation extends java.lang.Record {
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public final int hashCode();
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public final java.lang.String toString();
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public java.lang.String reason();
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public java.lang.String ruleId();
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public java.util.List<java.lang.String> failedSelectors();
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public java.util.List<java.lang.String> matchedSelectors();
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public mcp.gateway.core.policybundle.PolicyBundleDecision decision();
+mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation :: public mcp.gateway.core.policybundle.PolicyBundleRuleEvaluation(java.lang.String, mcp.gateway.core.policybundle.PolicyBundleDecision, boolean, boolean, java.util.List<java.lang.String>, java.util.List<java.lang.String>, java.lang.String);
+mcp.gateway.core.policybundle.PolicyBundleRuleset :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.policybundle.PolicyBundleRuleset :: public final class mcp.gateway.core.policybundle.PolicyBundleRuleset extends java.lang.Record {
+mcp.gateway.core.policybundle.PolicyBundleRuleset :: public final int hashCode();
+mcp.gateway.core.policybundle.PolicyBundleRuleset :: public final java.lang.String toString();
+mcp.gateway.core.policybundle.PolicyBundleRuleset :: public java.util.List<mcp.gateway.core.policybundle.PolicyBundleRule> rules();
+mcp.gateway.core.policybundle.PolicyBundleRuleset :: public mcp.gateway.core.policybundle.PolicyBundleDecision defaultDecision();
+mcp.gateway.core.policybundle.PolicyBundleRuleset :: public mcp.gateway.core.policybundle.PolicyBundleRuleset(mcp.gateway.core.policybundle.PolicyBundleDecision, java.util.List<mcp.gateway.core.policybundle.PolicyBundleRule>);
+mcp.gateway.core.policybundle.PolicyBundleRuleset :: public static final int MAX_RULES;
+mcp.gateway.core.policybundle.PolicyBundleRuleset :: public static mcp.gateway.core.policybundle.PolicyBundleRuleset of(mcp.gateway.core.policybundle.PolicyBundleDecision, java.util.Collection<mcp.gateway.core.policybundle.PolicyBundleRule>);
+mcp.gateway.core.policybundle.PolicyBundleTimeWindow :: public boolean matches(java.time.ZonedDateTime);
+mcp.gateway.core.policybundle.PolicyBundleTimeWindow :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.policybundle.PolicyBundleTimeWindow :: public final class mcp.gateway.core.policybundle.PolicyBundleTimeWindow extends java.lang.Record {
+mcp.gateway.core.policybundle.PolicyBundleTimeWindow :: public final int hashCode();
+mcp.gateway.core.policybundle.PolicyBundleTimeWindow :: public final java.lang.String toString();
+mcp.gateway.core.policybundle.PolicyBundleTimeWindow :: public java.time.LocalTime end();
+mcp.gateway.core.policybundle.PolicyBundleTimeWindow :: public java.time.LocalTime start();
+mcp.gateway.core.policybundle.PolicyBundleTimeWindow :: public java.util.Set<java.time.DayOfWeek> days();
+mcp.gateway.core.policybundle.PolicyBundleTimeWindow :: public mcp.gateway.core.policybundle.PolicyBundleTimeWindow(java.util.Set<java.time.DayOfWeek>, java.time.LocalTime, java.time.LocalTime);
+mcp.gateway.core.policybundle.PolicyBundleTimeWindow :: public static mcp.gateway.core.policybundle.PolicyBundleTimeWindow of(java.util.Collection<java.time.DayOfWeek>, java.time.LocalTime, java.time.LocalTime);
+mcp.gateway.core.protection.McpAbuseProtectionContext :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.protection.McpAbuseProtectionContext :: public final class mcp.gateway.core.protection.McpAbuseProtectionContext extends java.lang.Record {
+mcp.gateway.core.protection.McpAbuseProtectionContext :: public final int hashCode();
+mcp.gateway.core.protection.McpAbuseProtectionContext :: public final java.lang.String toString();
+mcp.gateway.core.protection.McpAbuseProtectionContext :: public java.lang.String clientId();
+mcp.gateway.core.protection.McpAbuseProtectionContext :: public java.lang.String toolName();
+mcp.gateway.core.protection.McpAbuseProtectionContext :: public java.lang.String workspaceId();
+mcp.gateway.core.protection.McpAbuseProtectionContext :: public mcp.gateway.core.protection.McpAbuseProtectionContext(java.lang.String, java.lang.String, java.lang.String);
+mcp.gateway.core.protection.McpAbuseProtectionContext :: public static mcp.gateway.core.protection.McpAbuseProtectionContext from(mcp.gateway.core.context.GatewayToolExecutionContext);
+mcp.gateway.core.protection.McpAbuseProtectionContext :: public static mcp.gateway.core.protection.McpAbuseProtectionContext of(java.lang.String, java.lang.String, java.lang.String);
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public boolean allowed();
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public final class mcp.gateway.core.protection.McpAbuseProtectionDecision extends java.lang.Record {
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public final int hashCode();
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public final java.lang.String toString();
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public java.lang.String clientId();
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public java.lang.String errorCode();
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public java.lang.String reason();
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public java.lang.String toolName();
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public java.lang.String workspaceId();
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public long retryAfterSeconds();
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public mcp.gateway.core.protection.McpAbuseProtectionDecision(boolean, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, long);
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public static mcp.gateway.core.protection.McpAbuseProtectionDecision allow(java.lang.String, java.lang.String, java.lang.String);
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public static mcp.gateway.core.protection.McpAbuseProtectionDecision allow(mcp.gateway.core.protection.McpAbuseProtectionContext);
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public static mcp.gateway.core.protection.McpAbuseProtectionDecision reject(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, long);
+mcp.gateway.core.protection.McpAbuseProtectionDecision :: public static mcp.gateway.core.protection.McpAbuseProtectionDecision reject(java.lang.String, java.lang.String, mcp.gateway.core.protection.McpAbuseProtectionContext, long);
+mcp.gateway.core.protection.McpQuotaLimit :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.protection.McpQuotaLimit :: public final class mcp.gateway.core.protection.McpQuotaLimit extends java.lang.Record {
+mcp.gateway.core.protection.McpQuotaLimit :: public final int hashCode();
+mcp.gateway.core.protection.McpQuotaLimit :: public final java.lang.String toString();
+mcp.gateway.core.protection.McpQuotaLimit :: public int currentCount();
+mcp.gateway.core.protection.McpQuotaLimit :: public int maxAllowed();
+mcp.gateway.core.protection.McpQuotaLimit :: public java.lang.String errorCode();
+mcp.gateway.core.protection.McpQuotaLimit :: public java.lang.String reason();
+mcp.gateway.core.protection.McpQuotaLimit :: public long retryAfterSeconds();
+mcp.gateway.core.protection.McpQuotaLimit :: public mcp.gateway.core.protection.McpAbuseProtectionDecision evaluate(mcp.gateway.core.protection.McpAbuseProtectionContext);
+mcp.gateway.core.protection.McpQuotaLimit :: public mcp.gateway.core.protection.McpQuotaLimit(java.lang.String, java.lang.String, int, int, long);
+mcp.gateway.core.protection.McpQuotaLimit :: public static mcp.gateway.core.protection.McpQuotaLimit of(java.lang.String, java.lang.String, int, int, long);
+mcp.gateway.core.rate.TokenBucketRateLimiter :: public boolean tryConsume(java.lang.String, mcp.gateway.core.rate.TokenBucketRateLimiter$Policy);
+mcp.gateway.core.rate.TokenBucketRateLimiter :: public final class mcp.gateway.core.rate.TokenBucketRateLimiter {
+mcp.gateway.core.rate.TokenBucketRateLimiter :: public long retryAfterSeconds(java.lang.String, mcp.gateway.core.rate.TokenBucketRateLimiter$Policy);
+mcp.gateway.core.rate.TokenBucketRateLimiter :: public mcp.gateway.core.rate.TokenBucketRateLimiter();
+mcp.gateway.core.rate.TokenBucketRateLimiter :: public mcp.gateway.core.rate.TokenBucketRateLimiter(java.util.function.LongSupplier, java.util.function.LongSupplier);
+mcp.gateway.core.rate.TokenBucketRateLimiter :: public static final java.lang.String DEFAULT_KEY;
+mcp.gateway.core.rate.TokenBucketRateLimiter$Policy :: public boolean enabled();
+mcp.gateway.core.rate.TokenBucketRateLimiter$Policy :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.rate.TokenBucketRateLimiter$Policy :: public final class mcp.gateway.core.rate.TokenBucketRateLimiter$Policy extends java.lang.Record {
+mcp.gateway.core.rate.TokenBucketRateLimiter$Policy :: public final int hashCode();
+mcp.gateway.core.rate.TokenBucketRateLimiter$Policy :: public final java.lang.String toString();
+mcp.gateway.core.rate.TokenBucketRateLimiter$Policy :: public int capacity();
+mcp.gateway.core.rate.TokenBucketRateLimiter$Policy :: public int maxTrackedKeys();
+mcp.gateway.core.rate.TokenBucketRateLimiter$Policy :: public int refillTokens();
+mcp.gateway.core.rate.TokenBucketRateLimiter$Policy :: public long disabledRetryAfterSeconds();
+mcp.gateway.core.rate.TokenBucketRateLimiter$Policy :: public long refillPeriodSeconds();
+mcp.gateway.core.rate.TokenBucketRateLimiter$Policy :: public mcp.gateway.core.rate.TokenBucketRateLimiter$Policy(boolean, int, int, long, int, long);
+mcp.gateway.core.tool.McpToolCapability :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.tool.McpToolCapability :: public final class mcp.gateway.core.tool.McpToolCapability extends java.lang.Record {
+mcp.gateway.core.tool.McpToolCapability :: public final int hashCode();
+mcp.gateway.core.tool.McpToolCapability :: public final java.lang.String toString();
+mcp.gateway.core.tool.McpToolCapability :: public java.lang.String value();
+mcp.gateway.core.tool.McpToolCapability :: public mcp.gateway.core.tool.McpToolCapability(java.lang.String);
+mcp.gateway.core.tool.McpToolCapability :: public static mcp.gateway.core.tool.McpToolCapability of(java.lang.String);
+mcp.gateway.core.tool.McpToolDescriptor :: public boolean hasCapability(java.lang.String);
+mcp.gateway.core.tool.McpToolDescriptor :: public boolean hasCapability(mcp.gateway.core.tool.McpToolCapability);
+mcp.gateway.core.tool.McpToolDescriptor :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.tool.McpToolDescriptor :: public final class mcp.gateway.core.tool.McpToolDescriptor extends java.lang.Record {
+mcp.gateway.core.tool.McpToolDescriptor :: public final int hashCode();
+mcp.gateway.core.tool.McpToolDescriptor :: public final java.lang.String toString();
+mcp.gateway.core.tool.McpToolDescriptor :: public java.lang.String name();
+mcp.gateway.core.tool.McpToolDescriptor :: public java.util.Set<mcp.gateway.core.tool.McpToolCapability> capabilities();
+mcp.gateway.core.tool.McpToolDescriptor :: public mcp.gateway.core.tool.McpToolDescriptor(java.lang.String, mcp.gateway.core.tool.McpToolSurface, java.util.Set<mcp.gateway.core.tool.McpToolCapability>);
+mcp.gateway.core.tool.McpToolDescriptor :: public mcp.gateway.core.tool.McpToolSurface surface();
+mcp.gateway.core.tool.McpToolDescriptor :: public static mcp.gateway.core.tool.McpToolDescriptor of(java.lang.String, mcp.gateway.core.tool.McpToolSurface, java.util.Collection<mcp.gateway.core.tool.McpToolCapability>);
+mcp.gateway.core.tool.McpToolDescriptor :: public static mcp.gateway.core.tool.McpToolDescriptor$Builder builder(java.lang.String, mcp.gateway.core.tool.McpToolSurface);
+mcp.gateway.core.tool.McpToolDescriptor$Builder :: public final class mcp.gateway.core.tool.McpToolDescriptor$Builder {
+mcp.gateway.core.tool.McpToolDescriptor$Builder :: public mcp.gateway.core.tool.McpToolDescriptor build();
+mcp.gateway.core.tool.McpToolDescriptor$Builder :: public mcp.gateway.core.tool.McpToolDescriptor$Builder capabilities(java.util.Collection<mcp.gateway.core.tool.McpToolCapability>);
+mcp.gateway.core.tool.McpToolDescriptor$Builder :: public mcp.gateway.core.tool.McpToolDescriptor$Builder capability(java.lang.String);
+mcp.gateway.core.tool.McpToolDescriptor$Builder :: public mcp.gateway.core.tool.McpToolDescriptor$Builder capability(mcp.gateway.core.tool.McpToolCapability);
+mcp.gateway.core.tool.McpToolRegistry :: public boolean contains(java.lang.String);
+mcp.gateway.core.tool.McpToolRegistry :: public boolean hasCapability(java.lang.String, java.lang.String);
+mcp.gateway.core.tool.McpToolRegistry :: public boolean hasCapability(java.lang.String, mcp.gateway.core.tool.McpToolCapability);
+mcp.gateway.core.tool.McpToolRegistry :: public final class mcp.gateway.core.tool.McpToolRegistry {
+mcp.gateway.core.tool.McpToolRegistry :: public java.util.List<mcp.gateway.core.tool.McpToolDescriptor> descriptors();
+mcp.gateway.core.tool.McpToolRegistry :: public java.util.List<mcp.gateway.core.tool.McpToolDescriptor> descriptorsForSurface(mcp.gateway.core.tool.McpToolSurface);
+mcp.gateway.core.tool.McpToolRegistry :: public java.util.Optional<mcp.gateway.core.tool.McpToolDescriptor> descriptor(java.lang.String);
+mcp.gateway.core.tool.McpToolRegistry :: public java.util.Set<java.lang.String> names();
+mcp.gateway.core.tool.McpToolRegistry :: public java.util.Set<java.lang.String> namesWithCapability(mcp.gateway.core.tool.McpToolCapability);
+mcp.gateway.core.tool.McpToolRegistry :: public mcp.gateway.core.tool.McpToolDescriptor requireDescriptor(java.lang.String);
+mcp.gateway.core.tool.McpToolRegistry :: public static mcp.gateway.core.tool.McpToolRegistry of(java.util.Collection<mcp.gateway.core.tool.McpToolDescriptor>);
+mcp.gateway.core.tool.McpToolSurface :: public final boolean equals(java.lang.Object);
+mcp.gateway.core.tool.McpToolSurface :: public final class mcp.gateway.core.tool.McpToolSurface extends java.lang.Record {
+mcp.gateway.core.tool.McpToolSurface :: public final int hashCode();
+mcp.gateway.core.tool.McpToolSurface :: public final java.lang.String toString();
+mcp.gateway.core.tool.McpToolSurface :: public java.lang.String value();
+mcp.gateway.core.tool.McpToolSurface :: public mcp.gateway.core.tool.McpToolSurface(java.lang.String);
+mcp.gateway.core.tool.McpToolSurface :: public static final mcp.gateway.core.tool.McpToolSurface EXPERT;
+mcp.gateway.core.tool.McpToolSurface :: public static final mcp.gateway.core.tool.McpToolSurface GUIDED;
+mcp.gateway.core.tool.McpToolSurface :: public static mcp.gateway.core.tool.McpToolSurface of(java.lang.String);
+mcp.gateway.core.url.UrlScope :: public boolean contains(java.lang.String);
+mcp.gateway.core.url.UrlScope :: public final class mcp.gateway.core.url.UrlScope {
+mcp.gateway.core.url.UrlScope :: public static mcp.gateway.core.url.UrlScope parse(java.lang.String);
