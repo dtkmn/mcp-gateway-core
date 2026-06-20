@@ -19,6 +19,7 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: ./bin/java17-consumer-smoke.sh
+      - run: ./bin/java17-source-compat-0.6-consumer.sh
       - uses: actions/setup-node@v6
         with:
           node-version: '24'

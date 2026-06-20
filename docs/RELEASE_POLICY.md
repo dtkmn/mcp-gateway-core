@@ -40,10 +40,14 @@ That gate proves:
 - checksums match the ZIP payload;
 - the signed dry-run ZIP verifies detached signatures from extracted payloads.
 
-CI must also run `bin/java17-consumer-smoke.sh` after the public-preview proof.
-That smoke test switches to a Java 17 runtime and compiles/runs a clean
+CI must also run `bin/java17-consumer-smoke.sh` and
+`bin/java17-source-compat-0.6-consumer.sh` after the public-preview proof.
+Those checks switch to a Java 17 runtime. The smoke test compiles/runs a clean
 downstream consumer against the staged `mcp-gateway-core` and
-`mcp-gateway-spring-webflux` artifacts.
+`mcp-gateway-spring-webflux` artifacts. The source-compatibility fixture
+compiles frozen `0.6.0` consumer source from a temporary external Gradle project
+that resolves `io.github.dtkmn` artifacts exclusively from the staged
+publication repository.
 
 The separate Snyk workflow is an external dependency scan for the Gradle
 project graph. It is enforced when the workflow runs: missing `SNYK_TOKEN`

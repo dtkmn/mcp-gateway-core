@@ -135,6 +135,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         String security = Files.readString(Path.of("SECURITY.md"));
         String readme = Files.readString(Path.of("README.md"));
         String releasePolicy = Files.readString(Path.of("docs/RELEASE_POLICY.md"));
+        String ci = Files.readString(Path.of(".github/workflows/ci.yml"));
         List<Path> workflows;
         try (var files = Files.list(Path.of(".github/workflows"))) {
             workflows = files
@@ -169,6 +170,9 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(security.contains("If `SNYK_TOKEN` is missing, the workflow fails."));
         assertTrue(readme.contains("fails visibly when the token is absent"));
         assertTrue(releasePolicy.contains("does not upload artifacts to Central"));
+        assertTrue(ci.contains("./bin/java17-source-compat-0.6-consumer.sh"));
+        assertTrue(releasePolicy.contains("bin/java17-source-compat-0.6-consumer.sh"));
+        assertTrue(releasePolicy.contains("temporary external Gradle project"));
 
         for (Path workflow : workflows) {
             String content = Files.readString(workflow);
