@@ -10,6 +10,10 @@ import mcp.gateway.core.protection.McpAbuseProtectionDecision;
 /**
  * Framework-neutral orchestration for the common MCP gateway governance flow:
  * authorize, apply abuse protection, then return one pass/warn/reject decision.
+ * <p>
+ * Adapters provide the normalized request context, granted scopes, and optional
+ * evaluators. This class owns the ordering and decision composition so framework
+ * adapters do not each invent their own authorization/protection semantics.
  */
 public final class GatewayToolGovernance {
     private GatewayToolGovernance() {
@@ -17,6 +21,12 @@ public final class GatewayToolGovernance {
 
     /**
      * Evaluates authorization followed by protection.
+     * <p>
+     * Authorization runs only when the evaluator policy is enabled and the
+     * invocation is authorizable. Protection runs whenever its evaluator is
+     * enabled, including for valid non-authorizable invocations. Authorization
+     * rejection short-circuits protection; warning or allow authorization
+     * decisions continue into protection.
      *
      * @param context normalized tool execution context
      * @param grantedScopes scopes granted to the caller

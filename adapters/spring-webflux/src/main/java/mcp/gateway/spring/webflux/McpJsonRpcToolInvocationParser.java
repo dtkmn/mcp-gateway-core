@@ -9,6 +9,12 @@ import mcp.gateway.core.invocation.McpToolInvocation;
 
 /**
  * Parses MCP JSON-RPC request bodies into normalized core invocation values.
+ * <p>
+ * The parser is intentionally scoped to the MCP request shape needed by gateway
+ * governance. It distinguishes valid non-tool JSON-RPC methods from malformed or
+ * unsupported request bodies so adapters can fail closed only when governance is
+ * active. It does not require or validate the JSON-RPC {@code jsonrpc} version
+ * field for the current public-preview contract.
  */
 public final class McpJsonRpcToolInvocationParser {
     private final ObjectMapper objectMapper;
@@ -24,6 +30,11 @@ public final class McpJsonRpcToolInvocationParser {
 
     /**
      * Parses a request body into a core invocation.
+     * <p>
+     * Invalid request bodies are normalized to {@link McpToolInvocation#unknown()}.
+     * Adapters that need fail-closed behavior should use their own request-shape
+     * classification path rather than treating {@code UNKNOWN} as a safe
+     * pass-through signal.
      *
      * @param bodyBytes raw request body bytes
      * @return normalized invocation, or unknown when parsing fails

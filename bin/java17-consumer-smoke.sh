@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(awk -F= '/^gatewayCoreVersion=/ { print $2; exit }' "${ROOT_DIR}/gradle.properties")"
+SPRING_FRAMEWORK_VERSION="$(awk -F= '/^springFrameworkVersion=/ { print $2; exit }' "${ROOT_DIR}/gradle.properties")"
+SPRING_FRAMEWORK_VERSION="${SPRING_FRAMEWORK_VERSION:-7.0.8}"
 STAGING_REPOSITORY="${GATEWAY_CORE_STAGING_REPOSITORY:-${ROOT_DIR}/build/staging-repository}"
 
 fail() {
@@ -14,13 +16,17 @@ if [[ -z "${VERSION}" ]]; then
   fail "gatewayCoreVersion is missing from gradle.properties."
 fi
 
-if [[ ! -d "${STAGING_REPOSITORY}/io/github/dtkmn/mcp-gateway-core/${VERSION}" ]]; then
-  fail "Missing staged mcp-gateway-core ${VERSION} under ${STAGING_REPOSITORY}. Run ./gradlew verifyGatewayPublicPreviewPublication first."
-fi
+require_staged_artifact() {
+  local artifact_id="$1"
+  local artifact_dir="${STAGING_REPOSITORY}/io/github/dtkmn/${artifact_id}/${VERSION}"
+  [[ -f "${artifact_dir}/${artifact_id}-${VERSION}.pom" ]] \
+    || fail "Missing staged ${artifact_id} ${VERSION} POM under ${artifact_dir}. Run ./gradlew verifyGatewayPublicPreviewPublication first."
+  [[ -f "${artifact_dir}/${artifact_id}-${VERSION}.jar" ]] \
+    || fail "Missing staged ${artifact_id} ${VERSION} JAR under ${artifact_dir}. Run ./gradlew verifyGatewayPublicPreviewPublication first."
+}
 
-if [[ ! -d "${STAGING_REPOSITORY}/io/github/dtkmn/mcp-gateway-spring-webflux/${VERSION}" ]]; then
-  fail "Missing staged mcp-gateway-spring-webflux ${VERSION} under ${STAGING_REPOSITORY}. Run ./gradlew verifyGatewayPublicPreviewPublication first."
-fi
+require_staged_artifact "mcp-gateway-core"
+require_staged_artifact "mcp-gateway-spring-webflux"
 
 if [[ -n "${JAVA_HOME:-}" ]]; then
   JAVA_BIN="${JAVA_HOME}/bin/java"
@@ -56,44 +62,96 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        maven {
-            url = uri(System.getenv("GATEWAY_CORE_STAGING_REPOSITORY"))
-            content {
+        exclusiveContent {
+            forRepository {
+                maven {
+                    url = uri(System.getenv("GATEWAY_CORE_STAGING_REPOSITORY"))
+                }
+            }
+            filter {
                 includeGroup("io.github.dtkmn")
             }
         }
-        mavenCentral()
+        mavenCentral {
+            content {
+                excludeGroup("io.github.dtkmn")
+            }
+        }
     }
 }
 
 rootProject.name = "mcp-gateway-java17-consumer"
+include "core-consumer", "webflux-consumer"
 GRADLE
 
 cat > "${WORK_DIR}/build.gradle" <<GRADLE
 plugins {
-    id 'application'
+    id 'base'
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+subprojects {
+    apply plugin: 'application'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
     }
 }
 
-dependencies {
-    implementation "io.github.dtkmn:mcp-gateway-core:${VERSION}"
-    implementation "io.github.dtkmn:mcp-gateway-spring-webflux:${VERSION}"
+project(':core-consumer') {
+    dependencies {
+        implementation "io.github.dtkmn:mcp-gateway-core:${VERSION}"
+    }
+
+    application {
+        mainClass = 'CoreSmoke'
+    }
 }
 
-application {
-    mainClass = 'Smoke'
+project(':webflux-consumer') {
+    dependencies {
+        implementation "io.github.dtkmn:mcp-gateway-spring-webflux:${VERSION}"
+        implementation "org.springframework:spring-test:${SPRING_FRAMEWORK_VERSION}"
+    }
+
+    application {
+        mainClass = 'WebFluxSmoke'
+    }
+}
+
+tasks.register('verifyGatewaySmokeResolution') {
+    group = 'verification'
+    description = 'Verifies smoke consumers resolve gateway artifacts only from the staged repository.'
+
+    doLast {
+        File stagingRoot = new File(System.getenv('GATEWAY_CORE_STAGING_REPOSITORY')).canonicalFile
+        Map<String, Set<String>> expectedByProject = [
+                'core-consumer': ['mcp-gateway-core'] as Set,
+                'webflux-consumer': ['mcp-gateway-core', 'mcp-gateway-spring-webflux'] as Set
+        ]
+        subprojects.each { consumerProject ->
+            def gatewayArtifacts = consumerProject.configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts.findAll {
+                it.moduleVersion.id.group == 'io.github.dtkmn'
+            }
+            Set<String> expected = expectedByProject[consumerProject.name]
+            Set<String> actual = gatewayArtifacts.collect { it.name } as Set
+            if (actual != expected) {
+                throw new GradleException("Expected staged gateway artifacts \${expected} for \${consumerProject.name}, got \${actual}.")
+            }
+            gatewayArtifacts.each { artifact ->
+                File artifactFile = artifact.file.canonicalFile
+                if (!artifactFile.path.startsWith(stagingRoot.path + File.separator)) {
+                    throw new GradleException("Gateway artifact resolved outside staging repository: \${artifactFile}")
+                }
+            }
+        }
+    }
 }
 GRADLE
 
-mkdir -p "${WORK_DIR}/src/main/java"
-cat > "${WORK_DIR}/src/main/java/Smoke.java" <<'JAVA'
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.charset.StandardCharsets;
+mkdir -p "${WORK_DIR}/core-consumer/src/main/java"
+cat > "${WORK_DIR}/core-consumer/src/main/java/CoreSmoke.java" <<'JAVA'
 import java.util.List;
 import mcp.gateway.core.authz.McpToolAccessRegistry;
 import mcp.gateway.core.authz.McpToolAccessRule;
@@ -108,16 +166,13 @@ import mcp.gateway.core.invocation.McpToolInvocation;
 import mcp.gateway.core.invocation.McpToolInvocationKind;
 import mcp.gateway.core.protection.McpAbuseProtectionDecision;
 import mcp.gateway.core.tool.McpToolSurface;
-import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
-import mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter;
-import mcp.gateway.spring.webflux.McpJsonRpcToolInvocationParser;
 
-public final class Smoke {
+public final class CoreSmoke {
     public static void main(String[] args) {
-        McpJsonRpcToolInvocationParser parser = new McpJsonRpcToolInvocationParser(new ObjectMapper());
-        McpToolInvocation invocation = parser.parse(("""
-                {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"demo_tool"}}
-                """).getBytes(StandardCharsets.UTF_8));
+        McpToolInvocation invocation = McpToolInvocation.fromJsonRpc(
+                McpToolInvocation.METHOD_TOOLS_CALL,
+                " demo_tool "
+        );
 
         require(invocation.kind() == McpToolInvocationKind.TOOL_CALL, "expected tool call invocation");
         require("demo_tool".equals(invocation.toolName()), "expected parsed tool name");
@@ -134,9 +189,6 @@ public final class Smoke {
         );
 
         require(decision.allowed(), "expected demo_tool authorization to be allowed");
-        require(McpGatewayAuthorizationMode.ENFORCE.name().equals("ENFORCE"), "expected adapter enum to load");
-        require(McpGatewayWebFluxGovernanceFilter.class.getName().contains("GovernanceFilter"),
-                "expected combined governance filter to load");
 
         GatewayToolExecutionContext context = GatewayToolExecutionContext.of(
                 "demo-client",
@@ -191,7 +243,206 @@ public final class Smoke {
 }
 JAVA
 
-GATEWAY_CORE_STAGING_REPOSITORY="${STAGING_REPOSITORY}" \
-  "${ROOT_DIR}/gradlew" -p "${WORK_DIR}" clean run --no-daemon --stacktrace
+mkdir -p "${WORK_DIR}/webflux-consumer/src/main/java"
+cat > "${WORK_DIR}/webflux-consumer/src/main/java/WebFluxSmoke.java" <<'JAVA'
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import mcp.gateway.core.authz.ToolAuthorizationDecision;
+import mcp.gateway.core.context.GatewayToolExecutionContext;
+import mcp.gateway.core.invocation.McpToolInvocation;
+import mcp.gateway.core.invocation.McpToolInvocationKind;
+import mcp.gateway.core.protection.McpAbuseProtectionDecision;
+import mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator;
+import mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator;
+import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
+import mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver;
+import mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter;
+import mcp.gateway.spring.webflux.McpGatewayWebFluxProperties;
+import mcp.gateway.spring.webflux.McpGrantedScopesExtractor;
+import mcp.gateway.spring.webflux.McpInvalidRequestObserver;
+import mcp.gateway.spring.webflux.McpJsonRpcToolInvocationParser;
+import mcp.gateway.spring.webflux.McpProtectionRejectionObserver;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.MediaType;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilterChain;
+import reactor.core.publisher.Mono;
 
-echo "Java 17 consumer smoke passed for mcp-gateway-core ${VERSION}."
+public final class WebFluxSmoke {
+    public static void main(String[] args) {
+        McpJsonRpcToolInvocationParser parser = new McpJsonRpcToolInvocationParser(new ObjectMapper());
+        McpToolInvocation invocation = parser.parse(("""
+                {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"demo_tool"}}
+                """).getBytes(StandardCharsets.UTF_8));
+
+        require(invocation.kind() == McpToolInvocationKind.TOOL_CALL, "expected tool call invocation");
+        require("demo_tool".equals(invocation.toolName()), "expected parsed tool name");
+
+        AtomicReference<String> invalidReason = new AtomicReference<>();
+        McpInvalidRequestObserver invalidObserver = (reason, requestId, correlationId) -> invalidReason.set(reason);
+        invalidObserver.rejected("invalid_request_shape", "request-1", "correlation-1");
+        require("invalid_request_shape".equals(invalidReason.get()), "expected invalid observer to run");
+
+        McpGatewayAuthorizationEvaluator authorizationEvaluator = new McpGatewayAuthorizationEvaluator() {
+            @Override
+            public McpGatewayAuthorizationMode mode() {
+                return McpGatewayAuthorizationMode.WARN;
+            }
+
+            @Override
+            public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
+                                                       GatewayToolExecutionContext context) {
+                return new ToolAuthorizationDecision(
+                        false,
+                        true,
+                        context.actionName(),
+                        List.of("demo:run"),
+                        List.copyOf(grantedScopes),
+                        List.of("demo:run")
+                );
+            }
+        };
+        require(authorizationEvaluator.policy().enabled(), "WARN mode should enable authorization evaluation");
+
+        McpGatewayAbuseProtectionEvaluator protectionEvaluator = new McpGatewayAbuseProtectionEvaluator() {
+            @Override
+            public boolean enabled() {
+                return true;
+            }
+
+            @Override
+            public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
+                return McpAbuseProtectionDecision.allow(context.toolName(), context.principalId(), context.workspaceId());
+            }
+        };
+
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                new ObjectMapper(),
+                new McpGatewayWebFluxProperties("/mcp", 4096, 7),
+                authorizationEvaluator,
+                protectionEvaluator,
+                (authentication, exchange, parsed) -> GatewayToolExecutionContext.of(
+                        authentication == null ? null : authentication.getName(),
+                        "workspace-a",
+                        McpGatewayCorrelationIdResolver.defaultResolver().resolve(exchange),
+                        parsed,
+                        null
+                ),
+                McpGrantedScopesExtractor.springSecurityScopes(),
+                observation -> {
+                },
+                McpProtectionRejectionObserver.noop(),
+                McpGatewayCorrelationIdResolver.fromHeader("X-Correlation-Id"),
+                invalidObserver
+        );
+
+        require(filter.getOrder() == 7, "expected configured filter order");
+
+        String validBody = """
+                {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"demo_tool"}}
+                """;
+        AtomicReference<String> downstreamBody = new AtomicReference<>();
+        ServerWebExchange validExchange = MockServerWebExchange.from(MockServerHttpRequest.post("/mcp")
+                        .header("X-Correlation-Id", "correlation-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(validBody))
+                .mutate()
+                .principal(Mono.just(new UsernamePasswordAuthenticationToken(
+                        "demo-client",
+                        "n/a",
+                        List.of(new SimpleGrantedAuthority("SCOPE_demo:run"))
+                )))
+                .build();
+
+        filter.filter(validExchange, captureBodyChain(downstreamBody)).block();
+        require(validExchange.getResponse().getStatusCode() == null, "valid request should pass downstream");
+        require(validBody.equals(downstreamBody.get()), "valid request body should be replayed downstream");
+
+        AtomicReference<String> rejectedReason = new AtomicReference<>();
+        AtomicReference<String> rejectedRequestId = new AtomicReference<>();
+        AtomicReference<String> rejectedCorrelationId = new AtomicReference<>();
+        McpGatewayWebFluxGovernanceFilter invalidFilter = new McpGatewayWebFluxGovernanceFilter(
+                new ObjectMapper(),
+                new McpGatewayWebFluxProperties("/mcp", 4096, 7),
+                authorizationEvaluator,
+                protectionEvaluator,
+                (authentication, exchange, parsed) -> GatewayToolExecutionContext.of(
+                        authentication == null ? null : authentication.getName(),
+                        "workspace-a",
+                        McpGatewayCorrelationIdResolver.defaultResolver().resolve(exchange),
+                        parsed,
+                        null
+                ),
+                McpGrantedScopesExtractor.springSecurityScopes(),
+                observation -> {
+                },
+                McpProtectionRejectionObserver.noop(),
+                McpGatewayCorrelationIdResolver.fromHeader("X-Correlation-Id"),
+                (reason, requestId, correlationId) -> {
+                    rejectedReason.set(reason);
+                    rejectedRequestId.set(requestId);
+                    rejectedCorrelationId.set(correlationId);
+                }
+        );
+        ServerWebExchange invalidExchange = MockServerWebExchange.from(MockServerHttpRequest.post("/mcp")
+                        .header("X-Correlation-Id", "correlation-2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":7}}"))
+                .mutate()
+                .principal(Mono.just(new UsernamePasswordAuthenticationToken(
+                        "demo-client",
+                        "n/a",
+                        List.of(new SimpleGrantedAuthority("SCOPE_demo:run"))
+                )))
+                .build();
+
+        invalidFilter.filter(invalidExchange, ignored -> Mono.error(new IllegalStateException("must not call chain")))
+                .block();
+        require(invalidExchange.getResponse().getStatusCode().value() == 400, "invalid request should be rejected");
+        require("invalid_request_shape".equals(rejectedReason.get()), "invalid observer should receive reason");
+        require(invalidExchange.getRequest().getId().equals(rejectedRequestId.get()),
+                "invalid observer should receive HTTP request id");
+        require("correlation-2".equals(rejectedCorrelationId.get()),
+                "invalid observer should receive resolved correlation id");
+        String invalidResponse = responseBody(invalidExchange);
+        require(invalidResponse.contains("\"error\":\"invalid_json_rpc_request\""),
+                "invalid response should use stable error code");
+        require(invalidResponse.contains("\"reason\":\"invalid_request_shape\""),
+                "invalid response should use stable reason");
+    }
+
+    private static WebFilterChain captureBodyChain(AtomicReference<String> downstreamBody) {
+        return exchange -> DataBufferUtils.join(exchange.getRequest().getBody())
+                .doOnNext(buffer -> {
+                    byte[] bytes = new byte[buffer.readableByteCount()];
+                    buffer.read(bytes);
+                    DataBufferUtils.release(buffer);
+                    downstreamBody.set(new String(bytes, StandardCharsets.UTF_8));
+                })
+                .then();
+    }
+
+    private static String responseBody(ServerWebExchange exchange) {
+        return ((MockServerHttpResponse) exchange.getResponse()).getBodyAsString().block();
+    }
+
+    private static void require(boolean condition, String message) {
+        if (!condition) {
+            throw new IllegalStateException(message);
+        }
+    }
+}
+JAVA
+
+GATEWAY_CORE_STAGING_REPOSITORY="${STAGING_REPOSITORY}" \
+  "${ROOT_DIR}/gradlew" -p "${WORK_DIR}" clean :core-consumer:run :webflux-consumer:run verifyGatewaySmokeResolution --no-daemon --stacktrace
+
+echo "Java 17 consumer smoke passed for core-only and WebFlux consumers using mcp-gateway artifacts ${VERSION}."

@@ -21,6 +21,12 @@ import reactor.core.publisher.Mono;
 /**
  * WebFlux filter that runs the shared MCP gateway governance pass once per MCP
  * JSON-RPC request.
+ * <p>
+ * The filter is active only for the configured MCP endpoint when authorization
+ * or abuse protection governance is enabled. With governance inactive, matching
+ * requests pass downstream without body buffering or validation. With governance
+ * active, invalid MCP JSON-RPC request shapes are rejected before principal
+ * lookup, context resolution, authorization, protection, or downstream handling.
  */
 public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Ordered {
     private final ObjectMapper objectMapper;
@@ -37,6 +43,11 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
 
     /**
      * Creates a filter with default scope extraction and no-op observations.
+     * <p>
+     * This constructor preserves the public-preview default behavior: Spring
+     * Security {@code SCOPE_} authorities are used as granted scopes, correlation
+     * IDs come from {@code X-Correlation-Id} with request-id fallback, and all
+     * observers are no-ops.
      *
      * @param objectMapper JSON mapper used for parsing and rejection responses
      * @param properties WebFlux adapter properties
@@ -64,6 +75,10 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
 
     /**
      * Creates a filter.
+     * <p>
+     * Invalid request observation defaults to a no-op observer. Use the overload
+     * that accepts {@link McpInvalidRequestObserver} when runtimes need telemetry
+     * for adapter-level invalid request rejections.
      *
      * @param objectMapper JSON mapper used for parsing and rejection responses
      * @param properties WebFlux adapter properties
@@ -100,6 +115,9 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
 
     /**
      * Creates a filter.
+     * <p>
+     * Any nullable optional collaborator falls back to the adapter default except
+     * {@code objectMapper} and {@code contextResolver}, which are required.
      *
      * @param objectMapper JSON mapper used for parsing and rejection responses
      * @param properties WebFlux adapter properties
