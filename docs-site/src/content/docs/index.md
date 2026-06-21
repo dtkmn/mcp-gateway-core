@@ -23,8 +23,7 @@ The optional `mcp-gateway-spring-webflux` artifact adds a WebFlux governance
 filter over those contracts. It is not a full gateway runtime, proxy data plane,
 scanner integration, UI, or service mesh.
 
-The current release candidate is `0.7.0`; the latest published preview line
-remains `0.6.x` until `0.7.0` is published. The WebFlux adapter documents
+The latest published preview line is `0.7.x`. The WebFlux adapter documents
 fail-closed request-shape behavior when governance is active and exact downstream
 pass-through when governance is inactive.
 
@@ -41,8 +40,7 @@ pass-through when governance is inactive.
 
 ## Coordinates
 
-These are the `0.7.0` release-candidate coordinates. They resolve from Maven
-Central only after `0.7.0` is published.
+These are the current `0.7.0` public-preview coordinates.
 
 ```groovy
 implementation "io.github.dtkmn:mcp-gateway-core:0.7.0"

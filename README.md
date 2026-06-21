@@ -16,10 +16,9 @@ contracts.
 It is not a gateway runtime, router, scanner integration, UI, service mesh, or
 traffic-management data plane.
 
-Current status: public preview. The current release candidate is `0.7.0`; the
-latest published preview line remains `0.6.x` until `0.7.0` is published. The
-package and coordinate are intended for early integration proof, not a stable
-compatibility promise.
+Current status: public preview. The latest published preview line is `0.7.x`.
+The package and coordinate are intended for early integration proof, not a
+stable compatibility promise.
 
 ## Architecture At A Glance
 
@@ -168,9 +167,7 @@ staged repository, and exercises the WebFlux filter path.
 
 ## Coordinates
 
-These are the `0.7.0` release-candidate coordinates under verification. They
-resolve from Maven Central only after `0.7.0` is published; until then, Maven
-Central's latest published preview line remains `0.6.x`.
+These are the current `0.7.0` public-preview coordinates.
 
 Core coordinate:
 

@@ -3,8 +3,8 @@
 ## Supported Versions
 
 `mcp-gateway-core` and `mcp-gateway-spring-webflux` are public preview. The
-latest published `0.6.x` artifact line is the only line expected to receive
-security fixes until `0.7.0` is published.
+latest published `0.7.x` artifact line is the only line expected to receive
+security fixes.
 
 Older public-preview versions may be replaced instead of patched if the safest
 fix requires changing a contract.

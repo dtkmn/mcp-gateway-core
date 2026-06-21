@@ -10,13 +10,14 @@ promise yet.
 
 Current focus:
 
-- keep the package and Maven coordinate steady while preparing `0.7.0`;
+- keep the package and Maven coordinate steady after the `0.7.0` public-preview
+  release;
 - keep the core artifact JDK-only and framework support in separate adapter
   artifacts;
 - enforce accepted API/binary delta classifications against the frozen `0.6.0`
   baseline;
-- prove staged artifacts with Java 17 core-only, WebFlux, and frozen `0.6.0`
-  source-compatibility consumers;
+- prove published and staged artifacts with Java 17 core-only, WebFlux, and
+  frozen `0.6.0` source-compatibility consumers;
 - keep WebFlux request-shape, activation, pass-through, and invalid-request
   observer behavior pinned by tests;
 - reject scanner, runtime, private, and data-plane coupling;
@@ -24,12 +25,12 @@ Current focus:
 
 ## Near-Term Work
 
-1. **0.7.0 release verification**
+1. **0.7.0 post-release verification**
 
-   Run the full public-preview publication proof, Java 17 staged-artifact smoke
-   tests, frozen `0.6.0` source-compatibility fixture, docs build, security
-   checks, and release-note review. Do not publish if docs, security policy, or
-   accepted-delta records disagree with the staged artifacts.
+   Keep Maven Central metadata, README coordinates, generated docs, security
+   policy, and release notes aligned with the published `0.7.0` artifacts. If
+   any public doc says a different published line than Central, treat it as a
+   release-blocking documentation defect.
 
 2. **Consumer proof**
 

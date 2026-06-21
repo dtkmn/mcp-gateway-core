@@ -11,9 +11,7 @@ own transport adapter.
 
 ## Choose The Artifact
 
-The examples below use the `0.7.0` release-candidate coordinates. They resolve
-from Maven Central only after `0.7.0` is published; until then, Maven Central's
-latest published preview line remains `0.6.x`.
+The examples below use the current `0.7.0` public-preview coordinates.
 
 Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:

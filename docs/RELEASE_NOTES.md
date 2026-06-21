@@ -2,9 +2,9 @@
 
 ## 0.7.0 Public Preview
 
-`0.7.0` is a hardening release for public-preview consumers. The release goal is
-to add compatibility gates first, then land WebFlux fail-closed request-shape
-behavior behind those gates.
+`0.7.0` is a hardening release for public-preview consumers. It adds
+compatibility gates first, then ships WebFlux fail-closed request-shape behavior
+behind those gates.
 
 <a id="0.7.0-api-binary-deltas"></a>
 ### API And Binary Deltas
@@ -64,7 +64,7 @@ delta registry.
 <a id="0.7.0-verification"></a>
 ### Verification
 
-Before publishing, the release must pass:
+Publication verification passed:
 
 ```bash
 ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
