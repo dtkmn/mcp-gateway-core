@@ -156,6 +156,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(security.contains("Dependabot version updates"));
         assertTrue(security.contains("CodeQL Java analysis"));
         assertTrue(security.contains("latest published `0.6.x` artifact line"));
+        assertTrue(!security.contains("latest published `0.7.x` artifact"));
         assertTrue(!security.contains("latest published `0.5.x` artifact"));
         assertTrue(snyk.contains("snyk/actions/setup@v1.0.0"));
         assertTrue(snyk.contains("SNYK_TOKEN"));
