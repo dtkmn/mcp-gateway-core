@@ -46,12 +46,13 @@ That gate proves:
 
 CI must also run `bin/java17-consumer-smoke.sh` and
 `bin/java17-source-compat-0.6-consumer.sh` after the public-preview proof.
-Those checks switch to a Java 17 runtime. The smoke test compiles/runs a clean
-downstream consumer against the staged `mcp-gateway-core` and
-`mcp-gateway-spring-webflux` artifacts. The source-compatibility fixture
-compiles frozen `0.6.0` consumer source from a temporary external Gradle project
-that resolves `io.github.dtkmn` artifacts exclusively from the staged
-publication repository.
+Those checks switch to a Java 17 runtime. The smoke test compiles and runs
+separate clean downstream consumers: one that depends only on staged
+`mcp-gateway-core`, and one that depends on staged
+`mcp-gateway-spring-webflux` and its published transitive API dependencies. The
+source-compatibility fixture compiles frozen `0.6.0` consumer source from a
+temporary external Gradle project that resolves `io.github.dtkmn` artifacts
+exclusively from the staged publication repository.
 
 The API snapshot gate is scoped to public/protected members under
 `mcp.gateway.core.*` and `mcp.gateway.spring.webflux.*`. It fails on

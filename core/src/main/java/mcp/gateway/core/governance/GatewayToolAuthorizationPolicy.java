@@ -2,6 +2,11 @@ package mcp.gateway.core.governance;
 
 /**
  * Runtime mode for MCP tool authorization inside a gateway governance pass.
+ * <p>
+ * The policy separates "should authorization be evaluated" from "should a
+ * negative authorization decision reject the request." This lets adapters expose
+ * disabled, warn-only, and enforce modes while the core governance pipeline
+ * keeps one decision model.
  *
  * @param enabled whether authorization should run
  * @param rejectUnmapped whether unmapped authorizable actions should be rejected
@@ -12,6 +17,9 @@ public record GatewayToolAuthorizationPolicy(boolean enabled,
                                              boolean rejectDenied) {
     /**
      * Authorization disabled.
+     * <p>
+     * The governance pipeline skips authorization entirely. Protection may still
+     * run when a protection evaluator is enabled.
      *
      * @return disabled policy
      */
@@ -21,7 +29,8 @@ public record GatewayToolAuthorizationPolicy(boolean enabled,
 
     /**
      * Authorization warning mode. Decisions are evaluated and observable, but
-     * denied or unmapped requests are allowed through.
+     * denied or unmapped authorizable requests are allowed through unless another
+     * governance step rejects them.
      *
      * @return warning policy
      */
@@ -31,7 +40,7 @@ public record GatewayToolAuthorizationPolicy(boolean enabled,
 
     /**
      * Authorization enforcement mode. Denied or unmapped authorizable requests
-     * are rejected.
+     * are rejected before protection evaluation.
      *
      * @return enforcing policy
      */

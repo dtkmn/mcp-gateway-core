@@ -86,6 +86,8 @@ class ProjectDocumentationAndSecurityToolingTest {
                 "TokenBucketRateLimiter.Policy",
                 "McpGatewayWebFluxProperties",
                 "McpGatewayAuthorizationMode",
+                "batch_not_supported",
+                "pass downstream unchanged",
                 "Runtime Responsibility"
         }) {
             assertTrue(reference.contains(required), () -> "Contract reference missing " + required);
@@ -153,6 +155,9 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(codeql.contains("./gradlew clean test --no-daemon --stacktrace"));
         assertTrue(security.contains("Dependabot version updates"));
         assertTrue(security.contains("CodeQL Java analysis"));
+        assertTrue(security.contains("latest published `0.6.x` artifact line"));
+        assertTrue(!security.contains("latest published `0.7.x` artifact"));
+        assertTrue(!security.contains("latest published `0.5.x` artifact"));
         assertTrue(snyk.contains("snyk/actions/setup@v1.0.0"));
         assertTrue(snyk.contains("SNYK_TOKEN"));
         assertTrue(snyk.contains("SNYK_ORG"));
@@ -174,10 +179,16 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(releasePolicy.contains("./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail"));
         assertTrue(ci.contains("./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail"));
         assertTrue(ci.contains("./bin/java17-source-compat-0.6-consumer.sh"));
+        assertTrue(ci.contains("./bin/java17-consumer-smoke.sh"));
         assertTrue(releasePolicy.contains("bin/java17-source-compat-0.6-consumer.sh"));
+        assertTrue(releasePolicy.contains("separate clean downstream consumers"));
         assertTrue(releasePolicy.contains("temporary external Gradle project"));
         assertTrue(releasePolicy.contains("accepted API/binary deltas"));
         assertTrue(releasePolicy.contains("mcp.gateway.spring.webflux.*"));
+        String releaseNotes = Files.readString(Path.of("docs/RELEASE_NOTES.md"));
+        assertTrue(releaseNotes.contains("./bin/java17-source-compat-0.6-consumer.sh"));
+        assertTrue(releaseNotes.contains("batch_not_supported"));
+        assertTrue(releaseNotes.contains("passes batch bodies downstream unchanged"));
 
         for (Path workflow : workflows) {
             String content = Files.readString(workflow);

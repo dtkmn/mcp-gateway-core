@@ -16,8 +16,10 @@ contracts.
 It is not a gateway runtime, router, scanner integration, UI, service mesh, or
 traffic-management data plane.
 
-Current status: public preview. The package and coordinate are intended for
-early integration proof, not a stable compatibility promise.
+Current status: public preview. The current release candidate is `0.7.0`; the
+latest published preview line remains `0.6.x` until `0.7.0` is published. The
+package and coordinate are intended for early integration proof, not a stable
+compatibility promise.
 
 ## Architecture At A Glance
 
@@ -86,6 +88,12 @@ Included:
 - gateway execution context and principal/workspace model
 - optional Spring WebFlux governance filter and JSON-RPC parsing adapters
 
+The Spring WebFlux adapter fails closed on invalid MCP JSON-RPC request shapes
+only when governance is active. When both authorization and abuse protection are
+inactive, it preserves exact downstream pass-through, including JSON-RPC batch
+bodies. See the [contract reference](docs/CONTRACT_REFERENCE.md) for the full
+wire contract.
+
 Excluded:
 
 - scanner integrations
@@ -146,25 +154,41 @@ bytecode checks, core `jdeps`, Gradle deprecation enforcement, unsigned Central
 Portal bundle validation, and signed dry-run bundle validation with an ephemeral
 local GPG key.
 
+Release preparation also runs the Java 17 consumer checks against staged
+artifacts:
+
+```bash
+./bin/java17-consumer-smoke.sh
+./bin/java17-source-compat-0.6-consumer.sh
+```
+
+The smoke script uses separate clean external consumers for core-only and
+Spring WebFlux scenarios, resolves `io.github.dtkmn` artifacts only from the
+staged repository, and exercises the WebFlux filter path.
+
 ## Coordinates
+
+These are the `0.7.0` release-candidate coordinates under verification. They
+resolve from Maven Central only after `0.7.0` is published; until then, Maven
+Central's latest published preview line remains `0.6.x`.
 
 Core coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.6.0
+io.github.dtkmn:mcp-gateway-core:0.7.0
 ```
 
 Optional Spring WebFlux adapter coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-spring-webflux:0.6.0
+io.github.dtkmn:mcp-gateway-spring-webflux:0.7.0
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.6.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.6.0" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.7.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.0" // optional
 ```
 
 Maven:
@@ -173,12 +197,12 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.6.0</version>
+  <version>0.7.0</version>
 </dependency>
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-spring-webflux</artifactId>
-  <version>0.6.0</version>
+  <version>0.7.0</version>
 </dependency>
 ```
 

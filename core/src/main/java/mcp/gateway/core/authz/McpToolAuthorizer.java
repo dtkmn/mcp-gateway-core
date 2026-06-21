@@ -49,11 +49,17 @@ public final class McpToolAuthorizer {
 
     /**
      * Authorizes a normalized gateway tool context.
+     * <p>
+     * Unknown or non-authorizable contexts are returned as unmapped decisions.
+     * {@code tools/list} is evaluated against the list requirement configured on
+     * this authorizer; {@code tools/call} is evaluated against the named tool's
+     * registry entry.
      *
      * @param context tool context
      * @param grantedScopes scopes granted to the caller
      * @param wildcardAllowed whether {@code *} grants all mapped required scopes
      * @param authorizationEnabled whether mapped requirements should be enforced
+     *        instead of treated as an allowed mapped decision
      * @return decision
      */
     public ToolAuthorizationDecision authorize(GatewayToolExecutionContext context,
@@ -74,11 +80,15 @@ public final class McpToolAuthorizer {
 
     /**
      * Authorizes one MCP tool call.
+     * <p>
+     * Blank or unknown tool names are reported with the synthetic
+     * {@link #UNKNOWN_ACTION} action and an unmapped decision.
      *
      * @param toolName MCP tool name
      * @param grantedScopes scopes granted to the caller
      * @param wildcardAllowed whether {@code *} grants all mapped required scopes
      * @param authorizationEnabled whether mapped requirements should be enforced
+     *        instead of treated as an allowed mapped decision
      * @return decision
      */
     public ToolAuthorizationDecision authorizeToolCall(String toolName,
@@ -91,10 +101,14 @@ public final class McpToolAuthorizer {
 
     /**
      * Authorizes an MCP {@code tools/list} request.
+     * <p>
+     * The action name is always {@link #TOOLS_LIST_ACTION}, so callers can keep
+     * tool listing requirements separate from individual tool-call requirements.
      *
      * @param grantedScopes scopes granted to the caller
      * @param wildcardAllowed whether {@code *} grants all mapped required scopes
      * @param authorizationEnabled whether mapped requirements should be enforced
+     *        instead of treated as an allowed mapped decision
      * @return decision
      */
     public ToolAuthorizationDecision authorizeToolsList(Collection<String> grantedScopes,

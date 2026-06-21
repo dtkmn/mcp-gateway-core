@@ -2,6 +2,11 @@ package mcp.gateway.core.invocation;
 
 /**
  * MCP JSON-RPC action visible to gateway controls.
+ * <p>
+ * The core library intentionally models only the action shape that governance
+ * needs. It does not validate the full JSON-RPC envelope; adapters are expected
+ * to decide whether malformed transport requests should fail before they become
+ * an invocation.
  *
  * @param kind normalized invocation kind
  * @param method normalized JSON-RPC method, or {@code null} when unavailable
@@ -37,6 +42,12 @@ public record McpToolInvocation(McpToolInvocationKind kind, String method, Strin
 
     /**
      * Converts a JSON-RPC method and optional tool name into a normalized invocation.
+     * <p>
+     * {@code tools/list} becomes a synthetic authorizable listing action,
+     * {@code tools/call} becomes a tool call only when a non-blank tool name is
+     * present, and any other non-blank method is preserved as
+     * {@link McpToolInvocationKind#OTHER}. Unknown or incomplete tool calls are
+     * normalized to {@link McpToolInvocationKind#UNKNOWN}.
      *
      * @param method JSON-RPC method
      * @param toolName MCP tool name for {@code tools/call}
@@ -63,6 +74,10 @@ public record McpToolInvocation(McpToolInvocationKind kind, String method, Strin
 
     /**
      * Returns whether the invocation should pass through gateway authorization controls.
+     * <p>
+     * Authorization is scoped to MCP tool listing and tool calls. Protection
+     * evaluators may still evaluate non-authorizable invocations when an adapter
+     * chooses to run the broader governance pass.
      *
      * @return {@code true} for tool calls and tool listing
      */
@@ -72,6 +87,10 @@ public record McpToolInvocation(McpToolInvocationKind kind, String method, Strin
 
     /**
      * Returns the gateway action name for authorization and audit.
+     * <p>
+     * Tool calls use the MCP tool name as the action. Other known JSON-RPC
+     * methods use the normalized method name. Unknown invocations may return
+     * {@code null}.
      *
      * @return tool name for tool calls; otherwise JSON-RPC method
      */

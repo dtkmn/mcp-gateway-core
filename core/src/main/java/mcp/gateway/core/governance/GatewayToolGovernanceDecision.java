@@ -6,6 +6,11 @@ import mcp.gateway.core.protection.McpAbuseProtectionDecision;
 
 /**
  * Result of a framework-neutral MCP tool governance pass.
+ * <p>
+ * The final {@link #outcome()} answers whether the adapter should continue or
+ * reject. The authorization observation fields are separate because warn-mode
+ * authorization can be observable while the final decision still allows the
+ * request, or protection can reject after authorization allowed or warned.
  *
  * @param outcome final outcome
  * @param reason low-cardinality reason
@@ -32,6 +37,9 @@ public record GatewayToolGovernanceDecision(
 
     /**
      * Returns whether the request may proceed to the downstream tool runtime.
+     * <p>
+     * Both allow and warn outcomes proceed. Only
+     * {@link GatewayToolGovernanceOutcome#REJECT} stops the request.
      *
      * @return true when not rejected
      */
@@ -41,6 +49,9 @@ public record GatewayToolGovernanceDecision(
 
     /**
      * Returns whether authorization produced an observable decision.
+     * <p>
+     * This is false when authorization was disabled, absent, or skipped because
+     * the invocation is not authorizable.
      *
      * @return true when authorization observation fields are populated
      */

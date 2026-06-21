@@ -7,7 +7,7 @@ group = providers.gradleProperty('gatewayCoreGroup')
         .orElse('io.github.dtkmn')
         .get()
 version = providers.gradleProperty('gatewayCoreVersion')
-        .orElse('0.6.0')
+        .orElse('0.7.0')
         .get()
 
 def springWebFluxArtifactId = 'mcp-gateway-spring-webflux'

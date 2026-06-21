@@ -12,6 +12,10 @@ import mcp.gateway.core.governance.GatewayToolAuthorizationPolicy;
 public interface McpGatewayAuthorizationEvaluator extends GatewayToolAuthorizationEvaluator {
     /**
      * Returns the current authorization mode.
+     * <p>
+     * The default {@link #policy()} implementation maps {@code DISABLED} to a
+     * disabled core policy, and maps {@code WARN} and {@code ENFORCE} to enabled
+     * core policies with different rejection behavior.
      *
      * @return authorization mode
      */
@@ -37,6 +41,10 @@ public interface McpGatewayAuthorizationEvaluator extends GatewayToolAuthorizati
 
     /**
      * Returns whether authorization should be evaluated.
+     * <p>
+     * This legacy helper is derived from {@link #mode()}. The WebFlux governance
+     * filter uses {@link #policy()} as the source of truth so custom evaluators
+     * can override the full policy without changing constructor compatibility.
      *
      * @return true when enabled
      */
