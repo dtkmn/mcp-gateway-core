@@ -23,6 +23,11 @@ The optional `mcp-gateway-spring-webflux` artifact adds a WebFlux governance
 filter over those contracts. It is not a full gateway runtime, proxy data plane,
 scanner integration, UI, or service mesh.
 
+The latest published preview line is `0.6.x`; `0.7.0` is the current hardening
+target. The WebFlux adapter now documents fail-closed request-shape behavior
+when governance is active and exact downstream pass-through when governance is
+inactive.
+
 ## Choose Your Path
 
 | Need | Start Here |

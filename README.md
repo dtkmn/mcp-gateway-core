@@ -16,8 +16,9 @@ contracts.
 It is not a gateway runtime, router, scanner integration, UI, service mesh, or
 traffic-management data plane.
 
-Current status: public preview. The package and coordinate are intended for
-early integration proof, not a stable compatibility promise.
+Current status: public preview. The latest published preview line is `0.6.x`;
+`0.7.0` is the current hardening target. The package and coordinate are
+intended for early integration proof, not a stable compatibility promise.
 
 ## Architecture At A Glance
 
@@ -86,6 +87,12 @@ Included:
 - gateway execution context and principal/workspace model
 - optional Spring WebFlux governance filter and JSON-RPC parsing adapters
 
+The Spring WebFlux adapter fails closed on invalid MCP JSON-RPC request shapes
+only when governance is active. When both authorization and abuse protection are
+inactive, it preserves exact downstream pass-through, including JSON-RPC batch
+bodies. See the [contract reference](docs/CONTRACT_REFERENCE.md) for the full
+wire contract.
+
 Excluded:
 
 - scanner integrations
@@ -145,6 +152,18 @@ closed-world JAR checks, Java 17 bytecode checks, adapter runtime-classpath
 bytecode checks, core `jdeps`, Gradle deprecation enforcement, unsigned Central
 Portal bundle validation, and signed dry-run bundle validation with an ephemeral
 local GPG key.
+
+Release preparation also runs the Java 17 consumer checks against staged
+artifacts:
+
+```bash
+./bin/java17-consumer-smoke.sh
+./bin/java17-source-compat-0.6-consumer.sh
+```
+
+The smoke script uses separate clean external consumers for core-only and
+Spring WebFlux scenarios, resolves `io.github.dtkmn` artifacts only from the
+staged repository, and exercises the WebFlux filter path.
 
 ## Coordinates
 

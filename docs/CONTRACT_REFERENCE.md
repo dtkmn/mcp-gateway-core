@@ -366,6 +366,11 @@ For `0.7.0`, the adapter does not require or validate the JSON-RPC `jsonrpc`
 version field. That protocol validation remains the downstream runtime's
 responsibility.
 
+Batch arrays are unsupported by the governance adapter only while governance is
+active. They return `400` with reason `batch_not_supported` in that mode. This
+is not a global transport validator rule: when governance is inactive, batches
+pass downstream exactly like any other body.
+
 When neither authorization nor protection governance is active, the adapter does
 not validate, buffer, or replay MCP request bodies. Invalid JSON-RPC bodies,
 batch bodies, and bodies larger than `maxBodyBytes` pass downstream unchanged.
