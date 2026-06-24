@@ -192,7 +192,7 @@ class ProjectDocumentationAndSecurityToolingTest {
 
         for (Path workflow : workflows) {
             String content = Files.readString(workflow);
-            assertTrue(content.contains("actions/checkout@v6"), () -> workflow + " should use current checkout action");
+            assertTrue(content.contains("actions/checkout@v7"), () -> workflow + " should use current checkout action");
             assertTrue(!content.contains("actions/checkout@v5"), () -> workflow + " should not use stale checkout action");
         }
     }
