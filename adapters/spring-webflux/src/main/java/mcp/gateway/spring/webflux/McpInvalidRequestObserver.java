@@ -6,6 +6,9 @@ package mcp.gateway.spring.webflux;
  * <p>
  * Implementations should treat the arguments as low-cardinality telemetry
  * fields. The adapter never passes the request payload to this observer.
+ * Stable reason values are {@code invalid_json_rpc_request},
+ * {@code batch_not_supported}, {@code invalid_request_shape}, and
+ * {@code request_body_too_large}.
  */
 @FunctionalInterface
 public interface McpInvalidRequestObserver {

@@ -13,10 +13,11 @@ public interface McpGatewayWebFluxContextResolver {
     /**
      * Resolves the core context for a parsed invocation.
      *
-     * @param authentication authenticated Spring principal
+     * @param authentication authenticated Spring principal, or {@code null}
+     *        for unauthenticated requests
      * @param exchange request exchange
      * @param invocation normalized invocation
-     * @return tool execution context
+     * @return non-null tool execution context
      */
     GatewayToolExecutionContext resolve(Authentication authentication,
                                         ServerWebExchange exchange,
