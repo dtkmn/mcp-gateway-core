@@ -27,6 +27,9 @@ import reactor.core.publisher.Mono;
  * requests pass downstream without body buffering or validation. With governance
  * active, invalid MCP JSON-RPC request shapes are rejected before principal
  * lookup, context resolution, authorization, protection, or downstream handling.
+ * Invalid or oversized bodies are reported through
+ * {@link McpInvalidRequestObserver}; authorization and protection observers
+ * are used only after a request has a valid governance shape.
  */
 public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Ordered {
     private final ObjectMapper objectMapper;
@@ -118,6 +121,8 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
      * <p>
      * Any nullable optional collaborator falls back to the adapter default except
      * {@code objectMapper} and {@code contextResolver}, which are required.
+     * The invalid-request observer receives only stable reason, server request id,
+     * and correlation id fields; request payloads are never exposed to it.
      *
      * @param objectMapper JSON mapper used for parsing and rejection responses
      * @param properties WebFlux adapter properties

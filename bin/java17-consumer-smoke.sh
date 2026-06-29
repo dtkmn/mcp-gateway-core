@@ -189,6 +189,33 @@ public final class CoreSmoke {
         );
 
         require(decision.allowed(), "expected demo_tool authorization to be allowed");
+        require(decision.mapped(), "expected demo_tool authorization to be mapped");
+
+        GatewayToolExecutionContext toolsListContext = GatewayToolExecutionContext.of(
+                "demo-client",
+                "demo-workspace",
+                "demo-correlation",
+                McpToolInvocation.fromJsonRpc(McpToolInvocation.METHOD_TOOLS_LIST, null),
+                null
+        );
+        ToolAuthorizationDecision toolsListDecision = authorizer.authorize(
+                toolsListContext,
+                List.of("mcp:tools:list"),
+                false,
+                true
+        );
+        require(toolsListDecision.allowed(), "expected tools/list authorization to be allowed");
+        require(McpToolAuthorizer.TOOLS_LIST_ACTION.equals(toolsListDecision.actionName()),
+                "expected tools/list synthetic gateway action");
+
+        ToolAuthorizationDecision unmappedDecision = authorizer.authorizeToolCall(
+                "missing_tool",
+                List.of("*"),
+                true,
+                true
+        );
+        require(!unmappedDecision.allowed(), "expected unmapped tool authorization to fail closed");
+        require(!unmappedDecision.mapped(), "expected unmapped tool authorization to be marked unmapped");
 
         GatewayToolExecutionContext context = GatewayToolExecutionContext.of(
                 "demo-client",
@@ -255,6 +282,7 @@ import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.invocation.McpToolInvocation;
 import mcp.gateway.core.invocation.McpToolInvocationKind;
 import mcp.gateway.core.protection.McpAbuseProtectionDecision;
+import mcp.gateway.spring.webflux.McpAuthorizationObservation;
 import mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator;
 import mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator;
 import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
@@ -266,6 +294,7 @@ import mcp.gateway.spring.webflux.McpInvalidRequestObserver;
 import mcp.gateway.spring.webflux.McpJsonRpcToolInvocationParser;
 import mcp.gateway.spring.webflux.McpProtectionRejectionObserver;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
@@ -300,13 +329,15 @@ public final class WebFluxSmoke {
             @Override
             public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
                                                        GatewayToolExecutionContext context) {
+                List<String> granted = List.copyOf(grantedScopes);
+                boolean allowed = granted.contains("demo:run");
                 return new ToolAuthorizationDecision(
-                        false,
+                        allowed,
                         true,
                         context.actionName(),
                         List.of("demo:run"),
-                        List.copyOf(grantedScopes),
-                        List.of("demo:run")
+                        granted,
+                        allowed ? List.of() : List.of("demo:run")
                 );
             }
         };
@@ -324,6 +355,7 @@ public final class WebFluxSmoke {
             }
         };
 
+        AtomicReference<McpAuthorizationObservation> authorizationObservation = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
                 new ObjectMapper(),
                 new McpGatewayWebFluxProperties("/mcp", 4096, 7),
@@ -337,8 +369,7 @@ public final class WebFluxSmoke {
                         null
                 ),
                 McpGrantedScopesExtractor.springSecurityScopes(),
-                observation -> {
-                },
+                authorizationObservation::set,
                 McpProtectionRejectionObserver.noop(),
                 McpGatewayCorrelationIdResolver.fromHeader("X-Correlation-Id"),
                 invalidObserver
@@ -358,13 +389,83 @@ public final class WebFluxSmoke {
                 .principal(Mono.just(new UsernamePasswordAuthenticationToken(
                         "demo-client",
                         "n/a",
-                        List.of(new SimpleGrantedAuthority("SCOPE_demo:run"))
+                        List.of(new SimpleGrantedAuthority("SCOPE_demo:read"))
                 )))
                 .build();
 
         filter.filter(validExchange, captureBodyChain(downstreamBody)).block();
         require(validExchange.getResponse().getStatusCode() == null, "valid request should pass downstream");
         require(validBody.equals(downstreamBody.get()), "valid request body should be replayed downstream");
+        McpAuthorizationObservation observedAuthorization = authorizationObservation.get();
+        require(observedAuthorization != null, "expected authorization observation");
+        require("demo_tool".equals(observedAuthorization.actionName()), "expected observed tool action");
+        require("warn".equals(observedAuthorization.outcome()), "expected warn authorization observation");
+        require("insufficient_scope".equals(observedAuthorization.reason()), "expected insufficient scope reason");
+        require(List.of("demo:run").equals(observedAuthorization.requiredScopes()), "expected required scopes");
+        require(List.of("demo:read").equals(observedAuthorization.grantedScopes()), "expected granted scopes");
+        require("demo-client".equals(observedAuthorization.context().principalId()), "expected observed principal");
+        require("workspace-a".equals(observedAuthorization.context().workspaceId()), "expected observed workspace");
+        require("correlation-1".equals(observedAuthorization.context().correlationId()),
+                "expected observed correlation id");
+
+        AtomicReference<McpAbuseProtectionDecision> protectionRejection = new AtomicReference<>();
+        McpGatewayWebFluxGovernanceFilter protectionFilter = new McpGatewayWebFluxGovernanceFilter(
+                new ObjectMapper(),
+                new McpGatewayWebFluxProperties("/mcp", 4096, 7),
+                authorizationEvaluator,
+                new McpGatewayAbuseProtectionEvaluator() {
+                    @Override
+                    public boolean enabled() {
+                        return true;
+                    }
+
+                    @Override
+                    public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
+                        return McpAbuseProtectionDecision.reject(
+                                "rate_limited",
+                                "too many requests",
+                                context.toolName(),
+                                context.principalId(),
+                                context.workspaceId(),
+                                5
+                        );
+                    }
+                },
+                (authentication, exchange, parsed) -> GatewayToolExecutionContext.of(
+                        authentication == null ? null : authentication.getName(),
+                        "workspace-a",
+                        McpGatewayCorrelationIdResolver.defaultResolver().resolve(exchange),
+                        parsed,
+                        null
+                ),
+                McpGrantedScopesExtractor.springSecurityScopes(),
+                observation -> {
+                },
+                (decision, context) -> protectionRejection.set(decision),
+                McpGatewayCorrelationIdResolver.fromHeader("X-Correlation-Id"),
+                invalidObserver
+        );
+        ServerWebExchange protectedExchange = MockServerWebExchange.from(MockServerHttpRequest.post("/mcp")
+                        .header("X-Correlation-Id", "correlation-protected")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(validBody))
+                .mutate()
+                .principal(Mono.just(new UsernamePasswordAuthenticationToken(
+                        "demo-client",
+                        "n/a",
+                        List.of(new SimpleGrantedAuthority("SCOPE_demo:run"))
+                )))
+                .build();
+
+        protectionFilter.filter(protectedExchange, ignored -> Mono.error(new IllegalStateException("must not call chain")))
+                .block();
+        require(protectedExchange.getResponse().getStatusCode().value() == 429,
+                "protection rejection should return 429");
+        require("5".equals(protectedExchange.getResponse().getHeaders().getFirst(HttpHeaders.RETRY_AFTER)),
+                "protection rejection should set Retry-After");
+        require(protectionRejection.get() != null, "expected protection rejection observer");
+        require("rate_limited".equals(protectionRejection.get().errorCode()),
+                "expected observed protection error code");
 
         AtomicReference<String> rejectedReason = new AtomicReference<>();
         AtomicReference<String> rejectedRequestId = new AtomicReference<>();

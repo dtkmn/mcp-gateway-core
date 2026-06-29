@@ -6,9 +6,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 class ProjectDocumentationAndSecurityToolingTest {
+    private static final Pattern CHECKOUT_ACTION = Pattern.compile("actions/checkout@([^\\s\"']+)");
 
     @Test
     void readmeLinksModuleRoadmapSecurityAndReleaseDocs() throws IOException {
@@ -190,10 +192,23 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(releaseNotes.contains("batch_not_supported"));
         assertTrue(releaseNotes.contains("passes batch bodies downstream unchanged"));
 
+        List<String> workflowsThatNeedCheckout = List.of(
+                "central-validation-upload.yml",
+                "ci.yml",
+                "codeql.yml",
+                "pages.yml",
+                "snyk.yml");
         for (Path workflow : workflows) {
             String content = Files.readString(workflow);
-            assertTrue(content.contains("actions/checkout@v7"), () -> workflow + " should use current checkout action");
-            assertTrue(!content.contains("actions/checkout@v5"), () -> workflow + " should not use stale checkout action");
+            var checkout = CHECKOUT_ACTION.matcher(content);
+            boolean foundCheckout = false;
+            while (checkout.find()) {
+                foundCheckout = true;
+                assertTrue("v7".equals(checkout.group(1)), () -> workflow + " should use actions/checkout@v7");
+            }
+            if (workflowsThatNeedCheckout.contains(workflow.getFileName().toString())) {
+                assertTrue(foundCheckout, () -> workflow + " should check out repository contents");
+            }
         }
     }
 }

@@ -14,8 +14,8 @@ public interface McpGrantedScopesExtractor {
     /**
      * Extracts granted scopes.
      *
-     * @param authentication Spring authentication
-     * @return normalized scopes
+     * @param authentication Spring authentication, or {@code null}
+     * @return non-null normalized scopes; return an empty list when no scopes apply
      */
     List<String> extract(Authentication authentication);
 

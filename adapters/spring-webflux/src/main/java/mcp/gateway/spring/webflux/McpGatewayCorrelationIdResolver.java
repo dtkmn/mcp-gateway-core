@@ -25,7 +25,8 @@ public interface McpGatewayCorrelationIdResolver {
     }
 
     /**
-     * Resolves from a header, falling back to the server request id.
+     * Resolves from a non-blank header value, falling back to the server request id.
+     * Null or blank header names use {@code X-Correlation-Id}.
      *
      * @param headerName header name
      * @return resolver
