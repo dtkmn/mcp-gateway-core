@@ -51,7 +51,7 @@ jobs:
           SNYK_ORG: ${{ secrets.SNYK_ORG || vars.SNYK_ORG }}
         run: |
           set +e
-          snyk_args=(--all-sub-projects --sarif-file-output=snyk-open-source.sarif)
+          snyk_args=(--all-sub-projects --policy-path=.snyk --sarif-file-output=snyk-open-source.sarif)
           if [ -n "${SNYK_ORG}" ]; then
             snyk_args+=("--org=${SNYK_ORG}")
           fi
