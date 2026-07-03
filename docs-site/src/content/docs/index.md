@@ -23,6 +23,10 @@ The optional `mcp-gateway-spring-webflux` artifact adds a WebFlux governance
 filter over those contracts. It is not a full gateway runtime, proxy data plane,
 scanner integration, UI, or service mesh.
 
+`mcp-gateway-core`'s lane is deliberately narrow: embeddable governance
+contracts for Java MCP tool runtimes. It is not an MCP server SDK, Spring Boot
+starter, OAuth provider, policy language, plugin system, proxy, or data plane.
+
 The latest published preview line is `0.7.x`. The WebFlux adapter documents
 fail-closed request-shape behavior when governance is active and exact downstream
 pass-through when governance is inactive.
