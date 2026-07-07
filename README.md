@@ -20,6 +20,18 @@ Current status: public preview. The latest published preview line is `0.7.x`.
 The package and coordinate are intended for early integration proof, not a
 stable compatibility promise.
 
+## Positioning
+
+`mcp-gateway-core` is an embeddable Java governance contract library for MCP
+tool runtimes. It gives runtimes a shared vocabulary for tool identity, access
+rules, governance decisions, audit events, abuse-protection decisions, rate
+limits, correlation IDs, URL scope checks, and adapter-facing primitives.
+
+It is not an MCP server SDK, Spring Boot starter, OAuth provider, policy
+language, scanner layer, plugin system, proxy, or data plane. Those systems may
+use these contracts, but they should keep their runtime, product, storage, and
+transport behavior outside this library.
+
 ## Architecture At A Glance
 
 ```mermaid
@@ -95,11 +107,15 @@ wire contract.
 
 Excluded:
 
+- MCP server SDK behavior
 - scanner integrations
 - report, finding, queue, or evidence storage
+- OAuth provider or auth-server behavior
 - Spring Boot application wiring or auto-configuration
 - enterprise packaging
 - A2A, LLM-provider, service-mesh, or Kubernetes gateway implementation
+- policy-language runtime
+- plugin loading
 - product-specific tool names from downstream security packs
 
 For package-by-package detail, see the [module map](docs/MODULES.md).

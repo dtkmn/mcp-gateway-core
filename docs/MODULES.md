@@ -12,6 +12,16 @@ deterministic primitives. Adapter artifacts may own framework glue. Runtime
 projects still own authentication providers, storage, policy sources,
 observability backends, and domain-specific tools.
 
+## Positioning
+
+This repo's lane is the governance contract layer for Java MCP tool runtimes.
+It defines reusable value types, decision mechanics, audit vocabulary, and
+adapter-facing primitives that other runtimes can embed.
+
+It is not an MCP server SDK, Spring Boot starter, OAuth provider, policy
+language, scanner layer, plugin system, proxy, or data plane. Those projects can
+consume these contracts without moving their runtime behavior into this repo.
+
 ## Package Map
 
 | Package | Owns | Does Not Own |
@@ -55,9 +65,13 @@ Good candidates:
 
 Bad candidates:
 
+- MCP server SDK behavior;
 - controllers or Spring Boot auto-configuration;
+- OAuth provider or auth-server behavior;
 - scanner, report, finding, evidence, or queue models;
 - SaaS tenancy implementation;
+- policy-language runtime;
+- plugin loading;
 - product-specific policy files or tool names;
 - proxy/data-plane routing.
 
