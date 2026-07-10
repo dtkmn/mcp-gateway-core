@@ -40,10 +40,14 @@ Out of scope:
 
 The repository uses GitHub-native checks first:
 
-- Dependabot version updates for GitHub Actions and Gradle;
+- Dependabot version updates for GitHub Actions, Gradle, and npm;
+- Gradle distribution checksum pinning and Wrapper JAR validation before CI
+  workflows execute the build;
 - CodeQL Java analysis with an explicit Gradle test build;
-- the Gradle public-preview verification gate for forbidden coupling,
-  closed-world JAR contents, `jdeps`, Central bundle shape, checksums, and
+- the snapshot-safe Gradle development gate for forbidden coupling, closed-world
+  JAR contents, `jdeps`, bytecode, API compatibility, and staged-publication
+  checks;
+- the release-only public-preview gate for Central bundle shape, checksums, and
   signed dry-run payload validation.
 
 The repository also has an explicit Snyk Open Source workflow for the Gradle

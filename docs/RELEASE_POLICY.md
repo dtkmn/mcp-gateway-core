@@ -21,7 +21,19 @@ stable release gate exists.
 
 ## Release Gates
 
-Before publishing any public-preview artifact, CI must pass:
+Normal development CI runs the snapshot-safe gate:
+
+```bash
+./gradlew verifyGatewayDevelopment --no-daemon --stacktrace --warning-mode fail
+```
+
+That gate runs tests, compatibility and artifact-boundary checks, and stages both
+Maven publications for downstream Java 17 consumer checks. It deliberately omits
+Central Portal bundles and release signing because the development version is a
+snapshot.
+
+Before publishing any public-preview artifact, a release candidate with an
+unpublished, non-snapshot version must additionally pass:
 
 ```bash
 ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
@@ -30,6 +42,8 @@ Before publishing any public-preview artifact, CI must pass:
 That gate proves:
 
 - unit tests pass;
+- the Gradle distribution checksum is pinned, while CI separately validates the
+  checked-in Gradle Wrapper JAR before executing it;
 - Gradle deprecations fail the build instead of becoming release-prep noise;
 - accepted API/binary deltas are machine-readable and release-note linked;
 - public/protected API signatures remain compatible with the frozen `0.6.0`
@@ -44,11 +58,12 @@ That gate proves:
 - checksums match the ZIP payload;
 - the signed dry-run ZIP verifies detached signatures from extracted payloads.
 
-CI must also run `bin/java17-consumer-smoke.sh` and
+CI and release preparation must also run `bin/java17-consumer-smoke.sh` and
 `bin/java17-source-compat-0.6-consumer.sh` after the public-preview proof.
-Those checks switch to a Java 17 runtime. The smoke test compiles and runs
-separate clean downstream consumers: one that depends only on staged
-`mcp-gateway-core`, and one that depends on staged
+Those checks switch to a Java 17 runtime. The development gate stages snapshot
+artifacts; the release gate stages the selected release version. The smoke test
+compiles and runs separate clean downstream consumers: one that depends only on
+staged `mcp-gateway-core`, and one that depends on staged
 `mcp-gateway-spring-webflux` and its published transitive API dependencies. The
 source-compatibility fixture compiles frozen `0.6.0` consumer source from a
 temporary external Gradle project that resolves `io.github.dtkmn` artifacts
@@ -77,13 +92,21 @@ upload path must pass:
 That command uses the configured release GPG key, creates a release-signed
 bundle containing `mcp-gateway-core` and `mcp-gateway-spring-webflux`, verifies
 the extracted ZIP payload, and prints the exact confirmation token required for
-an optional `USER_MANAGED` validation upload.
+an optional `USER_MANAGED` validation upload. Before signing or uploading, it
+also requires a JDK 17 (through `GATEWAY_CORE_JAVA17_HOME` when necessary) and
+runs both downstream consumer scripts against the exact release-version staging
+repository.
 
 ## Publishing Boundary
 
 Publishing is manual until this policy says otherwise. A validation bundle is
 not a release. A Central Portal deployment is not public until it is explicitly
 published in the Portal.
+
+The development branch uses the next `-SNAPSHOT` version. Release preparation
+must deliberately select an unpublished, non-snapshot version; the guarded
+upload path rejects snapshots and refuses to upload a coordinate that already
+exists on Maven Central.
 
 Once a version is published to Maven Central, the same coordinate and version
 must never be reused.
