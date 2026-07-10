@@ -7,6 +7,9 @@ package mcp.gateway.spring.webflux;
 public interface McpAuthorizationObserver {
     /**
      * Records an authorization observation.
+     * <p>
+     * Implementations must not throw during normal operation. An exception is
+     * propagated through the filter publisher and prevents downstream execution.
      *
      * @param observation observation
      */

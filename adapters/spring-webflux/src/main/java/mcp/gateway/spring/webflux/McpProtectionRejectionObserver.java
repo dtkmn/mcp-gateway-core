@@ -10,6 +10,9 @@ import mcp.gateway.core.protection.McpAbuseProtectionDecision;
 public interface McpProtectionRejectionObserver {
     /**
      * Records a rejected decision.
+     * <p>
+     * Implementations must not throw during normal operation. An exception is
+     * propagated through the filter publisher and the request remains rejected.
      *
      * @param decision rejection decision
      * @param context execution context

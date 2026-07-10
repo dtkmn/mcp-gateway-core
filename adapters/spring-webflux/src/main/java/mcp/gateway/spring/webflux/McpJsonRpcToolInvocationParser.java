@@ -1,6 +1,7 @@
 package mcp.gateway.spring.webflux;
 
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -50,6 +51,9 @@ public final class McpJsonRpcToolInvocationParser {
 
         JsonNode root;
         try (JsonParser jsonParser = objectMapper.getFactory().createParser(bodyBytes)) {
+            // A downstream JSON-RPC decoder may resolve duplicate fields differently.
+            // Reject them here instead of authorizing one interpretation and executing another.
+            jsonParser.enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION.mappedFeature());
             root = objectMapper.readTree(jsonParser);
             if (jsonParser.nextToken() != null) {
                 return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
@@ -72,11 +76,13 @@ public final class McpJsonRpcToolInvocationParser {
         if (methodNode == null || methodNode.isNull()) {
             return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.MISSING_METHOD);
         }
-        if (!methodNode.isTextual() || methodNode.textValue().isBlank()) {
+        if (!methodNode.isTextual()
+                || methodNode.textValue().isBlank()
+                || hasBoundaryWhitespace(methodNode.textValue())) {
             return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_METHOD);
         }
 
-        String method = methodNode.textValue().trim();
+        String method = methodNode.textValue();
         if (!McpToolInvocation.METHOD_TOOLS_CALL.equals(method)) {
             return McpJsonRpcRequestClassification.valid(McpToolInvocation.fromJsonRpc(method, null));
         }
@@ -89,10 +95,22 @@ public final class McpJsonRpcToolInvocationParser {
         if (toolNameNode == null || toolNameNode.isNull()) {
             return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.MISSING_TOOL_NAME);
         }
-        if (!toolNameNode.isTextual() || toolNameNode.textValue().isBlank()) {
+        if (!toolNameNode.isTextual()
+                || toolNameNode.textValue().isBlank()
+                || hasBoundaryWhitespace(toolNameNode.textValue())) {
             return McpJsonRpcRequestClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
         }
         return McpJsonRpcRequestClassification.valid(McpToolInvocation.fromJsonRpc(method, toolNameNode.textValue()));
+    }
+
+    private boolean hasBoundaryWhitespace(String value) {
+        int first = value.codePointAt(0);
+        int last = value.codePointBefore(value.length());
+        return isWhitespace(first) || isWhitespace(last);
+    }
+
+    private boolean isWhitespace(int codePoint) {
+        return Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint);
     }
 
     private boolean emptyBody(byte[] bodyBytes) {

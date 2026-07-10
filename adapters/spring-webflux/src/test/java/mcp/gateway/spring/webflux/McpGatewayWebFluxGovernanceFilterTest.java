@@ -2,7 +2,6 @@ package mcp.gateway.spring.webflux;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,6 +21,7 @@ import mcp.gateway.core.governance.GatewayToolAuthorizationPolicy;
 import mcp.gateway.core.protection.McpAbuseProtectionDecision;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.core.io.buffer.DataBufferLimitException;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -56,6 +56,67 @@ class McpGatewayWebFluxGovernanceFilterTest {
     }
 
     @Test
+    void governsApplicationRelativeEndpointUnderContextPath() {
+        AtomicBoolean downstreamCalled = new AtomicBoolean(false);
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                PROPERTIES,
+                authorization(McpGatewayAuthorizationMode.ENFORCE, authDenied()),
+                null,
+                contextResolver()
+        );
+        ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/app/mcp")
+                        .contextPath("/app")
+                        .header("X-Correlation-Id", "corr-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(toolCallBody()))
+                .mutate()
+                .principal(Mono.just(authentication("demo-client", "SCOPE_demo:read")))
+                .build();
+
+        StepVerifier.create(filter.filter(exchange, markCalledChain(downstreamCalled))).verifyComplete();
+
+        assertFalse(downstreamCalled.get());
+        assertEquals(403, exchange.getResponse().getStatusCode().value());
+    }
+
+    @Test
+    void governsMatrixParameterizedEndpointWithoutBroadeningToSubpaths() {
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                PROPERTIES,
+                authorization(McpGatewayAuthorizationMode.ENFORCE, authDenied()),
+                null,
+                contextResolver()
+        );
+        AtomicBoolean matrixDownstreamCalled = new AtomicBoolean(false);
+        ServerWebExchange matrixExchange = exchangeAtPath(
+                "/mcp;transport=sse",
+                toolCallBody(),
+                authentication("demo-client", "SCOPE_demo:read")
+        );
+
+        StepVerifier.create(filter.filter(matrixExchange, markCalledChain(matrixDownstreamCalled))).verifyComplete();
+
+        assertFalse(matrixDownstreamCalled.get());
+        assertEquals(403, matrixExchange.getResponse().getStatusCode().value());
+
+        for (String path : List.of("/mcp/child", "/mcp/")) {
+            AtomicBoolean downstreamCalled = new AtomicBoolean(false);
+            ServerWebExchange exchange = exchangeAtPath(
+                    path,
+                    toolCallBody(),
+                    authentication("demo-client", "SCOPE_demo:read")
+            );
+
+            StepVerifier.create(filter.filter(exchange, markCalledChain(downstreamCalled))).verifyComplete();
+
+            assertTrue(downstreamCalled.get(), path);
+            assertEquals(null, exchange.getResponse().getStatusCode(), path);
+        }
+    }
+
+    @Test
     void allowsRequestAndPreservesBodyAfterOneGovernancePass() {
         List<McpAuthorizationObservation> observations = new ArrayList<>();
         AtomicReference<String> downstreamBody = new AtomicReference<>();
@@ -81,6 +142,35 @@ class McpGatewayWebFluxGovernanceFilterTest {
         assertEquals("allowed", observations.get(0).outcome());
         assertEquals("scope_granted", observations.get(0).reason());
         assertEquals("demo-client", observations.get(0).context().principalId());
+    }
+
+    @Test
+    void propagatesDownstreamDataBufferLimitFailureWithoutRewritingItAsRequestTooLarge() {
+        AtomicBoolean invalidRequestObserved = new AtomicBoolean(false);
+        DataBufferLimitException downstreamFailure = new DataBufferLimitException("downstream response limit");
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                PROPERTIES,
+                authorization(McpGatewayAuthorizationMode.ENFORCE, authAllowed()),
+                null,
+                contextResolver(),
+                McpGrantedScopesExtractor.springSecurityScopes(),
+                McpAuthorizationObserver.noop(),
+                McpProtectionRejectionObserver.noop(),
+                McpGatewayCorrelationIdResolver.defaultResolver(),
+                (reason, requestId, correlationId) -> invalidRequestObserved.set(true)
+        );
+        ServerWebExchange exchange = exchange(
+                toolCallBody(),
+                authentication("demo-client", "SCOPE_demo:run")
+        );
+
+        StepVerifier.create(filter.filter(exchange, ignored -> Mono.error(downstreamFailure)))
+                .expectErrorSatisfies(failure -> assertEquals(downstreamFailure, failure))
+                .verify();
+
+        assertFalse(invalidRequestObserved.get());
+        assertEquals(null, exchange.getResponse().getStatusCode());
     }
 
     @Test
@@ -122,6 +212,26 @@ class McpGatewayWebFluxGovernanceFilterTest {
         assertEquals("insufficient_scope", observations.get(0).reason());
         assertEquals(403, exchange.getResponse().getStatusCode().value());
         assertTrue(responseBody(exchange).contains("\"error\":\"insufficient_scope\""));
+    }
+
+    @Test
+    void rejectionFallsBackToResolvedRequestIdWhenContextHasNoCorrelationId() throws Exception {
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                PROPERTIES,
+                authorization(McpGatewayAuthorizationMode.ENFORCE, authDenied()),
+                null,
+                contextResolver()
+        );
+        ServerWebExchange exchange = exchangeWithoutCorrelationHeader(
+                toolCallBody(),
+                Mono.just(authentication("demo-client", "SCOPE_demo:read"))
+        );
+
+        StepVerifier.create(filter.filter(exchange, ignored -> Mono.empty())).verifyComplete();
+
+        JsonNode body = OBJECT_MAPPER.readTree(responseBody(exchange));
+        assertEquals(exchange.getRequest().getId(), body.get("correlationId").asText());
     }
 
     @Test
@@ -202,14 +312,89 @@ class McpGatewayWebFluxGovernanceFilterTest {
                 contextResolver()
         );
 
-        NullPointerException failure = assertThrows(NullPointerException.class, () -> filter.filter(
-                exchange(toolCallBody(), authentication("demo-client", "SCOPE_demo:run")),
-                markCalledChain(downstreamCalled)
-        ));
+        StepVerifier.create(filter.filter(
+                        exchange(toolCallBody(), authentication("demo-client", "SCOPE_demo:run")),
+                        markCalledChain(downstreamCalled)
+                ))
+                .expectErrorMatches(failure -> failure instanceof NullPointerException
+                        && "authorization evaluator policy must not be null".equals(failure.getMessage()))
+                .verify();
 
-        assertEquals("authorization evaluator policy must not be null", failure.getMessage());
         assertFalse(authorizationCalled.get());
         assertFalse(protectionCalled.get());
+        assertFalse(downstreamCalled.get());
+    }
+
+    @Test
+    void normalizesNullScopesFromCustomExtractorToEmptyCollection() {
+        AtomicReference<Collection<String>> evaluatedScopes = new AtomicReference<>();
+        AtomicBoolean downstreamCalled = new AtomicBoolean(false);
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                PROPERTIES,
+                new McpGatewayAuthorizationEvaluator() {
+                    @Override
+                    public McpGatewayAuthorizationMode mode() {
+                        return McpGatewayAuthorizationMode.ENFORCE;
+                    }
+
+                    @Override
+                    public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
+                                                               GatewayToolExecutionContext context) {
+                        evaluatedScopes.set(grantedScopes);
+                        return authAllowed();
+                    }
+                },
+                null,
+                contextResolver(),
+                ignored -> null,
+                McpAuthorizationObserver.noop(),
+                McpProtectionRejectionObserver.noop(),
+                McpGatewayCorrelationIdResolver.defaultResolver()
+        );
+
+        StepVerifier.create(filter.filter(
+                        exchange(toolCallBody(), authentication("demo-client", "SCOPE_demo:run")),
+                        markCalledChain(downstreamCalled)
+                ))
+                .verifyComplete();
+
+        assertEquals(List.of(), evaluatedScopes.get());
+        assertTrue(downstreamCalled.get());
+    }
+
+    @Test
+    void observerFailureIsReactiveAndFailsClosed() {
+        AtomicBoolean contextResolved = new AtomicBoolean(false);
+        AtomicBoolean downstreamCalled = new AtomicBoolean(false);
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                PROPERTIES,
+                authorization(McpGatewayAuthorizationMode.ENFORCE, authAllowed()),
+                null,
+                (authentication, exchange, invocation) -> {
+                    contextResolved.set(true);
+                    return contextResolver().resolve(authentication, exchange, invocation);
+                },
+                McpGrantedScopesExtractor.springSecurityScopes(),
+                ignored -> {
+                    throw new IllegalStateException("observer unavailable");
+                },
+                McpProtectionRejectionObserver.noop(),
+                McpGatewayCorrelationIdResolver.defaultResolver()
+        );
+
+        Mono<Void> result = filter.filter(
+                exchange(toolCallBody(), authentication("demo-client", "SCOPE_demo:run")),
+                markCalledChain(downstreamCalled)
+        );
+
+        assertFalse(contextResolved.get());
+        StepVerifier.create(result)
+                .expectErrorMatches(failure -> failure instanceof IllegalStateException
+                        && "observer unavailable".equals(failure.getMessage()))
+                .verify();
+        assertTrue(contextResolved.get());
         assertFalse(downstreamCalled.get());
     }
 
@@ -852,6 +1037,16 @@ class McpGatewayWebFluxGovernanceFilterTest {
 
     private static ServerWebExchange exchange(String body, Authentication authentication) {
         return MockServerWebExchange.from(MockServerHttpRequest.post("/mcp")
+                        .header("X-Correlation-Id", "corr-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(body))
+                .mutate()
+                .principal(Mono.just(authentication))
+                .build();
+    }
+
+    private static ServerWebExchange exchangeAtPath(String path, String body, Authentication authentication) {
+        return MockServerWebExchange.from(MockServerHttpRequest.post(path)
                         .header("X-Correlation-Id", "corr-1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(body))

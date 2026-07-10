@@ -1,5 +1,6 @@
 package mcp.gateway.spring.webflux;
 
+import mcp.gateway.core.logging.CorrelationIds;
 import org.springframework.web.server.ServerWebExchange;
 
 /**
@@ -25,7 +26,7 @@ public interface McpGatewayCorrelationIdResolver {
     }
 
     /**
-     * Resolves from a non-blank header value, falling back to the server request id.
+     * Resolves from a bounded, log-safe header value, falling back to the server request id.
      * Null or blank header names use {@code X-Correlation-Id}.
      *
      * @param headerName header name
@@ -37,9 +38,11 @@ public interface McpGatewayCorrelationIdResolver {
             if (exchange == null || exchange.getRequest() == null) {
                 return null;
             }
-            String value = exchange.getRequest().getHeaders().getFirst(effectiveHeader);
-            if (value != null && !value.isBlank()) {
-                return value.trim();
+            String value = CorrelationIds.sanitize(
+                    exchange.getRequest().getHeaders().getFirst(effectiveHeader)
+            );
+            if (value != null) {
+                return value;
             }
             return exchange.getRequest().getId();
         };

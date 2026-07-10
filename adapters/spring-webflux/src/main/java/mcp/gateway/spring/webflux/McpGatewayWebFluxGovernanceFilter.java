@@ -12,6 +12,7 @@ import mcp.gateway.core.governance.GatewayToolGovernanceOutcome;
 import mcp.gateway.core.invocation.McpToolInvocation;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBufferLimitException;
+import org.springframework.http.server.PathContainer;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -35,6 +36,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
     private final ObjectMapper objectMapper;
     private final McpJsonRpcToolInvocationParser parser;
     private final McpGatewayWebFluxProperties properties;
+    private final PathContainer mcpEndpointPath;
     private final McpGatewayAuthorizationEvaluator authorizationEvaluator;
     private final McpGatewayAbuseProtectionEvaluator protectionEvaluator;
     private final McpGatewayWebFluxContextResolver contextResolver;
@@ -148,6 +150,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
         this.parser = new McpJsonRpcToolInvocationParser(objectMapper);
         this.properties = properties == null ? McpGatewayWebFluxProperties.defaults() : properties;
+        this.mcpEndpointPath = PathContainer.parsePath(this.properties.mcpEndpoint());
         this.authorizationEvaluator = authorizationEvaluator;
         this.protectionEvaluator = protectionEvaluator;
         this.contextResolver = Objects.requireNonNull(contextResolver, "contextResolver must not be null");
@@ -164,6 +167,10 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        return Mono.defer(() -> filterRequest(exchange, chain));
+    }
+
+    private Mono<Void> filterRequest(ServerWebExchange exchange, WebFilterChain chain) {
         if (!isRelevantRequest(exchange) || !governanceEnabled()) {
             return chain.filter(exchange);
         }
@@ -176,7 +183,13 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
 
     private Mono<Void> cacheAndEvaluate(ServerWebExchange exchange,
                                         WebFilterChain chain) {
-        return McpGatewayWebFluxRequestBodies.read(exchange, properties.maxBodyBytes())
+        Mono<byte[]> cachedBody = McpGatewayWebFluxRequestBodies.read(exchange, properties.maxBodyBytes())
+                .onErrorResume(
+                        DataBufferLimitException.class,
+                        ignored -> writePayloadTooLarge(exchange).then(Mono.<byte[]>empty())
+                );
+
+        return cachedBody
                 .flatMap(bodyBytes -> {
                     McpJsonRpcRequestClassification classification = parser.classify(bodyBytes);
                     if (!classification.valid()) {
@@ -194,8 +207,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                                     bodyBytes,
                                     invocation
                             ));
-                })
-                .onErrorResume(DataBufferLimitException.class, ignored -> writePayloadTooLarge(exchange));
+                });
     }
 
     private Mono<Void> evaluate(ServerWebExchange exchange,
@@ -204,7 +216,8 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                                 byte[] bodyBytes,
                                 McpToolInvocation invocation) {
         GatewayToolExecutionContext context = contextResolver.resolve(authentication, exchange, invocation);
-        List<String> grantedScopes = grantedScopesExtractor.extract(authentication);
+        List<String> extractedScopes = grantedScopesExtractor.extract(authentication);
+        List<String> grantedScopes = extractedScopes == null ? List.of() : extractedScopes;
         GatewayToolGovernanceDecision decision = GatewayToolGovernance.evaluate(
                 context,
                 grantedScopes,
@@ -223,7 +236,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                     exchange,
                     objectMapper,
                     decision.protectionDecision(),
-                    context == null ? correlationIdResolver.resolve(exchange) : context.correlationId()
+                    correlationId(exchange, context)
             );
         }
         return McpGatewayWebFluxResponses.forbidden(
@@ -231,8 +244,14 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                 objectMapper,
                 decision.authorizationDecision(),
                 decision.reason().code(),
-                context == null ? correlationIdResolver.resolve(exchange) : context.correlationId()
+                correlationId(exchange, context)
         );
+    }
+
+    private String correlationId(ServerWebExchange exchange, GatewayToolExecutionContext context) {
+        return context.correlationId() == null
+                ? correlationIdResolver.resolve(exchange)
+                : context.correlationId();
     }
 
     private boolean governanceEnabled() {
@@ -254,7 +273,37 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
     private boolean isRelevantRequest(ServerWebExchange exchange) {
         return exchange.getRequest().getMethod() != null
                 && "POST".equalsIgnoreCase(exchange.getRequest().getMethod().name())
-                && properties.mcpEndpoint().equals(exchange.getRequest().getPath().value());
+                && sameRoutePath(
+                        mcpEndpointPath,
+                        exchange.getRequest().getPath().pathWithinApplication()
+                );
+    }
+
+    private boolean sameRoutePath(PathContainer configuredPath, PathContainer requestPath) {
+        List<PathContainer.Element> configuredElements = configuredPath.elements();
+        List<PathContainer.Element> requestElements = requestPath.elements();
+        if (configuredElements.size() != requestElements.size()) {
+            return false;
+        }
+
+        for (int index = 0; index < configuredElements.size(); index++) {
+            PathContainer.Element configured = configuredElements.get(index);
+            PathContainer.Element request = requestElements.get(index);
+            if (configured instanceof PathContainer.PathSegment configuredSegment
+                    && request instanceof PathContainer.PathSegment requestSegment) {
+                if (!configuredSegment.valueToMatch().equals(requestSegment.valueToMatch())) {
+                    return false;
+                }
+            } else if (configured instanceof PathContainer.Separator
+                    && request instanceof PathContainer.Separator) {
+                if (!configured.value().equals(request.value())) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void recordAuthorization(GatewayToolGovernanceDecision decision,
