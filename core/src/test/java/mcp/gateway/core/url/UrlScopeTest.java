@@ -46,8 +46,22 @@ class UrlScopeTest {
         assertFalse(scope.contains("https://target/app/%2f..%2fsecret"));
         assertFalse(scope.contains("https://target/app/%2e%2e%5csecret"));
         assertFalse(scope.contains("https://target/app/%252e%252e/secret"));
+        assertFalse(scope.contains("https://target/app/%252e%252e/../secret"));
         assertFalse(scope.contains("https://target/app/%c0%ae%c0%ae/secret"));
+        assertFalse(scope.contains("https://target/app/%c0%ae%c0%ae/../secret"));
+        assertFalse(scope.contains("https://target/app/%2e%2e/../secret"));
+        assertFalse(scope.contains("https://target/app/%5c/../secret"));
+        assertFalse(scope.contains("https://target/app/%00/../secret"));
+        assertFalse(scope.contains("https://target/app/%2f../../secret"));
+        assertThrows(IllegalArgumentException.class,
+                () -> UrlScope.parse("https://target/app/%252e%252e/../secret"));
+        assertThrows(IllegalArgumentException.class,
+                () -> UrlScope.parse("https://target/app/%c0%ae%c0%ae/../secret"));
+        assertTrue(scope.contains("https://target/app/section/../child"));
         assertTrue(scope.contains("https://target/app/%2fchild"));
+
+        UrlScope normalizedBase = UrlScope.parse("https://target/app/child/..");
+        assertTrue(normalizedBase.contains("https://target/app/page"));
     }
 
     @Test

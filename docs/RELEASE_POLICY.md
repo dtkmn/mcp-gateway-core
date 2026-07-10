@@ -42,6 +42,9 @@ unpublished, non-snapshot version must additionally pass:
 That gate proves:
 
 - unit tests pass;
+- every parsed job-level and step-level remote GitHub Action or reusable workflow
+  is pinned to an explicitly reviewed full commit SHA, and local references are
+  prohibited unless recursive manifest inspection is added first;
 - the Gradle distribution checksum is pinned, while CI separately validates the
   checked-in Gradle Wrapper JAR before executing it;
 - Gradle deprecations fail the build instead of becoming release-prep noise;
@@ -96,6 +99,12 @@ an optional `USER_MANAGED` validation upload. Before signing or uploading, it
 also requires a JDK 17 (through `GATEWAY_CORE_JAVA17_HOME` when necessary) and
 runs both downstream consumer scripts against the exact release-version staging
 repository.
+
+The GitHub validation-upload job must use the protected
+`central-validation-upload` environment. Store the GPG and Central credentials
+only as that environment's secrets, require reviewer approval, prevent
+self-review, and restrict deployment refs before considering the release gate
+operational.
 
 ## Publishing Boundary
 

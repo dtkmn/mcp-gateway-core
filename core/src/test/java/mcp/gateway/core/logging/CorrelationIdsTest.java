@@ -32,7 +32,7 @@ class CorrelationIdsTest {
         String generated = CorrelationIds.resolve("bad value", "");
 
         assertNotNull(generated);
-        assertTrue(CorrelationIds.sanitize(generated) != null);
+        assertNotNull(CorrelationIds.sanitize(generated));
         UUID.fromString(generated);
     }
 }

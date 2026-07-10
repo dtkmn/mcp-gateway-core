@@ -41,6 +41,11 @@ Out of scope:
 The repository uses GitHub-native checks first:
 
 - Dependabot version updates for GitHub Actions, Gradle, and npm;
+- full-length reviewed commit pins for every parsed job-level and step-level
+  GitHub Action or reusable workflow reference, backed by a structural YAML
+  regression allowlist. Local action and reusable-workflow references are
+  prohibited because their nested manifests are not recursively audited;
+- repository settings must also enforce full-SHA pinning before a release;
 - Gradle distribution checksum pinning and Wrapper JAR validation before CI
   workflows execute the build;
 - CodeQL Java analysis with an explicit Gradle test build;
@@ -48,7 +53,9 @@ The repository uses GitHub-native checks first:
   JAR contents, `jdeps`, bytecode, API compatibility, and staged-publication
   checks;
 - the release-only public-preview gate for Central bundle shape, checksums, and
-  signed dry-run payload validation.
+  signed dry-run payload validation. Its job is bound to
+  `central-validation-upload`, which must be protected as specified in the
+  release runbook before release credentials are moved there.
 
 The repository also has an explicit Snyk Open Source workflow for the Gradle
 project graph. That workflow requires:

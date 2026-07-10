@@ -11,14 +11,25 @@ Portal action until the release policy says otherwise.
 
 ## Required Secrets
 
-Configure these in the `dtkmn/mcp-gateway-core` GitHub repository before running
-the workflow:
+Before running the workflow, create a GitHub environment named
+`central-validation-upload`. Require reviewer approval, prevent self-review, and
+restrict deployment branches or tags to the refs used by the release process.
+The workflow job is bound to that environment and must not run with unprotected
+repository-level release credentials.
+
+Configure these as **environment secrets** on `central-validation-upload`:
 
 - `GATEWAY_CORE_RELEASE_GPG_PRIVATE_KEY_B64`
 - `GATEWAY_CORE_RELEASE_GPG_FINGERPRINT`
 - `GATEWAY_CORE_RELEASE_GPG_PASSPHRASE` if the key is passphrase-protected
 - `CENTRAL_PORTAL_USERNAME`
 - `CENTRAL_PORTAL_PASSWORD`
+
+Do not duplicate these as repository or organization secrets that are available
+without the environment approval gate. In the repository Actions settings, also
+require actions to be pinned to a full-length commit SHA. Every third-party
+action in the checked-in workflows is pinned to a reviewed commit; version
+comments are informational and are not executable references.
 
 The Central credentials must be a Central Portal user token.
 

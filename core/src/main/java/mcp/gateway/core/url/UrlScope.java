@@ -67,7 +67,7 @@ public final class UrlScope {
             return null;
         }
         try {
-            URI uri = new URI(value.trim()).normalize();
+            URI uri = new URI(value.trim());
             String scheme = normalizeScheme(uri.getScheme());
             Authority authority = parseAuthority(uri.getRawAuthority());
             String path = normalizePath(uri.getRawPath(), uri.getPath());
