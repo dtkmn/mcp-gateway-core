@@ -12,7 +12,7 @@ import java.util.Set;
 /**
  * Day/time selector for policy bundle evaluation.
  *
- * @param days matching days
+ * @param days days on which the window starts
  * @param start inclusive start time
  * @param end exclusive end time
  */
@@ -59,14 +59,16 @@ public record PolicyBundleTimeWindow(Set<DayOfWeek> days,
      */
     public boolean matches(ZonedDateTime bundleTime) {
         Objects.requireNonNull(bundleTime, "bundleTime must not be null");
-        if (!days.contains(bundleTime.getDayOfWeek())) {
-            return false;
-        }
-
         LocalTime currentTime = bundleTime.toLocalTime();
         if (start.isBefore(end)) {
-            return !currentTime.isBefore(start) && currentTime.isBefore(end);
+            return days.contains(bundleTime.getDayOfWeek())
+                    && !currentTime.isBefore(start)
+                    && currentTime.isBefore(end);
         }
-        return !currentTime.isBefore(start) || currentTime.isBefore(end);
+        if (!currentTime.isBefore(start)) {
+            return days.contains(bundleTime.getDayOfWeek());
+        }
+        return currentTime.isBefore(end)
+                && days.contains(bundleTime.minusDays(1L).getDayOfWeek());
     }
 }

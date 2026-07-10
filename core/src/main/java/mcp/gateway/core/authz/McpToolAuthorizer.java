@@ -16,7 +16,7 @@ import mcp.gateway.core.invocation.McpToolInvocationKind;
 public final class McpToolAuthorizer {
     /** Synthetic action used by gateway controls for MCP {@code tools/list}. */
     public static final String TOOLS_LIST_ACTION = "mcp:tools:list";
-    /** Action marker used when an invocation is unavailable or not authorizable. */
+    /** Action marker used when an invocation name is unavailable or not authorizable. */
     public static final String UNKNOWN_ACTION = "unknown";
 
     private final McpToolAccessRegistry registry;
@@ -81,8 +81,9 @@ public final class McpToolAuthorizer {
     /**
      * Authorizes one MCP tool call.
      * <p>
-     * Blank or unknown tool names are reported with the synthetic
-     * {@link #UNKNOWN_ACTION} action and an unmapped decision.
+     * Blank tool names are reported with the synthetic {@link #UNKNOWN_ACTION}
+     * action. Unknown non-blank names are preserved in the unmapped decision so
+     * audit and governance observers can identify the requested tool.
      *
      * @param toolName MCP tool name
      * @param grantedScopes scopes granted to the caller

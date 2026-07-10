@@ -22,7 +22,7 @@ public record PolicyBundleEvaluationRequest(String toolName,
         if (toolName == null || toolName.isBlank()) {
             throw new IllegalArgumentException("toolName must not be blank");
         }
-        toolName = toolName.trim().toLowerCase(Locale.ROOT);
+        toolName = toolName.trim();
         if (normalizedHost != null) {
             normalizedHost = normalizedHost.isBlank() ? null : normalizedHost.trim().toLowerCase(Locale.ROOT);
         }

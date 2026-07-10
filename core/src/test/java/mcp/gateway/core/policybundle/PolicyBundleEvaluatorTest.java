@@ -130,6 +130,62 @@ class PolicyBundleEvaluatorTest {
     }
 
     @Test
+    void overnightWindowsContinueIntoTheFollowingDay() {
+        PolicyBundleTimeWindow overnight = PolicyBundleTimeWindow.of(
+                List.of(DayOfWeek.TUESDAY),
+                LocalTime.parse("22:00"),
+                LocalTime.parse("02:00")
+        );
+
+        assertTrue(overnight.matches(requestTime("2026-06-02T22:00:00Z")));
+        assertTrue(overnight.matches(requestTime("2026-06-03T01:59:59Z")));
+        assertFalse(overnight.matches(requestTime("2026-06-03T02:00:00Z")));
+        assertFalse(overnight.matches(requestTime("2026-06-02T01:00:00Z")));
+    }
+
+    @Test
+    void toolSelectorsAreExactAndCaseSensitiveWhileHostsAreCaseInsensitive() {
+        PolicyBundleRule rule = rule(
+                "allow-exact-tool",
+                PolicyBundleDecision.ALLOW,
+                PolicyBundleMatch.of(List.of("Demo_Tool"), List.of("API.EXAMPLE.COM"), List.of())
+        );
+        PolicyBundleRuleset ruleset = PolicyBundleRuleset.of(PolicyBundleDecision.DENY, List.of(rule));
+
+        PolicyBundleEvaluationResult exact = PolicyBundleEvaluator.evaluate(
+                ruleset,
+                request("Demo_Tool", "api.example.com", "2026-06-02T01:00:00Z")
+        );
+        PolicyBundleEvaluationResult differentToolCase = PolicyBundleEvaluator.evaluate(
+                ruleset,
+                request("demo_tool", "API.EXAMPLE.COM", "2026-06-02T01:00:00Z")
+        );
+
+        assertEquals(PolicyBundleDecision.ALLOW, exact.decision());
+        assertEquals(PolicyBundleDecision.DENY, differentToolCase.decision());
+        assertEquals(List.of("hosts"), differentToolCase.trace().get(0).matchedSelectors());
+        assertEquals(List.of("tools"), differentToolCase.trace().get(0).failedSelectors());
+    }
+
+    @Test
+    void wildcardHostRequiresANonEmptySubdomainLabel() {
+        PolicyBundleRule rule = rule(
+                "allow-subdomains",
+                PolicyBundleDecision.ALLOW,
+                PolicyBundleMatch.of(List.of("demo_tool"), List.of("*.example.com"), List.of())
+        );
+
+        for (String malformedHost : List.of(".example.com", "..example.com", "foo..example.com")) {
+            PolicyBundleEvaluationResult result = PolicyBundleEvaluator.evaluate(
+                    PolicyBundleRuleset.of(PolicyBundleDecision.DENY, List.of(rule)),
+                    request("demo_tool", malformedHost, "2026-06-02T01:00:00Z")
+            );
+
+            assertEquals(PolicyBundleDecision.DENY, result.decision(), malformedHost);
+        }
+    }
+
+    @Test
     void rejectsInvalidCoreContracts() {
         assertThrows(IllegalArgumentException.class, () -> PolicyBundleDecision.fromWireValue("maybe"));
         assertThrows(IllegalArgumentException.class, () -> PolicyBundleTimeWindow.of(
@@ -180,7 +236,11 @@ class PolicyBundleEvaluatorTest {
         return new PolicyBundleEvaluationRequest(
                 tool,
                 host,
-                ZonedDateTime.ofInstant(java.time.Instant.parse(instant), ZoneOffset.UTC)
+                requestTime(instant)
         );
+    }
+
+    private ZonedDateTime requestTime(String instant) {
+        return ZonedDateTime.ofInstant(java.time.Instant.parse(instant), ZoneOffset.UTC);
     }
 }

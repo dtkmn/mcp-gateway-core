@@ -179,7 +179,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(releasePolicy.contains("does not upload artifacts to Central"));
         assertTrue(readme.contains("./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail"));
         assertTrue(releasePolicy.contains("./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail"));
-        assertTrue(ci.contains("./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail"));
+        assertTrue(ci.contains("./gradlew verifyGatewayDevelopment --no-daemon --stacktrace --warning-mode fail"));
         assertTrue(ci.contains("./bin/java17-source-compat-0.6-consumer.sh"));
         assertTrue(ci.contains("./bin/java17-consumer-smoke.sh"));
         assertTrue(releasePolicy.contains("bin/java17-source-compat-0.6-consumer.sh"));
@@ -210,5 +210,98 @@ class ProjectDocumentationAndSecurityToolingTest {
                 assertTrue(foundCheckout, () -> workflow + " should check out repository contents");
             }
         }
+    }
+
+    @Test
+    void developmentAndReleaseVerificationStaySeparatedAndSupplyChainPinned() throws IOException {
+        String rootBuild = Files.readString(Path.of("build.gradle"));
+        String coreBuild = Files.readString(Path.of("core/build.gradle"));
+        String adapterBuild = Files.readString(Path.of("adapters/spring-webflux/build.gradle"));
+        String gradleProperties = Files.readString(Path.of("gradle.properties"));
+        String wrapperProperties = Files.readString(Path.of("gradle/wrapper/gradle-wrapper.properties"));
+        String ci = Files.readString(Path.of(".github/workflows/ci.yml"));
+        String centralWorkflow = Files.readString(Path.of(".github/workflows/central-validation-upload.yml"));
+        String codeqlWorkflow = Files.readString(Path.of(".github/workflows/codeql.yml"));
+        String snykWorkflow = Files.readString(Path.of(".github/workflows/snyk.yml"));
+        String centralUpload = Files.readString(Path.of("bin/gateway-public-preview-central-validation-upload.sh"));
+        String snykPolicy = Files.readString(Path.of(".snyk"));
+        String docsPackage = Files.readString(Path.of("docs-site/package.json"));
+
+        assertTrue(gradleProperties.contains("gatewayCoreVersion="));
+        assertTrue(!gradleProperties.contains("gatewayCoreVersion=0.7.0"));
+        assertTrue(wrapperProperties.contains(
+                "distributionSha256Sum=9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14"));
+
+        String developmentTask = section(
+                rootBuild,
+                "tasks.register('verifyGatewayDevelopment')",
+                "tasks.register('verifyAcceptedApiDeltas')");
+        assertTrue(developmentTask.contains("dependsOn tasks.named('check')"));
+        assertTrue(developmentTask.contains("verifyGatewayCorePublication"));
+        assertTrue(developmentTask.contains("verifyGatewaySpringWebFluxPublication"));
+        assertTrue(!developmentTask.contains("CentralPortal"));
+        assertTrue(!developmentTask.contains("SignedCentralPortal"));
+        assertTrue(coreBuild.contains("tasks.register('verifyGatewayCorePublication')"));
+        assertTrue(coreBuild.contains("gatewayCorePublicationArtifact"));
+        assertTrue(coreBuild.contains("new File(publicationDir, 'maven-metadata.xml')"));
+        assertTrue(adapterBuild.contains("springWebFluxPublicationArtifact"));
+        assertTrue(adapterBuild.contains("new File(publicationDir, 'maven-metadata.xml')"));
+
+        String coreReleaseTask = section(
+                coreBuild,
+                "tasks.register('verifyGatewayCorePublicPreviewPublication')",
+                "tasks.named('test')");
+        assertTrue(coreReleaseTask.contains("verifyGatewayCoreCentralPortalBundle"));
+        assertTrue(coreReleaseTask.contains("verifyGatewayCoreSignedCentralPortalDryRun"));
+        assertTrue(coreReleaseTask.contains("verifyGatewayCorePublication"));
+
+        String coreCheckTask = coreBuild.substring(coreBuild.indexOf("tasks.named('check')"));
+        assertTrue(!coreCheckTask.contains("verifyGatewayCoreCentralPortalBundle"));
+        assertTrue(!coreCheckTask.contains("verifyGatewayCoreSignedCentralPortalDryRun"));
+
+        assertTrue(ci.contains("./gradlew verifyGatewayDevelopment"));
+        assertTrue(!ci.contains("./gradlew verifyGatewayPublicPreviewPublication"));
+        assertTrue(centralUpload.contains("./gradlew verifyGatewayPublicPreviewPublication"));
+        String unpublishedCheck = "ensure_version_is_unpublished \"$version\"";
+        assertTrue(centralUpload.indexOf(unpublishedCheck) != centralUpload.lastIndexOf(unpublishedCheck));
+        assertTrue(centralUpload.contains(
+                unpublishedCheck + "\n  upload_user_managed_deployment \"$version\" \"$bundle\" \"$work_root\""));
+        assertTrue(centralUpload.contains("https://repo1.maven.org/maven2/"));
+        assertTrue(centralUpload.contains("refusing to reuse immutable Maven Central coordinate"));
+        assertTrue(centralUpload.contains("--warning-mode fail"));
+        assertTrue(centralUpload.contains("-PgatewayCoreVersion=\"$version\""));
+        assertTrue(centralUpload.contains("full primary-key fingerprint"));
+        assertTrue(centralUpload.contains("GATEWAY_CORE_JAVA17_HOME"));
+        assertTrue(centralUpload.contains("$ROOT_DIR/bin/java17-consumer-smoke.sh"));
+        assertTrue(centralUpload.contains("$ROOT_DIR/bin/java17-source-compat-0.6-consumer.sh"));
+        assertTrue(centralUpload.contains("copy_publication_for_release_signing \"$version\""));
+        assertTrue(centralWorkflow.contains("Set up JDK 17 for release consumer checks"));
+        assertTrue(centralWorkflow.contains("GATEWAY_CORE_JAVA17_HOME=${JAVA_HOME}"));
+        assertTrue(centralWorkflow.contains("group: central-validation-upload"));
+        assertTrue(centralWorkflow.contains("cancel-in-progress: false"));
+        assertTrue(centralUpload.indexOf("./gradlew verifyGatewayPublicPreviewPublication")
+                < centralUpload.indexOf("$ROOT_DIR/bin/java17-consumer-smoke.sh"));
+        assertTrue(centralUpload.indexOf("$ROOT_DIR/bin/java17-consumer-smoke.sh")
+                < centralUpload.indexOf("$ROOT_DIR/bin/java17-source-compat-0.6-consumer.sh"));
+        assertTrue(centralUpload.indexOf("$ROOT_DIR/bin/java17-source-compat-0.6-consumer.sh")
+                < centralUpload.indexOf("copy_publication_for_release_signing \"$version\""));
+        assertTrue(centralWorkflow.indexOf("Set up JDK 17 for release consumer checks")
+                < centralWorkflow.indexOf("Set up JDK 25"));
+
+        for (String workflow : List.of(ci, centralWorkflow, codeqlWorkflow, snykWorkflow)) {
+            assertTrue(workflow.contains("gradle/actions/wrapper-validation@v6"));
+        }
+
+        assertTrue(snykPolicy.contains("ignore: {}"));
+        assertTrue(!snykPolicy.contains("SNYK-JAVA-COMFASTERXMLJACKSONCORE-17457695"));
+        assertTrue(docsPackage.contains("\"node\": \">=22.12.0\""));
+    }
+
+    private static String section(String content, String startMarker, String endMarker) {
+        int start = content.indexOf(startMarker);
+        int end = content.indexOf(endMarker, start + startMarker.length());
+        assertTrue(start >= 0, () -> "Missing section start: " + startMarker);
+        assertTrue(end > start, () -> "Missing section end: " + endMarker);
+        return content.substring(start, end);
     }
 }

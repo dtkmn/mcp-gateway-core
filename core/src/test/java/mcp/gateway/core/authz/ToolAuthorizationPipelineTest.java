@@ -89,4 +89,33 @@ class ToolAuthorizationPipelineTest {
 
         assertEquals(List.of("tool.read", "tool.write"), request.grantedScopes());
     }
+
+    @Test
+    void configuredRequirementsRejectUnsafeOauthScopeTokens() {
+        assertThrows(IllegalArgumentException.class,
+                () -> ToolAuthorizationRequirement.of("demo_tool", List.of("tool.read write")));
+        assertThrows(IllegalArgumentException.class,
+                () -> ToolAuthorizationRequirement.of("demo_tool", List.of("tool.\"read")));
+        assertThrows(IllegalArgumentException.class,
+                () -> ToolAuthorizationRequirement.of("demo_tool", List.of("tool\\read")));
+        assertThrows(IllegalArgumentException.class,
+                () -> ToolAuthorizationRequirement.of("demo_tool", List.of("tøøl.read")));
+
+        ToolAuthorizationRequirement requirement = ToolAuthorizationRequirement.of(
+                "demo_tool",
+                List.of("urn:example/tool.read")
+        );
+        assertEquals(List.of("urn:example/tool.read"), requirement.requiredScopes());
+    }
+
+    @Test
+    void grantedScopeNormalizationRemainsTolerant() {
+        ToolAuthorizationRequest request = ToolAuthorizationRequest.of(
+                "demo_tool",
+                List.of(" external role ", "tool.read"),
+                false
+        );
+
+        assertEquals(List.of("external role", "tool.read"), request.grantedScopes());
+    }
 }

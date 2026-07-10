@@ -112,6 +112,23 @@ class TokenBucketRateLimiterTest {
     }
 
     @Test
+    void honorsSmallConfiguredTrackedKeyLimits() {
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true,
+                1,
+                1,
+                60,
+                2,
+                30
+        );
+
+        assertTrue(limiter.tryConsume("client-a", policy));
+        assertTrue(limiter.tryConsume("client-b", policy));
+        assertFalse(limiter.tryConsume("client-c", policy));
+        assertEquals(2, limiter.trackedKeyCount());
+    }
+
+    @Test
     void staleBucketsCanBeEvictedToAdmitNewKeysWithoutGrowingPastCapacity() {
         TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
                 true,
@@ -175,11 +192,76 @@ class TokenBucketRateLimiterTest {
             }
 
             assertEquals(100, limiter.trackedKeyCount());
-            assertTrue(allowed <= 100);
+            assertEquals(100, allowed);
             assertTrue(denied >= attemptCount - 100);
         } finally {
             executor.shutdownNow();
             assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
         }
+    }
+
+    @Test
+    void avoidsOverflowForVeryLongRefillPeriods() {
+        long refillPeriodSeconds = Long.MAX_VALUE / 1_000_000_000L + 1L;
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true,
+                1,
+                1,
+                refillPeriodSeconds,
+                1,
+                30
+        );
+
+        assertTrue(limiter.tryConsume("client-a", policy));
+        assertFalse(limiter.tryConsume("client-a", policy));
+        assertEquals(refillPeriodSeconds, limiter.retryAfterSeconds("client-a", policy));
+    }
+
+    @Test
+    void recoversSafelyWhenInjectedMonotonicClockRegresses() {
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true,
+                1,
+                1,
+                10,
+                1,
+                30
+        );
+        nowNanos.set(100_000_000_000L);
+
+        assertTrue(limiter.tryConsume("client-a", policy));
+
+        nowNanos.set(90_000_000_000L);
+        assertEquals(10L, limiter.retryAfterSeconds("client-a", policy));
+
+        nowNanos.set(100_000_000_000L);
+        assertTrue(limiter.tryConsume("client-a", policy));
+    }
+
+    @Test
+    void doesNotApplyChangedRefillRateRetroactively() {
+        TokenBucketRateLimiter.Policy slowPolicy = new TokenBucketRateLimiter.Policy(
+                true,
+                1,
+                1,
+                100,
+                1,
+                30
+        );
+        TokenBucketRateLimiter.Policy fastPolicy = new TokenBucketRateLimiter.Policy(
+                true,
+                1,
+                1,
+                10,
+                1,
+                30
+        );
+
+        assertTrue(limiter.tryConsume("client-a", slowPolicy));
+        nowNanos.addAndGet(50_000_000_000L);
+        assertFalse(limiter.tryConsume("client-a", fastPolicy));
+
+        nowNanos.addAndGet(5_000_000_000L);
+        assertTrue(limiter.tryConsume("client-a", fastPolicy));
     }
 }

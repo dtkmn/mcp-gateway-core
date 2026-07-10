@@ -8,12 +8,15 @@ import java.util.function.LongSupplier;
 
 /**
  * Thread-safe token-bucket rate limiter keyed by caller, tool, workspace, or another runtime key.
+ * Token-policy changes for an existing key take effect from the change onward;
+ * elapsed time is never retroactively credited at a newly configured refill rate.
  */
 public final class TokenBucketRateLimiter {
     /** Default key used when callers provide a blank or null key. */
     public static final String DEFAULT_KEY = "anonymous";
 
     private final ConcurrentHashMap<String, BucketState> buckets = new ConcurrentHashMap<>();
+    private final Object bucketCreationLock = new Object();
     private final LongSupplier nanoClock;
     private final LongSupplier millisClock;
 
@@ -49,22 +52,27 @@ public final class TokenBucketRateLimiter {
         }
 
         String normalizedKey = normalizeKey(key);
-        BucketState state = buckets.get(normalizedKey);
-        if (state == null) {
-            state = createBucketIfCapacityAllows(normalizedKey, policy);
+        while (true) {
+            BucketState state = buckets.get(normalizedKey);
             if (state == null) {
+                state = createBucketIfCapacityAllows(normalizedKey, policy);
+                if (state == null) {
+                    return false;
+                }
+            }
+
+            synchronized (state) {
+                if (buckets.get(normalizedKey) != state) {
+                    continue;
+                }
+                applyPolicyAndRefill(state, policy);
+                state.lastAccessMillis = millisClock.getAsLong();
+                if (state.tokens >= 1.0d) {
+                    state.tokens -= 1.0d;
+                    return true;
+                }
                 return false;
             }
-        }
-
-        synchronized (state) {
-            refill(state, policy);
-            state.lastAccessMillis = millisClock.getAsLong();
-            if (state.tokens >= 1.0d) {
-                state.tokens -= 1.0d;
-                return true;
-            }
-            return false;
         }
     }
 
@@ -87,20 +95,15 @@ public final class TokenBucketRateLimiter {
         }
 
         synchronized (state) {
-            refill(state, policy);
+            applyPolicyAndRefill(state, policy);
             if (state.tokens >= 1.0d) {
                 return 1L;
             }
-            long refillPeriodNanos = policy.refillPeriodSeconds() * 1_000_000_000L;
-            double nanosPerToken = refillPeriodNanos / (double) policy.refillTokens();
-            long nowNanos = nanoClock.getAsLong();
             double missingTokens = 1.0d - state.tokens;
-            long nanosUntilToken = Math.max(
-                    1L,
-                    (long) Math.ceil(missingTokens * nanosPerToken) - (nowNanos - state.lastRefillNanos)
-            );
-            long seconds = (long) Math.ceil(nanosUntilToken / 1_000_000_000.0d);
-            return Math.max(1L, seconds);
+            double secondsUntilToken = missingTokens
+                    * policy.refillPeriodSeconds()
+                    / policy.refillTokens();
+            return Math.max(1L, (long) Math.ceil(secondsUntilToken));
         }
     }
 
@@ -108,21 +111,45 @@ public final class TokenBucketRateLimiter {
         return buckets.size();
     }
 
-    private void refill(BucketState state, Policy policy) {
-        state.tokens = Math.min(policy.capacity(), state.tokens);
-        long refillPeriodNanos = policy.refillPeriodSeconds() * 1_000_000_000L;
+    private void applyPolicyAndRefill(BucketState state, Policy policy) {
         long nowNanos = nanoClock.getAsLong();
-        long elapsedNanos = Math.max(0L, nowNanos - state.lastRefillNanos);
+        if (!state.usesSameTokenPolicy(policy)) {
+            refill(
+                    state,
+                    state.capacity,
+                    state.refillTokens,
+                    state.refillPeriodSeconds,
+                    nowNanos
+            );
+            state.tokens = Math.min(policy.capacity(), state.tokens);
+            state.capacity = policy.capacity();
+            state.refillTokens = policy.refillTokens();
+            state.refillPeriodSeconds = policy.refillPeriodSeconds();
+            return;
+        }
+
+        refill(state, policy.capacity(), policy.refillTokens(), policy.refillPeriodSeconds(), nowNanos);
+    }
+
+    private void refill(BucketState state,
+                        int capacity,
+                        int refillTokens,
+                        long refillPeriodSeconds,
+                        long nowNanos) {
+        state.tokens = Math.min(capacity, state.tokens);
+        long elapsedNanos = nowNanos - state.lastRefillNanos;
+        if (elapsedNanos < 0L) {
+            state.lastRefillNanos = nowNanos;
+            return;
+        }
         if (elapsedNanos == 0L) {
             return;
         }
 
-        double tokensToAdd = (elapsedNanos / (double) refillPeriodNanos) * policy.refillTokens();
-        if (tokensToAdd <= 0.0d) {
-            return;
-        }
+        double elapsedSeconds = elapsedNanos / 1_000_000_000.0d;
+        double tokensToAdd = elapsedSeconds * refillTokens / refillPeriodSeconds;
 
-        state.tokens = Math.min(policy.capacity(), state.tokens + tokensToAdd);
+        state.tokens = Math.min(capacity, state.tokens + tokensToAdd);
         state.lastRefillNanos = nowNanos;
     }
 
@@ -131,36 +158,42 @@ public final class TokenBucketRateLimiter {
             return;
         }
 
-        long staleBefore = millisClock.getAsLong() - (policy.refillPeriodSeconds() * 1000L * 5L);
+        long staleAgeMillis = saturatedMultiply(
+                saturatedMultiply(policy.refillPeriodSeconds(), 1_000L),
+                5L
+        );
+        long staleBefore = saturatedSubtract(millisClock.getAsLong(), staleAgeMillis);
         Iterator<Map.Entry<String, BucketState>> iterator = buckets.entrySet().iterator();
         while (iterator.hasNext() && buckets.size() >= policy.maxTrackedKeys()) {
             Map.Entry<String, BucketState> entry = iterator.next();
-            if (entry.getValue().lastAccessMillis < staleBefore) {
-                buckets.remove(entry.getKey(), entry.getValue());
+            BucketState state = entry.getValue();
+            synchronized (state) {
+                if (state.lastAccessMillis < staleBefore) {
+                    buckets.remove(entry.getKey(), state);
+                }
             }
         }
     }
 
     private BucketState createBucketIfCapacityAllows(String normalizedKey, Policy policy) {
-        evictIfNeeded(policy);
-        if (buckets.size() >= policy.maxTrackedKeys()) {
-            return null;
-        }
+        synchronized (bucketCreationLock) {
+            BucketState existing = buckets.get(normalizedKey);
+            if (existing != null) {
+                return existing;
+            }
+            evictIfNeeded(policy);
+            if (buckets.size() >= policy.maxTrackedKeys()) {
+                return null;
+            }
 
-        BucketState newState = new BucketState(
-                policy.capacity(),
-                nanoClock.getAsLong(),
-                millisClock.getAsLong()
-        );
-        BucketState existing = buckets.putIfAbsent(normalizedKey, newState);
-        if (existing != null) {
-            return existing;
-        }
-        if (buckets.size() <= policy.maxTrackedKeys()) {
+            BucketState newState = new BucketState(
+                    policy,
+                    nanoClock.getAsLong(),
+                    millisClock.getAsLong()
+            );
+            buckets.put(normalizedKey, newState);
             return newState;
         }
-        buckets.remove(normalizedKey, newState);
-        return buckets.get(normalizedKey);
     }
 
     private String normalizeKey(String key) {
@@ -170,6 +203,20 @@ public final class TokenBucketRateLimiter {
         return key.trim();
     }
 
+    private static long saturatedMultiply(long value, long multiplier) {
+        if (value > Long.MAX_VALUE / multiplier) {
+            return Long.MAX_VALUE;
+        }
+        return value * multiplier;
+    }
+
+    private static long saturatedSubtract(long value, long nonNegativeAmount) {
+        if (value < Long.MIN_VALUE + nonNegativeAmount) {
+            return Long.MIN_VALUE;
+        }
+        return value - nonNegativeAmount;
+    }
+
     /**
      * Immutable token-bucket configuration.
      *
@@ -177,7 +224,7 @@ public final class TokenBucketRateLimiter {
      * @param capacity maximum number of stored tokens
      * @param refillTokens tokens added during each refill period
      * @param refillPeriodSeconds refill period in seconds
-     * @param maxTrackedKeys maximum tracked bucket keys
+     * @param maxTrackedKeys maximum tracked bucket keys, normalized to at least one
      * @param disabledRetryAfterSeconds retry delay returned when the policy is disabled
      */
     public record Policy(
@@ -202,7 +249,7 @@ public final class TokenBucketRateLimiter {
             capacity = Math.max(1, capacity);
             refillTokens = Math.max(1, refillTokens);
             refillPeriodSeconds = Math.max(1L, refillPeriodSeconds);
-            maxTrackedKeys = Math.max(100, maxTrackedKeys);
+            maxTrackedKeys = Math.max(1, maxTrackedKeys);
             disabledRetryAfterSeconds = Math.max(1L, disabledRetryAfterSeconds);
         }
     }
@@ -210,12 +257,24 @@ public final class TokenBucketRateLimiter {
     private static final class BucketState {
         private double tokens;
         private long lastRefillNanos;
-        private long lastAccessMillis;
+        private volatile long lastAccessMillis;
+        private int capacity;
+        private int refillTokens;
+        private long refillPeriodSeconds;
 
-        private BucketState(double tokens, long lastRefillNanos, long lastAccessMillis) {
-            this.tokens = tokens;
+        private BucketState(Policy policy, long lastRefillNanos, long lastAccessMillis) {
+            this.tokens = policy.capacity();
             this.lastRefillNanos = lastRefillNanos;
             this.lastAccessMillis = lastAccessMillis;
+            this.capacity = policy.capacity();
+            this.refillTokens = policy.refillTokens();
+            this.refillPeriodSeconds = policy.refillPeriodSeconds();
+        }
+
+        private boolean usesSameTokenPolicy(Policy policy) {
+            return capacity == policy.capacity()
+                    && refillTokens == policy.refillTokens()
+                    && refillPeriodSeconds == policy.refillPeriodSeconds();
         }
     }
 }

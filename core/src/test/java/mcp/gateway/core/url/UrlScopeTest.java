@@ -37,4 +37,44 @@ class UrlScopeTest {
         assertTrue(thrown.getMessage().contains("absolute URL"));
         assertFalse(UrlScope.parse("https://target").contains("not-a-url"));
     }
+
+    @Test
+    void rejectsAmbiguousEncodedTraversalAndBackslashes() {
+        UrlScope scope = UrlScope.parse("https://target/app");
+
+        assertFalse(scope.contains("https://target/app/%2e%2e%2fsecret"));
+        assertFalse(scope.contains("https://target/app/%2f..%2fsecret"));
+        assertFalse(scope.contains("https://target/app/%2e%2e%5csecret"));
+        assertFalse(scope.contains("https://target/app/%252e%252e/secret"));
+        assertFalse(scope.contains("https://target/app/%c0%ae%c0%ae/secret"));
+        assertTrue(scope.contains("https://target/app/%2fchild"));
+    }
+
+    @Test
+    void rejectsUserInfoInBaseAndCandidateUrls() {
+        UrlScope scope = UrlScope.parse("https://target/app");
+
+        assertFalse(scope.contains("https://user:password@target/app"));
+        assertThrows(IllegalArgumentException.class,
+                () -> UrlScope.parse("https://user:password@target/app"));
+    }
+
+    @Test
+    void acceptsPunycodeButRejectsRawUnicodeHostAmbiguity() {
+        UrlScope asciiScope = UrlScope.parse("https://xn--bcher-kva.example/app");
+
+        assertTrue(asciiScope.contains("https://XN--BCHER-KVA.EXAMPLE./app"));
+        assertFalse(asciiScope.contains("https://BÜCHER.EXAMPLE/app"));
+        assertThrows(IllegalArgumentException.class,
+                () -> UrlScope.parse("https://bücher.example/app"));
+        assertFalse(UrlScope.parse("https://fass.de/app").contains("https://faß.de/app"));
+    }
+
+    @Test
+    void rejectsAmbiguousOrOutOfRangePorts() {
+        UrlScope scope = UrlScope.parse("https://target/app");
+
+        assertFalse(scope.contains("https://target:+443/app"));
+        assertFalse(scope.contains("https://target:65536/app"));
+    }
 }
