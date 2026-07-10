@@ -19,10 +19,15 @@ fi
 require_staged_artifact() {
   local artifact_id="$1"
   local artifact_dir="${STAGING_REPOSITORY}/io/github/dtkmn/${artifact_id}/${VERSION}"
+  if [[ "${VERSION}" == *-SNAPSHOT ]]; then
+    [[ -f "${artifact_dir}/maven-metadata.xml" ]] \
+      || fail "Missing staged ${artifact_id} ${VERSION} snapshot metadata under ${artifact_dir}. Run ./gradlew verifyGatewayDevelopment first."
+    return
+  fi
   [[ -f "${artifact_dir}/${artifact_id}-${VERSION}.pom" ]] \
-    || fail "Missing staged ${artifact_id} ${VERSION} POM under ${artifact_dir}. Run ./gradlew verifyGatewayPublicPreviewPublication first."
+    || fail "Missing staged ${artifact_id} ${VERSION} POM under ${artifact_dir}. Run ./gradlew verifyGatewayDevelopment for normal development or the release gate during release preparation."
   [[ -f "${artifact_dir}/${artifact_id}-${VERSION}.jar" ]] \
-    || fail "Missing staged ${artifact_id} ${VERSION} JAR under ${artifact_dir}. Run ./gradlew verifyGatewayPublicPreviewPublication first."
+    || fail "Missing staged ${artifact_id} ${VERSION} JAR under ${artifact_dir}. Run ./gradlew verifyGatewayDevelopment for normal development or the release gate during release preparation."
 }
 
 require_staged_artifact "mcp-gateway-core"
@@ -544,6 +549,7 @@ public final class WebFluxSmoke {
 JAVA
 
 GATEWAY_CORE_STAGING_REPOSITORY="${STAGING_REPOSITORY}" \
-  "${ROOT_DIR}/gradlew" -p "${WORK_DIR}" clean :core-consumer:run :webflux-consumer:run verifyGatewaySmokeResolution --no-daemon --stacktrace
+  "${ROOT_DIR}/gradlew" -p "${WORK_DIR}" clean :core-consumer:run :webflux-consumer:run verifyGatewaySmokeResolution \
+  --no-daemon --stacktrace
 
 echo "Java 17 consumer smoke passed for core-only and WebFlux consumers using mcp-gateway artifacts ${VERSION}."
