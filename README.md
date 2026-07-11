@@ -255,6 +255,11 @@ Maven:
 The repository uses GitHub-native security automation first:
 
 - Dependabot version updates for GitHub Actions, Gradle, and npm.
+- Full-length reviewed commit pins for every parsed job-level and step-level
+  GitHub Action or reusable workflow reference. A structural YAML regression
+  check walks actual `uses` nodes, enforces the reviewed allowlist, and rejects
+  local action and reusable-workflow references; repository settings also
+  require full-SHA references.
 - Gradle distribution checksum pinning and Wrapper JAR validation before CI
   workflows execute the build.
 - CodeQL Java analysis with an explicit Gradle test build.
@@ -266,6 +271,11 @@ The repository uses GitHub-native security automation first:
 - The Gradle public-preview verification gate for forbidden coupling,
   closed-world JAR contents, `jdeps`, Central bundle shape, checksums, and
   signed dry-run payload validation.
+- The Central upload job is bound to a protected environment. Release refs are
+  restricted to `main` only; at least one reviewer distinct from the run
+  initiator is required; self-review is prevented; administrator bypass is
+  disabled; and Central Portal and GPG release credentials exist only as
+  environment secrets.
 
 The Snyk workflow is external dependency scanning. It does not publish,
 promote, or change the manual public-preview release path.

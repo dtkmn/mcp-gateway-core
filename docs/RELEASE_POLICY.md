@@ -19,6 +19,10 @@ Public preview means:
 Do not describe these artifacts as stable until this policy is updated and a
 stable release gate exists.
 
+`0.7.1` is the current public-preview release candidate on `main`; `0.7.0`
+remains the latest published version until both `0.7.1` coordinates are public
+and verified.
+
 ## Release Gates
 
 Normal development CI runs the snapshot-safe gate:
@@ -28,9 +32,10 @@ Normal development CI runs the snapshot-safe gate:
 ```
 
 That gate runs tests, compatibility and artifact-boundary checks, and stages both
-Maven publications for downstream Java 17 consumer checks. It deliberately omits
-Central Portal bundles and release signing because the development version is a
-snapshot.
+Maven publications for downstream Java 17 consumer checks. It always omits
+Central Portal bundles and release signing; this matches the normal snapshot
+state and prevents routine development from entering the release path during a
+short non-snapshot release cut.
 
 Before publishing any public-preview artifact, a release candidate with an
 unpublished, non-snapshot version must additionally pass:
@@ -101,10 +106,22 @@ runs both downstream consumer scripts against the exact release-version staging
 repository.
 
 The GitHub validation-upload job must use the protected
-`central-validation-upload` environment. Store the GPG and Central credentials
-only as that environment's secrets, require reviewer approval, prevent
-self-review, and restrict deployment refs before considering the release gate
-operational.
+`central-validation-upload` environment. The environment is operational only
+when all of these controls hold:
+
+- release refs are restricted to `main` only, with no release-branch,
+  wildcard-branch, or tag exceptions;
+- at least one required reviewer must be distinct from the workflow dispatcher;
+- self-review is prevented by enabling **Prevent self-review**;
+- administrator bypass is disabled by clearing **Allow administrators to bypass
+  configured protection rules**;
+- release credentials exist only as environment secrets, with no GPG or Central
+  repository- or organization-level duplicates that bypass the gate.
+
+Repository settings must also require full-length commit SHA references for
+GitHub Actions. Checked-in workflow enforcement must structurally parse decoded
+job-level and step-level `uses` nodes and prohibit local actions unless recursive
+manifest inspection is implemented.
 
 ## Publishing Boundary
 
@@ -112,10 +129,34 @@ Publishing is manual until this policy says otherwise. A validation bundle is
 not a release. A Central Portal deployment is not public until it is explicitly
 published in the Portal.
 
-The development branch uses the next `-SNAPSHOT` version. Release preparation
-must deliberately select an unpublished, non-snapshot version; the guarded
-upload path rejects snapshots and refuses to upload a coordinate that already
-exists on Maven Central.
+Outside the short release-cut window, `develop` uses the next `-SNAPSHOT`
+version. It may temporarily carry the reviewed non-snapshot candidate while
+that candidate is promoted to `main`; the post-publication sequence below must
+restore the snapshot state immediately. Release preparation must deliberately
+select an unpublished, non-snapshot version; the guarded upload path rejects
+snapshots and refuses to upload a coordinate that already exists on Maven
+Central.
 
 Once a version is published to Maven Central, the same coordinate and version
 must never be reused.
+
+The required release sequence is:
+
+1. prepare the non-snapshot candidate on a review branch from `main`, then merge
+   it to `main` after required review and CI;
+2. run an independently approved `execute_upload=false` dry run and record its
+   exact source SHA and confirmation token;
+3. if `main` is unchanged, run an independently approved
+   `execute_upload=true` validation upload with that token;
+4. wait for `VALIDATED`, then require a separate explicit project-owner decision
+   before using Central Portal's manual publish action;
+5. after Central reports publication, verify both Maven coordinates and their
+   artifacts from a clean consumer;
+6. tag the exact uploaded source commit, create the GitHub Release, and finalize
+   public release notes and dependency examples;
+7. synchronize `develop` and advance it to the next `-SNAPSHOT` version.
+
+The detailed operator checklist is in
+[`CENTRAL_VALIDATION_UPLOAD.md`](CENTRAL_VALIDATION_UPLOAD.md). No step may infer
+publication from a successful dry run, validation upload, deployment id, or
+`VALIDATED` state.
