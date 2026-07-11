@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.7.2 (Unreleased)
+
+`0.7.2-SNAPSHOT` is the current development version on `develop`. `0.7.1` is
+the latest published version and remains the version used by public dependency
+examples. No changes have been accepted for this release yet.
+
 ## 0.7.1 Public Preview
 
 `0.7.1` is the latest published version of both public-preview artifacts. The
