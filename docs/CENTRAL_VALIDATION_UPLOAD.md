@@ -9,9 +9,11 @@ artifacts to Sonatype Central as one `USER_MANAGED` deployment:
 It does not publish the deployment. Publishing must remain a deliberate manual
 Portal action until the release policy says otherwise.
 
-`0.7.1` is currently the non-snapshot release candidate on `main`; `0.7.0`
-remains the latest published version. Preparing or validating a candidate does
-not change the published version.
+`0.7.1` is the latest published version. `gatewayCorePublishedVersion` records
+the version that public dependency examples must use; preparing or validating a
+future candidate does not change it. Update that property only after both new
+coordinates have propagated through Maven Central and passed the
+post-publication checks below.
 
 ## Protected Release Environment
 

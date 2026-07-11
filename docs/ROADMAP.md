@@ -10,9 +10,8 @@ promise yet.
 
 Current focus:
 
-- finalize and publish the verified `0.7.1` public-preview candidate while
-  keeping `0.7.0` documented as the latest published line until Central
-  publication completes;
+- operate and consume the independently verified `0.7.1` public-preview release
+  while development advances on the `0.7.2-SNAPSHOT` line;
 - keep the core artifact JDK-only and framework support in separate adapter
   artifacts;
 - enforce accepted API/binary delta classifications against the frozen `0.6.0`
@@ -26,17 +25,15 @@ Current focus:
 
 ## Near-Term Work
 
-1. **0.7.1 release and post-release verification**
+1. **0.7.1 consumer adoption and 0.7.2 development**
 
-   The candidate has passed its initial approval-gated signing proof. After any
-   final source or documentation change, repeat that proof at the exact `main`
-   head, then complete the protected validation-upload and manual-publication
-   path. Until both `0.7.1` coordinates are published in Maven Central, `0.7.0`
-   remains the latest published release and stays in public dependency examples.
-   After publication, align Maven Central metadata, README coordinates,
-   generated docs, security policy, and release notes with `0.7.1`. Treat any
-   disagreement between public docs and Central as a release-blocking
-   documentation defect.
+   `0.7.1` is the latest published version. Both coordinates, their complete
+   signed artifact sets, Maven metadata, and a fresh Maven-Central-only Java 17
+   consumer have passed post-publication verification. Keep public dependency
+   examples aligned with `gatewayCorePublishedVersion=0.7.1`, gather evidence
+   from real consumers, and limit `0.7.2-SNAPSHOT` work to contract hardening
+   justified by that evidence. Treat any disagreement between public docs and
+   Central as a release-blocking documentation defect.
 
 2. **Consumer proof**
 

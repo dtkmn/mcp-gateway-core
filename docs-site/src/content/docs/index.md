@@ -44,11 +44,11 @@ pass-through when governance is inactive.
 
 ## Coordinates
 
-These are the current `0.7.0` public-preview coordinates.
+These are the current `0.7.1` public-preview coordinates.
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.7.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.0" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.7.1"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.1" // optional
 ```
 
 ## Boundary

@@ -19,9 +19,10 @@ Public preview means:
 Do not describe these artifacts as stable until this policy is updated and a
 stable release gate exists.
 
-`0.7.1` is the current public-preview release candidate on `main`; `0.7.0`
-remains the latest published version until both `0.7.1` coordinates are public
-and verified.
+`0.7.1` is the latest published and independently verified public-preview
+version. `gatewayCorePublishedVersion` records that external fact for
+documentation-consistency checks; normal development continues on `develop`
+with the next `-SNAPSHOT` version.
 
 ## Release Gates
 

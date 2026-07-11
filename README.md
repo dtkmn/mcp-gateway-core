@@ -190,27 +190,27 @@ staged repository, and exercises the WebFlux filter path.
 
 ## Coordinates
 
-These are the current published `0.7.0` public-preview coordinates. The source
+These are the current published `0.7.1` public-preview coordinates. The source
 tree may use the next `-SNAPSHOT` development version; do not substitute that
 snapshot into Maven Central examples.
 
 Core coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.7.0
+io.github.dtkmn:mcp-gateway-core:0.7.1
 ```
 
 Optional Spring WebFlux adapter coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-spring-webflux:0.7.0
+io.github.dtkmn:mcp-gateway-spring-webflux:0.7.1
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.7.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.0" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.7.1"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.1" // optional
 ```
 
 Maven:
@@ -219,12 +219,12 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.7.0</version>
+  <version>0.7.1</version>
 </dependency>
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-spring-webflux</artifactId>
-  <version>0.7.0</version>
+  <version>0.7.1</version>
 </dependency>
 ```
 
