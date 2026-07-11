@@ -42,6 +42,14 @@ tasks.register('verifyGatewayPublicPreviewPublication') {
     dependsOn ':adapters:spring-webflux:verifyGatewaySpringWebFluxPublicPreviewPublication'
 }
 
+tasks.register('verifyGatewayDevelopment') {
+    group = 'verification'
+    description = 'Runs snapshot-safe verification and stages artifacts for downstream consumer checks.'
+    dependsOn tasks.named('check')
+    dependsOn ':core:verifyGatewayCorePublication'
+    dependsOn ':adapters:spring-webflux:verifyGatewaySpringWebFluxPublication'
+}
+
 tasks.register('verifyAcceptedApiDeltas') {
     group = 'verification'
     description = 'Verifies accepted API/binary deltas are machine-readable and release-note linked.'

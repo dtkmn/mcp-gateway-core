@@ -21,6 +21,24 @@ public record McpAbuseProtectionDecision(
         long retryAfterSeconds
 ) {
     /**
+     * Creates a normalized, internally consistent protection decision.
+     */
+    public McpAbuseProtectionDecision {
+        toolName = normalizeNullable(toolName);
+        clientId = normalizeNullable(clientId);
+        workspaceId = normalizeNullable(workspaceId);
+        if (allowed) {
+            errorCode = null;
+            reason = null;
+            retryAfterSeconds = 0L;
+        } else {
+            errorCode = normalize(errorCode, "protection_rejected");
+            reason = normalize(reason, "protection_rejected");
+            retryAfterSeconds = Math.max(1L, retryAfterSeconds);
+        }
+    }
+
+    /**
      * Creates an allow decision.
      *
      * @param toolName MCP tool name
@@ -95,5 +113,17 @@ public record McpAbuseProtectionDecision(
                 normalizedContext.workspaceId(),
                 retryAfterSeconds
         );
+    }
+
+    private static String normalizeNullable(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private static String normalize(String value, String fallback) {
+        String normalized = normalizeNullable(value);
+        return normalized == null ? fallback : normalized;
     }
 }

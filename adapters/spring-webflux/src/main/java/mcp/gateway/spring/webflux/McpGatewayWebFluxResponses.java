@@ -24,8 +24,10 @@ final class McpGatewayWebFluxResponses {
                                 String correlationId) {
         exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        exchange.getResponse().getHeaders().set(HttpHeaders.WWW_AUTHENTICATE,
-                "Bearer error=\"insufficient_scope\", scope=\"" + String.join(" ", decision.requiredScopes()) + "\"");
+        exchange.getResponse().getHeaders().set(
+                HttpHeaders.WWW_AUTHENTICATE,
+                insufficientScopeChallenge(decision)
+        );
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", Instant.now().toString());
@@ -111,5 +113,28 @@ final class McpGatewayWebFluxResponses {
                     .bufferFactory()
                     .wrap(fallbackJson.getBytes(StandardCharsets.UTF_8))));
         }
+    }
+
+    private static String insufficientScopeChallenge(ToolAuthorizationDecision decision) {
+        String challenge = "Bearer error=\"insufficient_scope\"";
+        if (decision.requiredScopes().isEmpty()
+                || !decision.requiredScopes().stream().allMatch(McpGatewayWebFluxResponses::isScopeToken)) {
+            return challenge;
+        }
+        return challenge + ", scope=\"" + String.join(" ", decision.requiredScopes()) + "\"";
+    }
+
+    private static boolean isScopeToken(String scope) {
+        if (scope == null || scope.isEmpty()) {
+            return false;
+        }
+        for (int index = 0; index < scope.length(); index++) {
+            char value = scope.charAt(index);
+            // RFC 6749 scope-token: %x21 / %x23-5B / %x5D-7E.
+            if (value != 0x21 && (value < 0x23 || value > 0x5b) && (value < 0x5d || value > 0x7e)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

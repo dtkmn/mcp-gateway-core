@@ -13,11 +13,14 @@ const indexHtml = await readDist('index.html');
 const gettingStartedHtml = await readDist('guides/getting-started/index.html');
 const sitemapIndexXml = await readDist('sitemap-index.xml');
 const sitemapXml = await readDist('sitemap-0.xml');
+const faviconSvg = await readDist('favicon.svg');
 const sitemapIndexLocs = extractLocs(sitemapIndexXml, 'sitemap-index.xml');
 const sitemapLocs = extractLocs(sitemapXml, 'sitemap-0.xml');
 
 assertEqual(extract(indexHtml, /<link rel="canonical" href="([^"]+)"/, 'home canonical'), homeUrl);
 assertEqual(extract(indexHtml, /<meta property="og:url" content="([^"]+)"/, 'home og:url'), homeUrl);
+assertContains(indexHtml, 'href="/mcp-gateway-core/favicon.svg"', 'home page should link to the deployed favicon');
+assertContains(faviconSvg, '<svg', 'favicon should be a valid SVG document');
 assertEqual(
   extract(gettingStartedHtml, /<link rel="canonical" href="([^"]+)"/, 'getting-started canonical'),
   `${homeUrl}guides/getting-started/`,

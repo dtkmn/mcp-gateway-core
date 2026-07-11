@@ -95,7 +95,13 @@ public final class PolicyBundleEvaluator {
     private static boolean hostMatches(String normalizedHost, String pattern) {
         if (pattern.startsWith("*.")) {
             String suffix = pattern.substring(1);
-            return normalizedHost.endsWith(suffix) && normalizedHost.length() > suffix.length() - 1;
+            if (!normalizedHost.endsWith(suffix) || normalizedHost.length() <= suffix.length()) {
+                return false;
+            }
+            String prefix = normalizedHost.substring(0, normalizedHost.length() - suffix.length());
+            return !prefix.startsWith(".")
+                    && !prefix.endsWith(".")
+                    && !prefix.contains("..");
         }
         return normalizedHost.equals(pattern);
     }

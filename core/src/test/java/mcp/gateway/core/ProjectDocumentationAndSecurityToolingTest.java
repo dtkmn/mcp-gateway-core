@@ -1,16 +1,34 @@
 package mcp.gateway.core;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
+import org.snakeyaml.engine.v2.api.Load;
+import org.snakeyaml.engine.v2.api.LoadSettings;
+import org.snakeyaml.engine.v2.schema.CoreSchema;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class ProjectDocumentationAndSecurityToolingTest {
-    private static final Pattern CHECKOUT_ACTION = Pattern.compile("actions/checkout@([^\\s\"']+)");
+    private static final Pattern FULL_COMMIT_SHA = Pattern.compile("[0-9a-f]{40}");
+    private static final Map<String, String> REVIEWED_ACTION_SHAS = Map.ofEntries(
+            Map.entry("actions/checkout", "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0"),
+            Map.entry("actions/deploy-pages", "cd2ce8fcbc39b97be8ca5fce6e763baed58fa128"),
+            Map.entry("actions/setup-java", "0f481fcb613427c0f801b606911222b5b6f3083a"),
+            Map.entry("actions/setup-node", "48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e"),
+            Map.entry("actions/upload-artifact", "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"),
+            Map.entry("github/codeql-action/analyze", "99df26d4f13ea111d4ec1a7dddef6063f76b97e9"),
+            Map.entry("github/codeql-action/init", "99df26d4f13ea111d4ec1a7dddef6063f76b97e9"),
+            Map.entry("github/codeql-action/upload-sarif", "99df26d4f13ea111d4ec1a7dddef6063f76b97e9"),
+            Map.entry("gradle/actions/wrapper-validation", "3f131e8634966bd73d06cc69884922b02e6faf92"),
+            Map.entry("snyk/actions/setup", "9adf32b1121593767fc3c057af55b55db032dc04"),
+            Map.entry("withastro/action", "b7d53628f8b666036b0238aadb0b984a2a489f26"));
 
     @Test
     void readmeLinksModuleRoadmapSecurityAndReleaseDocs() throws IOException {
@@ -55,8 +73,8 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(!indexPage.contains("](/guides/"));
         assertTrue(!indexPage.contains("link: /mcp-gateway-core/"));
         assertTrue(!indexPage.contains("](/mcp-gateway-core/"));
-        assertTrue(pagesWorkflow.contains("withastro/action@v6"));
-        assertTrue(pagesWorkflow.contains("actions/deploy-pages@v5"));
+        assertPinnedAction(pagesWorkflow, "withastro/action");
+        assertPinnedAction(pagesWorkflow, "actions/deploy-pages");
         assertTrue(pagesWorkflow.contains("node-version: 24"));
         assertTrue(syncScript.contains("docs/GETTING_STARTED.md"));
         assertTrue(syncScript.contains("docs/CONTRACT_REFERENCE.md"));
@@ -143,7 +161,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         List<Path> workflows;
         try (var files = Files.list(Path.of(".github/workflows"))) {
             workflows = files
-                    .filter(path -> path.toString().endsWith(".yml"))
+                    .filter(path -> path.toString().endsWith(".yml") || path.toString().endsWith(".yaml"))
                     .sorted()
                     .toList();
         }
@@ -152,7 +170,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(dependabot.contains("package-ecosystem: \"gradle\""));
         assertTrue(dependabot.contains("package-ecosystem: \"npm\""));
         assertTrue(dependabot.contains("directory: \"/docs-site\""));
-        assertTrue(codeql.contains("github/codeql-action/init@v4"));
+        assertPinnedAction(codeql, "github/codeql-action/init");
         assertTrue(codeql.contains("build-mode: manual"));
         assertTrue(codeql.contains("./gradlew clean test --no-daemon --stacktrace"));
         assertTrue(security.contains("Dependabot version updates"));
@@ -160,7 +178,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(security.contains("latest published `0.7.x` artifact line"));
         assertTrue(!security.contains("latest published `0.6.x` artifact"));
         assertTrue(!security.contains("latest published `0.5.x` artifact"));
-        assertTrue(snyk.contains("snyk/actions/setup@v1.0.0"));
+        assertPinnedAction(snyk, "snyk/actions/setup");
         assertTrue(snyk.contains("SNYK_TOKEN"));
         assertTrue(snyk.contains("SNYK_ORG"));
         assertTrue(snyk.contains("secrets.SNYK_ORG || vars.SNYK_ORG"));
@@ -169,8 +187,8 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(snyk.contains("snyk_args+=(\"--org=${SNYK_ORG}\")"));
         assertTrue(snyk.contains("snyk test \"${snyk_args[@]}\""));
         assertTrue(snyk.contains("--sarif-file-output=snyk-open-source.sarif"));
-        assertTrue(snyk.contains("github/codeql-action/upload-sarif@v4"));
-        assertTrue(snyk.contains("actions/upload-artifact@v7"));
+        assertPinnedAction(snyk, "github/codeql-action/upload-sarif");
+        assertPinnedAction(snyk, "actions/upload-artifact");
         assertTrue(snyk.contains("steps.snyk.outputs.exit_code != ''"));
         assertTrue(snyk.contains("exit \"${{ steps.snyk.outputs.exit_code }}\""));
         assertTrue(!snyk.contains("continue-on-error: true"));
@@ -179,7 +197,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(releasePolicy.contains("does not upload artifacts to Central"));
         assertTrue(readme.contains("./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail"));
         assertTrue(releasePolicy.contains("./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail"));
-        assertTrue(ci.contains("./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail"));
+        assertTrue(ci.contains("./gradlew verifyGatewayDevelopment --no-daemon --stacktrace --warning-mode fail"));
         assertTrue(ci.contains("./bin/java17-source-compat-0.6-consumer.sh"));
         assertTrue(ci.contains("./bin/java17-consumer-smoke.sh"));
         assertTrue(releasePolicy.contains("bin/java17-source-compat-0.6-consumer.sh"));
@@ -198,17 +216,283 @@ class ProjectDocumentationAndSecurityToolingTest {
                 "codeql.yml",
                 "pages.yml",
                 "snyk.yml");
+        Set<String> observedActions = new HashSet<>();
         for (Path workflow : workflows) {
             String content = Files.readString(workflow);
-            var checkout = CHECKOUT_ACTION.matcher(content);
-            boolean foundCheckout = false;
-            while (checkout.find()) {
-                foundCheckout = true;
-                assertTrue("v7".equals(checkout.group(1)), () -> workflow + " should use actions/checkout@v7");
-            }
+            Set<String> workflowActions = assertActionsPinnedToReviewedCommits(workflow, content);
+            observedActions.addAll(workflowActions);
             if (workflowsThatNeedCheckout.contains(workflow.getFileName().toString())) {
-                assertTrue(foundCheckout, () -> workflow + " should check out repository contents");
+                assertTrue(workflowActions.contains("actions/checkout"),
+                        () -> workflow + " should check out repository contents");
             }
         }
+        assertEquals(REVIEWED_ACTION_SHAS.keySet(), observedActions,
+                "Workflow action allowlist should cover every reviewed action and no others");
+    }
+
+    @Test
+    void workflowActionPinningUsesParsedStructureAndProhibitsLocalUses() {
+        String checkout = "actions/checkout@" + REVIEWED_ACTION_SHAS.get("actions/checkout");
+
+        assertEquals(Set.of("actions/checkout"), assertActionsPinnedToReviewedCommits(
+                Path.of("noncanonical-pinned-workflow.yml"),
+                """
+                jobs:
+                  build: &pinned_job
+                    runs-on: ubuntu-latest
+                    steps:
+                      - { uses: %1$s }
+                      - uses : %1$s
+                      - "u\\u0073es": %1$s
+                  mirrored: *pinned_job
+                """.formatted(checkout)));
+        AssertionError escapedKeyFailure = assertThrows(
+                AssertionError.class,
+                () -> assertActionsPinnedToReviewedCommits(
+                        Path.of("escaped-key-workflow.yml"),
+                        """
+                        jobs:
+                          build:
+                            runs-on: ubuntu-latest
+                            steps:
+                              - uses: %s
+                              - "u\\u0073es": attacker/action@v1
+                        """.formatted(checkout)));
+        assertTrue(escapedKeyFailure.getMessage().contains("full lowercase commit SHA"));
+        assertThrows(AssertionError.class, () -> assertActionsPinnedToReviewedCommits(
+                Path.of("job-level-workflow.yml"),
+                """
+                jobs:
+                  reusable:
+                    "u\\u0073es": attacker/repository/.github/workflows/build.yml@v1
+                """));
+        AssertionError localActionFailure = assertThrows(
+                AssertionError.class,
+                () -> assertActionsPinnedToReviewedCommits(
+                        Path.of("local-action-workflow.yml"),
+                        """
+                        jobs:
+                          build:
+                            runs-on: ubuntu-latest
+                            steps:
+                              - uses: ./.github/actions/release
+                        """));
+        assertTrue(localActionFailure.getMessage().contains("prohibited local action or reusable workflow"));
+        assertThrows(AssertionError.class, () -> assertActionsPinnedToReviewedCommits(
+                Path.of("merged-action-workflow.yml"),
+                """
+                jobs:
+                  build:
+                    runs-on: ubuntu-latest
+                    env: &hidden_action
+                      "u\\u0073es": attacker/action@v1
+                    steps:
+                      - <<: *hidden_action
+                """));
+        assertThrows(AssertionError.class, () -> assertActionsPinnedToReviewedCommits(
+                Path.of("duplicate-key-workflow.yml"),
+                """
+                jobs:
+                  build:
+                    runs-on: ubuntu-latest
+                    steps:
+                      - uses: %s
+                        "u\\u0073es": attacker/action@v1
+                """.formatted(checkout)));
+    }
+
+    @Test
+    void developmentAndReleaseVerificationStaySeparatedAndSupplyChainPinned() throws IOException {
+        String rootBuild = Files.readString(Path.of("build.gradle"));
+        String coreBuild = Files.readString(Path.of("core/build.gradle"));
+        String adapterBuild = Files.readString(Path.of("adapters/spring-webflux/build.gradle"));
+        String gradleProperties = Files.readString(Path.of("gradle.properties"));
+        String wrapperProperties = Files.readString(Path.of("gradle/wrapper/gradle-wrapper.properties"));
+        String ci = Files.readString(Path.of(".github/workflows/ci.yml"));
+        String centralWorkflow = Files.readString(Path.of(".github/workflows/central-validation-upload.yml"));
+        String codeqlWorkflow = Files.readString(Path.of(".github/workflows/codeql.yml"));
+        String snykWorkflow = Files.readString(Path.of(".github/workflows/snyk.yml"));
+        String centralUpload = Files.readString(Path.of("bin/gateway-public-preview-central-validation-upload.sh"));
+        String centralRunbook = Files.readString(Path.of("docs/CENTRAL_VALIDATION_UPLOAD.md"));
+        String snykPolicy = Files.readString(Path.of(".snyk"));
+        String docsPackage = Files.readString(Path.of("docs-site/package.json"));
+
+        assertTrue(gradleProperties.contains("gatewayCoreVersion="));
+        assertTrue(!gradleProperties.contains("gatewayCoreVersion=0.7.0"));
+        assertTrue(wrapperProperties.contains(
+                "distributionSha256Sum=9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14"));
+
+        String developmentTask = section(
+                rootBuild,
+                "tasks.register('verifyGatewayDevelopment')",
+                "tasks.register('verifyAcceptedApiDeltas')");
+        assertTrue(developmentTask.contains("dependsOn tasks.named('check')"));
+        assertTrue(developmentTask.contains("verifyGatewayCorePublication"));
+        assertTrue(developmentTask.contains("verifyGatewaySpringWebFluxPublication"));
+        assertTrue(!developmentTask.contains("CentralPortal"));
+        assertTrue(!developmentTask.contains("SignedCentralPortal"));
+        assertTrue(coreBuild.contains("tasks.register('verifyGatewayCorePublication')"));
+        assertTrue(coreBuild.contains("gatewayCorePublicationArtifact"));
+        assertTrue(coreBuild.contains("new File(publicationDir, 'maven-metadata.xml')"));
+        assertTrue(adapterBuild.contains("springWebFluxPublicationArtifact"));
+        assertTrue(adapterBuild.contains("new File(publicationDir, 'maven-metadata.xml')"));
+
+        String coreReleaseTask = section(
+                coreBuild,
+                "tasks.register('verifyGatewayCorePublicPreviewPublication')",
+                "tasks.named('test')");
+        assertTrue(coreReleaseTask.contains("verifyGatewayCoreCentralPortalBundle"));
+        assertTrue(coreReleaseTask.contains("verifyGatewayCoreSignedCentralPortalDryRun"));
+        assertTrue(coreReleaseTask.contains("verifyGatewayCorePublication"));
+
+        String coreCheckTask = coreBuild.substring(coreBuild.indexOf("tasks.named('check')"));
+        assertTrue(!coreCheckTask.contains("verifyGatewayCoreCentralPortalBundle"));
+        assertTrue(!coreCheckTask.contains("verifyGatewayCoreSignedCentralPortalDryRun"));
+
+        assertTrue(ci.contains("./gradlew verifyGatewayDevelopment"));
+        assertTrue(!ci.contains("./gradlew verifyGatewayPublicPreviewPublication"));
+        assertTrue(centralUpload.contains("./gradlew verifyGatewayPublicPreviewPublication"));
+        String unpublishedCheck = "ensure_version_is_unpublished \"$version\"";
+        assertNotEquals(centralUpload.indexOf(unpublishedCheck), centralUpload.lastIndexOf(unpublishedCheck));
+        assertTrue(centralUpload.contains(
+                unpublishedCheck + "\n  upload_user_managed_deployment \"$version\" \"$bundle\" \"$work_root\""));
+        assertTrue(centralUpload.contains("https://repo1.maven.org/maven2/"));
+        assertTrue(centralUpload.contains("refusing to reuse immutable Maven Central coordinate"));
+        assertTrue(centralUpload.contains("--warning-mode fail"));
+        assertTrue(centralUpload.contains("-PgatewayCoreVersion=\"$version\""));
+        assertTrue(centralUpload.contains("full primary-key fingerprint"));
+        assertTrue(centralUpload.contains("GATEWAY_CORE_JAVA17_HOME"));
+        assertTrue(centralUpload.contains("$ROOT_DIR/bin/java17-consumer-smoke.sh"));
+        assertTrue(centralUpload.contains("$ROOT_DIR/bin/java17-source-compat-0.6-consumer.sh"));
+        assertTrue(centralUpload.contains("copy_publication_for_release_signing \"$version\""));
+        assertTrue(centralWorkflow.contains("Set up JDK 17 for release consumer checks"));
+        assertTrue(centralWorkflow.contains("GATEWAY_CORE_JAVA17_HOME=${JAVA_HOME}"));
+        assertTrue(centralWorkflow.contains("group: central-validation-upload"));
+        assertTrue(centralWorkflow.contains("cancel-in-progress: false"));
+        assertTrue(centralWorkflow.contains("    environment: central-validation-upload"));
+        assertTrue(centralRunbook.contains("**environment secrets** on `central-validation-upload`"));
+        assertTrue(centralRunbook.contains("Require reviewer approval"));
+        assertTrue(centralRunbook.contains("prevent self-review"));
+        assertTrue(centralRunbook.contains("full-length commit SHA"));
+        assertTrue(centralUpload.indexOf("./gradlew verifyGatewayPublicPreviewPublication")
+                < centralUpload.indexOf("$ROOT_DIR/bin/java17-consumer-smoke.sh"));
+        assertTrue(centralUpload.indexOf("$ROOT_DIR/bin/java17-consumer-smoke.sh")
+                < centralUpload.indexOf("$ROOT_DIR/bin/java17-source-compat-0.6-consumer.sh"));
+        assertTrue(centralUpload.indexOf("$ROOT_DIR/bin/java17-source-compat-0.6-consumer.sh")
+                < centralUpload.indexOf("copy_publication_for_release_signing \"$version\""));
+        assertTrue(centralWorkflow.indexOf("Set up JDK 17 for release consumer checks")
+                < centralWorkflow.indexOf("Set up JDK 25"));
+
+        for (String workflow : List.of(ci, centralWorkflow, codeqlWorkflow, snykWorkflow)) {
+            assertPinnedAction(workflow, "gradle/actions/wrapper-validation");
+        }
+
+        assertTrue(snykPolicy.contains("ignore: {}"));
+        assertTrue(!snykPolicy.contains("SNYK-JAVA-COMFASTERXMLJACKSONCORE-17457695"));
+        assertTrue(docsPackage.contains("\"node\": \">=22.12.0\""));
+    }
+
+    private static Set<String> assertActionsPinnedToReviewedCommits(Path workflow, String content) {
+        LoadSettings settings = LoadSettings.builder()
+                .setLabel(workflow.toString())
+                .setSchema(new CoreSchema())
+                .setAllowDuplicateKeys(false)
+                .setAllowRecursiveKeys(false)
+                .setAllowNonScalarKeys(false)
+                .setMaxAliasesForCollections(20)
+                .setCodePointLimit(1_000_000)
+                .build();
+        Object parsed = assertDoesNotThrow(
+                () -> new Load(settings).loadFromString(content),
+                () -> workflow + " must be valid YAML without duplicate keys");
+        Map<?, ?> root = requireMapping(parsed, workflow + " document");
+        Map<?, ?> jobs = requireMapping(root.get("jobs"), workflow + " jobs");
+        assertFalse(jobs.isEmpty(), () -> workflow + " should define at least one job");
+
+        Set<String> actions = new HashSet<>();
+        for (Map.Entry<?, ?> jobEntry : jobs.entrySet()) {
+            String jobName = assertInstanceOf(
+                    String.class,
+                    jobEntry.getKey(),
+                    () -> workflow + " job identifiers must be strings");
+            Map<?, ?> job = requireMapping(jobEntry.getValue(), workflow + " job " + jobName);
+            if (job.containsKey("uses")) {
+                addReviewedAction(workflow, "job " + jobName, job.get("uses"), actions);
+            }
+
+            if (!job.containsKey("steps")) {
+                continue;
+            }
+            Object stepsValue = job.get("steps");
+            List<?> steps = requireList(stepsValue, workflow + " job " + jobName + " steps");
+            for (int index = 0; index < steps.size(); index++) {
+                Map<?, ?> step = requireMapping(
+                        steps.get(index),
+                        workflow + " job " + jobName + " step " + index);
+                if (step.containsKey("uses")) {
+                    addReviewedAction(
+                            workflow,
+                            "job " + jobName + " step " + index,
+                            step.get("uses"),
+                            actions);
+                }
+            }
+        }
+        assertFalse(actions.isEmpty(), () -> workflow + " should contain at least one reviewed action");
+        return actions;
+    }
+
+    private static void addReviewedAction(
+            Path workflow,
+            String location,
+            Object value,
+            Set<String> actions
+    ) {
+        String reference = assertInstanceOf(
+                String.class,
+                value,
+                () -> workflow + " " + location + " uses value must be a string");
+        assertFalse(reference.isBlank(),
+                () -> workflow + " " + location + " uses value must not be blank");
+        assertFalse(reference.startsWith("./"),
+                () -> workflow + " " + location + " uses a prohibited local action or reusable workflow: " + reference);
+
+        int separator = reference.lastIndexOf('@');
+        assertTrue(separator > 0,
+                () -> workflow + " " + location + " is missing a commit reference: " + reference);
+        String action = reference.substring(0, separator);
+        String revision = reference.substring(separator + 1);
+        assertTrue(FULL_COMMIT_SHA.matcher(revision).matches(),
+                () -> workflow + " must pin " + action + " to a full lowercase commit SHA, not " + revision);
+        assertTrue(REVIEWED_ACTION_SHAS.containsKey(action),
+                () -> workflow + " uses an action or reusable workflow that has not been reviewed: " + action);
+        assertEquals(REVIEWED_ACTION_SHAS.get(action), revision,
+                () -> workflow + " must use the reviewed commit for " + action);
+        actions.add(action);
+    }
+
+    private static Map<?, ?> requireMapping(Object value, String location) {
+        assertInstanceOf(Map.class, value, () -> location + " must be a mapping");
+        return (Map<?, ?>) value;
+    }
+
+    private static List<?> requireList(Object value, String location) {
+        assertInstanceOf(List.class, value, () -> location + " must be a list");
+        return (List<?>) value;
+    }
+
+    private static void assertPinnedAction(String workflow, String action) {
+        String revision = REVIEWED_ACTION_SHAS.get(action);
+        assertNotNull(revision, () -> "Missing reviewed commit for " + action);
+        assertTrue(workflow.contains("uses: " + action + "@" + revision),
+                () -> "Workflow should pin " + action + " to reviewed commit " + revision);
+    }
+
+    private static String section(String content, String startMarker, String endMarker) {
+        int start = content.indexOf(startMarker);
+        int end = content.indexOf(endMarker, start + startMarker.length());
+        assertTrue(start >= 0, () -> "Missing section start: " + startMarker);
+        assertTrue(end > start, () -> "Missing section end: " + endMarker);
+        return content.substring(start, end);
     }
 }

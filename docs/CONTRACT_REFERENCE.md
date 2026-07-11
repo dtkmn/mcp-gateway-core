@@ -12,7 +12,8 @@ runtime supplies those values, and core normalizes/evaluates them consistently.
 
 - Blank string values usually normalize to `null` when the value is optional.
 - Required identifiers throw `IllegalArgumentException` when blank.
-- Scope strings normalize to lower case and are de-duplicated in insertion order.
+- Scope collections normalize to lower case and are de-duplicated in insertion
+  order. Configured required scopes must also be valid RFC 6749 scope tokens.
 - Unmapped authorizable actions fail closed when authorization is enabled.
 - Product-specific terms such as scanner names, internal roles, or tenant
   routing rules belong in the consuming runtime, not in core contracts.
@@ -112,7 +113,7 @@ Package: `mcp.gateway.core.authz`
 | --- | --- |
 | `toolName` | Exact MCP tool name. |
 | `surface` | Tool surface. |
-| `requiredScopes` | Non-empty scopes required to invoke the tool. |
+| `requiredScopes` | Non-empty RFC 6749 scope tokens required to invoke the tool. |
 | `capabilities` | Optional behavior labels copied into the descriptor registry. |
 
 `McpToolAccessRegistry` is an immutable registry of access rules. Duplicate
@@ -128,8 +129,8 @@ closed when authorization is enabled.
 | `wildcardAllowed` | Whether `*` grants all required scopes. |
 
 `ToolAuthorizationRequirement` is the mapped requirement for one action. Empty
-requirements are invalid. Use a missing requirement to represent an unmapped
-action.
+requirements and values outside the RFC 6749 `scope-token` character set are
+invalid. Use a missing requirement to represent an unmapped action.
 
 `ToolAuthorizationDecision` is the result.
 
@@ -207,22 +208,25 @@ Policy bundles are first-match rule sets for simple tool/host/time governance.
 
 | Field | Meaning |
 | --- | --- |
-| `tools` | Exact MCP tool names. |
+| `tools` | Exact, case-sensitive MCP tool names. |
 | `hosts` | Exact or wildcard host patterns. |
 | `timeWindows` | Bundle-local day/time windows. |
 
 Blank selector entries are rejected instead of silently broadening a rule.
+Host selectors normalize to lower case. A `*.example.com` selector matches
+subdomains but not the `example.com` apex.
 
 `PolicyBundleTimeWindow` contains:
 
 | Field | Meaning |
 | --- | --- |
-| `days` | Matching `DayOfWeek` values. |
+| `days` | Days on which the window starts. |
 | `start` | Inclusive local start time. |
 | `end` | Exclusive local end time. |
 
-Windows may wrap midnight when `start` is after `end`. Equal start/end is
-invalid.
+Windows may wrap midnight when `start` is after `end`. For an overnight window,
+`days` selects the start day: a Monday `23:00` to `02:00` window also matches the
+following Tuesday before `02:00`. Equal start/end is invalid.
 
 `PolicyBundleEvaluationRequest` contains:
 
@@ -279,6 +283,12 @@ Package: `mcp.gateway.core.protection`
 | `workspaceId` | Workspace associated with the decision. |
 | `retryAfterSeconds` | Suggested retry delay for rejected requests. |
 
+Direct construction is normalized to the same invariants as the factories:
+allow decisions clear rejection code/reason and use a zero retry delay; rejected
+decisions default blank code/reason to `protection_rejected` and clamp the retry
+delay to at least one second. Optional tool/client/workspace identifiers are
+trimmed and blank values become null.
+
 `McpQuotaLimit` is a simple count-based quota helper. It rejects when
 `currentCount >= maxAllowed`.
 
@@ -322,11 +332,17 @@ IP, API key, or another shape.
 | `capacity` | Maximum stored tokens. |
 | `refillTokens` | Tokens added per refill period. |
 | `refillPeriodSeconds` | Refill period. |
-| `maxTrackedKeys` | Maximum bucket keys retained in memory. Minimum normalized value is `100`. |
+| `maxTrackedKeys` | Maximum bucket keys retained in memory. Minimum normalized value is `1`. |
 | `disabledRetryAfterSeconds` | Retry delay returned when the policy is disabled. |
 
 When the limiter is at `maxTrackedKeys` and no stale key can be evicted, new
 fresh keys fail closed instead of growing memory.
+
+Key creation and stale eviction are coordinated so concurrent callers cannot
+temporarily exceed the configured cap. Stale-age arithmetic saturates instead of
+overflowing for extreme refill periods. If an existing key's capacity or refill
+settings change, the new policy applies from that point forward; elapsed time is
+not retroactively credited at the new rate.
 
 ## URL Scope And Correlation IDs
 
@@ -335,6 +351,16 @@ Package: `mcp.gateway.core.url`
 `UrlScope` checks whether a candidate URL stays inside an allowed base URL. It
 is useful for product runtimes that need target or callback confinement. Core
 does not fetch URLs.
+
+Hosts must already use ASCII or punycode and are lower-cased before comparison;
+raw Unicode hosts are rejected to avoid IDNA-version mapping differences across
+clients. Default HTTP/HTTPS ports are treated as equivalent to explicit ports.
+Paths are normalized and matched on segment boundaries. To avoid downstream
+parser ambiguity, `UrlScope` rejects user information, encoded or literal
+backslashes, control characters, percent-encoded percent signs (multiply encoded
+paths), malformed percent-encoded UTF-8, malformed authorities, and invalid
+ports. Invalid candidates return `false`; an invalid base URL is rejected during
+`parse`.
 
 Package: `mcp.gateway.core.logging`
 
@@ -345,6 +371,10 @@ Package: `mcp.gateway.core.logging`
 | `X-Correlation-Id` | Preferred request correlation header. |
 | `X-Request-Id` | Legacy/fallback request id header. |
 
+Caller-supplied correlation values are trimmed, capped at 128 characters, and
+accepted only when they contain log-safe ASCII letters, digits, `.`, `_`, `:`,
+`/`, or `-`. Unsafe values fall through to the next resolver source.
+
 ## Spring WebFlux Adapter
 
 Package: `mcp.gateway.spring.webflux`
@@ -352,6 +382,11 @@ Package: `mcp.gateway.spring.webflux`
 The adapter parses MCP JSON-RPC requests from a WebFlux exchange and applies
 core decisions before the request reaches your MCP runtime. It is not Spring
 Boot auto-configuration.
+
+Only application-relative `POST` requests matching the configured endpoint are
+governed. Context paths are excluded before comparison, and matrix parameters do
+not change a segment's route value, so `/app/mcp;v=1` can match a configured
+`/mcp` endpoint under context path `/app`. Extra path segments do not match.
 
 Governance is active when authorization policy is enabled or abuse protection is
 enabled. When governance is active, the adapter rejects invalid MCP JSON-RPC
@@ -361,6 +396,9 @@ return adapter JSON with HTTP `400`, `Content-Type: application/json`, `error`
 set to `invalid_json_rpc_request`, a low-cardinality `reason`, ISO-8601
 `timestamp`, resolved `correlationId`, and the server request id as `requestId`.
 JSON-RPC `id` is never reflected as `requestId`.
+Duplicate fields anywhere in the JSON object are rejected to avoid parser
+differentials. Method and `tools/call` tool-name strings must not be blank or
+carry leading/trailing whitespace.
 
 For `0.7.0`, the adapter does not require or validate the JSON-RPC `jsonrpc`
 version field. That protocol validation remains the downstream runtime's
@@ -375,6 +413,11 @@ When neither authorization nor protection governance is active, the adapter does
 not validate, buffer, or replay MCP request bodies. Invalid JSON-RPC bodies,
 batch bodies, and bodies larger than `maxBodyBytes` pass downstream unchanged.
 
+When governance is active, only a body-size failure raised while the adapter is
+reading the request becomes its `413` response. A `DataBufferLimitException`
+raised later by downstream handling propagates unchanged. Replayed requests have
+conflicting transfer framing removed and an exact `Content-Length` set.
+
 Valid non-tool JSON-RPC methods are parsed as non-authorizable invocations:
 authorization is skipped, and protection still runs when enabled.
 
@@ -382,15 +425,15 @@ Invalid request reasons are:
 
 | Reason | Meaning |
 | --- | --- |
-| `invalid_json_rpc_request` | Body cannot be parsed as one complete JSON value. |
+| `invalid_json_rpc_request` | Body cannot be parsed as one complete JSON value, including duplicate object fields. |
 | `batch_not_supported` | Body is a JSON-RPC batch array. |
-| `invalid_request_shape` | Body is empty, not an object request, lacks a non-blank string `method`, or has invalid `tools/call` params/name shape. |
+| `invalid_request_shape` | Body is empty, not an object request, lacks an exact non-blank string `method`, or has invalid/padded `tools/call` params/name shape. |
 
 `McpGatewayWebFluxProperties` contains:
 
 | Field | Meaning |
 | --- | --- |
-| `mcpEndpoint` | HTTP path receiving MCP JSON-RPC. Default is `/mcp`. |
+| `mcpEndpoint` | Application-relative HTTP path receiving MCP JSON-RPC. Default is `/mcp`; route matching is matrix-parameter aware. |
 | `maxBodyBytes` | Maximum request body buffered by the adapter filter. Minimum normalized value is `1024`. Default is `262144`. |
 | `governanceFilterOrder` | Spring `WebFilter` order for the WebFlux governance filter. |
 
@@ -407,8 +450,9 @@ Invalid request reasons are:
 `GatewayToolExecutionContext`.
 
 `McpGrantedScopesExtractor.springSecurityScopes()` reads Spring Security
-authorities with the `SCOPE_` prefix and converts them into normalized scope
-names.
+authorities with the `SCOPE_` prefix only for authenticated, non-anonymous
+principals. It trims names, drops blanks, lower-cases, and de-duplicates them.
+Null results from a custom extractor normalize to an empty scope list.
 
 `McpAuthorizationObservation` is emitted by the WebFlux governance filter when
 authorization runs:
@@ -425,6 +469,12 @@ authorization runs:
 The adapter returns MCP-style JSON-RPC errors for authorization and protection
 rejections, but your runtime still owns the policy that decides what should be
 allowed.
+
+Rejection correlation uses the context correlation id when present and otherwise
+falls back through the configured `McpGatewayCorrelationIdResolver`. The default
+header resolver applies the core log-safe correlation-id rules and falls back to
+the server request id. An `insufficient_scope` challenge includes its `scope`
+parameter only when every required scope is an RFC 6749 scope token.
 
 ## What Not To Encode In Core Values
 

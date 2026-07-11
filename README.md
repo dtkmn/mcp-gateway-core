@@ -160,17 +160,24 @@ published artifact.
 ## Build
 
 ```bash
+./gradlew verifyGatewayDevelopment --no-daemon --stacktrace --warning-mode fail
+```
+
+This snapshot-safe development gate runs the core and adapter builds,
+forbidden-coupling checks, closed-world JAR checks, Java 17 bytecode checks,
+adapter runtime-classpath bytecode checks, core `jdeps`, API compatibility checks,
+and Gradle deprecation enforcement. It also stages both Maven artifacts for the
+Java 17 downstream-consumer checks.
+
+Release preparation sets an unpublished, non-snapshot version and additionally
+runs the release-only Central bundle and signing proof:
+
+```bash
 ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
 ```
 
-This command runs the core and adapter builds, forbidden-coupling checks,
-closed-world JAR checks, Java 17 bytecode checks, adapter runtime-classpath
-bytecode checks, core `jdeps`, Gradle deprecation enforcement, unsigned Central
-Portal bundle validation, and signed dry-run bundle validation with an ephemeral
-local GPG key.
-
-Release preparation also runs the Java 17 consumer checks against staged
-artifacts:
+CI and release preparation also run the Java 17 consumer checks against the
+artifacts staged by the applicable gate:
 
 ```bash
 ./bin/java17-consumer-smoke.sh
@@ -183,7 +190,9 @@ staged repository, and exercises the WebFlux filter path.
 
 ## Coordinates
 
-These are the current `0.7.0` public-preview coordinates.
+These are the current published `0.7.0` public-preview coordinates. The source
+tree may use the next `-SNAPSHOT` development version; do not substitute that
+snapshot into Maven Central examples.
 
 Core coordinate:
 
@@ -245,7 +254,9 @@ Maven:
 
 The repository uses GitHub-native security automation first:
 
-- Dependabot version updates for GitHub Actions and Gradle.
+- Dependabot version updates for GitHub Actions, Gradle, and npm.
+- Gradle distribution checksum pinning and Wrapper JAR validation before CI
+  workflows execute the build.
 - CodeQL Java analysis with an explicit Gradle test build.
 - Snyk Open Source scanning for the Gradle project graph in
   `.github/workflows/snyk.yml`. The workflow requires a real `SNYK_TOKEN`

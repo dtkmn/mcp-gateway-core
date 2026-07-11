@@ -15,7 +15,7 @@ def springWebFluxGroupId = project.group.toString()
 def springWebFluxPublicationVersion = project.version.toString()
 def springFrameworkVersion = providers.gradleProperty('springFrameworkVersion').orElse('7.0.8').get()
 def springSecurityVersion = providers.gradleProperty('springSecurityVersion').orElse('7.0.6').get()
-def jacksonDatabindVersion = providers.gradleProperty('jacksonDatabindVersion').orElse('2.21.4').get()
+def jacksonDatabindVersion = providers.gradleProperty('jacksonDatabindVersion').orElse('2.21.5').get()
 def reactorVersion = providers.gradleProperty('reactorVersion').orElse('3.8.5').get()
 def publicationPath = "${springWebFluxGroupId.replace('.', '/')}/${springWebFluxArtifactId}/${springWebFluxPublicationVersion}"
 def springWebFluxCentralBundleName = "${springWebFluxArtifactId}-${springWebFluxPublicationVersion}-central-portal-bundle.zip"
@@ -536,6 +536,34 @@ tasks.withType(GenerateModuleMetadata).configureEach {
     enabled = false
 }
 
+def springWebFluxPublicationArtifact = { File publicationDir, String extension, String classifier = null ->
+    String resolvedVersion = springWebFluxPublicationVersion
+    if (springWebFluxPublicationVersion.endsWith('-SNAPSHOT')) {
+        File metadataFile = new File(publicationDir, 'maven-metadata.xml')
+        if (!metadataFile.isFile()) {
+            throw new GradleException("Missing adapter snapshot metadata: ${metadataFile}")
+        }
+        def metadata = new groovy.xml.XmlSlurper(false, false).parse(metadataFile)
+        def matches = metadata.versioning.snapshotVersions.snapshotVersion.findAll { snapshotVersion ->
+            String metadataClassifier = snapshotVersion.classifier.text()
+            snapshotVersion.extension.text() == extension
+                    && (classifier == null ? metadataClassifier.isEmpty() : metadataClassifier == classifier)
+        }
+        if (matches.size() != 1) {
+            throw new GradleException(
+                    "Expected one ${classifier == null ? 'main' : classifier} ${extension} entry in ${metadataFile}, got ${matches.size()}"
+            )
+        }
+        resolvedVersion = matches[0].value.text()
+        if (resolvedVersion.isBlank()) {
+            throw new GradleException("Snapshot metadata entry has no resolved version in ${metadataFile}")
+        }
+    }
+
+    String classifierSuffix = classifier == null ? '' : "-${classifier}"
+    new File(publicationDir, "${springWebFluxArtifactId}-${resolvedVersion}${classifierSuffix}.${extension}")
+}
+
 tasks.register('verifyGatewaySpringWebFluxPublication') {
     group = 'verification'
     description = 'Verifies the local Maven publication shape for the Spring WebFlux adapter.'
@@ -543,14 +571,24 @@ tasks.register('verifyGatewaySpringWebFluxPublication') {
 
     doLast {
         File publicationDir = springWebFluxPublicationDirectory()
-        File jarFile = new File(publicationDir, "${springWebFluxArtifactId}-${springWebFluxPublicationVersion}.jar")
-        File pomFile = new File(publicationDir, "${springWebFluxArtifactId}-${springWebFluxPublicationVersion}.pom")
-        if (!jarFile.isFile()) {
-            throw new GradleException("Missing adapter publication JAR: ${jarFile}")
+        List<File> publicationArtifacts = [
+                springWebFluxPublicationArtifact(publicationDir, 'pom'),
+                springWebFluxPublicationArtifact(publicationDir, 'jar'),
+                springWebFluxPublicationArtifact(publicationDir, 'jar', 'sources'),
+                springWebFluxPublicationArtifact(publicationDir, 'jar', 'javadoc')
+        ]
+        publicationArtifacts.each { artifact ->
+            if (!artifact.isFile()) {
+                throw new GradleException("Missing adapter publication artifact: ${artifact}")
+            }
+            verifyChecksumFile(artifact, 'MD5', 'md5')
+            verifyChecksumFile(artifact, 'SHA-1', 'sha1')
+            verifyChecksumFile(artifact, 'SHA-256', 'sha256')
+            verifyChecksumFile(artifact, 'SHA-512', 'sha512')
         }
-        if (!pomFile.isFile()) {
-            throw new GradleException("Missing adapter publication POM: ${pomFile}")
-        }
+
+        File pomFile = publicationArtifacts[0]
+        verifyPomMetadata(pomFile)
         String pomText = pomFile.text
         if (!pomText.contains('<artifactId>mcp-gateway-core</artifactId>')) {
             throw new GradleException('Adapter POM must declare a dependency on mcp-gateway-core.')

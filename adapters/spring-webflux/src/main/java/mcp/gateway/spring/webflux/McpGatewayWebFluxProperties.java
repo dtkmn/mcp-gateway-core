@@ -1,5 +1,8 @@
 package mcp.gateway.spring.webflux;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+
 /**
  * Runtime settings for the MCP gateway WebFlux governance filter.
  *
@@ -21,7 +24,9 @@ public record McpGatewayWebFluxProperties(String mcpEndpoint,
      * <p>
      * Blank endpoints default to {@value #DEFAULT_MCP_ENDPOINT}, endpoints
      * without a leading slash gain one, and body limits below 1024 bytes are
-     * raised to 1024 bytes.
+     * raised to 1024 bytes. Endpoint values with a query, fragment, matrix
+     * parameters, or whitespace are rejected because they cannot identify one
+     * unambiguous application-relative route.
      */
     public McpGatewayWebFluxProperties {
         mcpEndpoint = normalizeEndpoint(mcpEndpoint);
@@ -42,6 +47,43 @@ public record McpGatewayWebFluxProperties(String mcpEndpoint,
             return DEFAULT_MCP_ENDPOINT;
         }
         String trimmed = endpoint.trim();
-        return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
+        String normalized = trimmed.startsWith("/") ? trimmed : "/" + trimmed;
+        validateEndpoint(normalized);
+        return normalized;
+    }
+
+    private static void validateEndpoint(String endpoint) {
+        URI uri;
+        try {
+            uri = new URI(endpoint);
+        } catch (URISyntaxException exception) {
+            throw invalidEndpoint(exception);
+        }
+
+        if (uri.getRawAuthority() != null
+                || uri.getRawQuery() != null
+                || uri.getRawFragment() != null
+                || uri.getRawPath() == null
+                || uri.getRawPath().indexOf(';') >= 0
+                || containsWhitespaceOrControl(uri.getPath())) {
+            throw invalidEndpoint(null);
+        }
+    }
+
+    private static boolean containsWhitespaceOrControl(String path) {
+        for (int index = 0; index < path.length(); index++) {
+            char value = path.charAt(index);
+            if (Character.isWhitespace(value)
+                    || Character.isSpaceChar(value)
+                    || Character.isISOControl(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static IllegalArgumentException invalidEndpoint(Exception cause) {
+        String message = "mcpEndpoint must be a path without query, fragment, matrix parameters, or whitespace";
+        return cause == null ? new IllegalArgumentException(message) : new IllegalArgumentException(message, cause);
     }
 }

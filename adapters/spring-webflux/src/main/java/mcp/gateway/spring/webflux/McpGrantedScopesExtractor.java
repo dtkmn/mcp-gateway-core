@@ -3,6 +3,7 @@ package mcp.gateway.spring.webflux;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
@@ -26,13 +27,18 @@ public interface McpGrantedScopesExtractor {
      */
     static McpGrantedScopesExtractor springSecurityScopes() {
         return authentication -> {
-            if (authentication == null || authentication.getAuthorities() == null) {
+            if (authentication == null
+                    || !authentication.isAuthenticated()
+                    || authentication instanceof AnonymousAuthenticationToken
+                    || authentication.getAuthorities() == null) {
                 return List.of();
             }
             return authentication.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
                     .filter(authority -> authority != null && authority.startsWith("SCOPE_"))
                     .map(authority -> authority.substring("SCOPE_".length()))
+                    .map(String::trim)
+                    .filter(scope -> !scope.isBlank())
                     .map(scope -> scope.toLowerCase(Locale.ROOT))
                     .distinct()
                     .collect(Collectors.toList());

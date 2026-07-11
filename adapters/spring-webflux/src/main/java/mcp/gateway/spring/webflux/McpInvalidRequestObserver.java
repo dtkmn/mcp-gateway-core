@@ -18,6 +18,8 @@ public interface McpInvalidRequestObserver {
      * The request id is the server/WebFlux request id, not a JSON-RPC
      * {@code id}. The correlation id is resolved through the configured
      * {@link McpGatewayCorrelationIdResolver}.
+     * Implementations must not throw during normal operation. An exception is
+     * propagated through the filter publisher and the request remains rejected.
      *
      * @param reason low-cardinality rejection reason
      * @param requestId server request id

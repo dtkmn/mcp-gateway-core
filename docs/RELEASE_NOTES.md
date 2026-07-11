@@ -1,5 +1,67 @@
 # Release Notes
 
+## 0.7.1 (Unreleased)
+
+`0.7.1` is the next public-preview patch. The development tree uses
+`0.7.1-SNAPSHOT`; `0.7.0` remains the latest published coordinate until the
+release process is completed.
+
+### Security And Release Integrity
+
+- Update the WebFlux adapter's default `jackson-databind` dependency to `2.21.5`,
+  the fixed 2.21.x release for CVE-2026-54515. Consumers of the published
+  `mcp-gateway-spring-webflux:0.7.0` artifact should override Jackson to a fixed
+  release while waiting for `0.7.1`.
+- Pin the Gradle 9.6.1 distribution checksum and validate the checked-in Gradle
+  Wrapper in every GitHub workflow that executes it.
+- Refuse Central validation uploads when either Maven coordinate already exists,
+  preventing an immutable release version from being reused.
+- Accept release signatures made by a signing subkey while still requiring the
+  configured full primary-key fingerprint.
+- Run both clean Java 17 consumer checks against the exact non-snapshot staging
+  repository inside the guarded Central path, before artifacts are signed or
+  uploaded.
+- Verify timestamped snapshot JAR, POM, sources, Javadocs, and checksums for both
+  modules from Maven metadata in the development gate.
+
+### Core Correctness
+
+- Make token-bucket creation and stale eviction race-safe under concurrent keys,
+  honor `maxTrackedKeys` values down to `1`, saturate stale-age arithmetic, and
+  prevent policy changes from retroactively crediting tokens at a new refill
+  rate.
+- Keep MCP tool selectors exact and case-sensitive, reject malformed empty
+  subdomain matches such as `.example.com` for `*.example.com`, and make
+  overnight policy-window days refer to the day the window starts.
+- Harden `UrlScope` against authority/path parser differentials by rejecting
+  user information, encoded backslashes and controls, multiply encoded paths,
+  malformed percent-encoded UTF-8, malformed ports, and raw Unicode hosts while
+  accepting normalized ASCII and punycode host names.
+- Normalize direct `McpAbuseProtectionDecision` construction so allow decisions
+  cannot carry rejection fields and rejected decisions always have safe fallback
+  codes, reasons, and retry delays.
+- Require configured authorization scopes to be valid RFC 6749 scope tokens.
+
+### Spring WebFlux Adapter Correctness
+
+- Match the configured endpoint relative to the application context and compare
+  matrix-parameterized path segments by route value, closing context-path and
+  matrix-parameter governance bypasses without broadening matches to subpaths.
+- Restrict request-size recovery to the adapter's own body read so a downstream
+  `DataBufferLimitException` propagates instead of being rewritten as an adapter
+  `413` response.
+- Reject duplicate JSON object fields and whitespace-padded method/tool
+  identifiers while governance is active, avoiding authorization/execution
+  parser differentials.
+- Sanitize correlation headers, fall back through the configured resolver when a
+  context has no correlation id, ignore unauthenticated/anonymous or blank
+  Spring scopes, and omit unsafe scope values from `WWW-Authenticate`.
+- Release cached request buffers reliably, replace conflicting transfer framing
+  when replaying a body, normalize null scopes from custom extractors, and defer
+  filter work so observer failures remain reactive and fail closed.
+
+There are no new public API/binary deltas in this patch.
+
 ## 0.7.0 Public Preview
 
 `0.7.0` is a hardening release for public-preview consumers. It adds

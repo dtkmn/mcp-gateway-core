@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 usage() {
   cat <<'EOF'
 Usage: ./bin/gateway-public-preview-central-validation-upload.sh [options]
@@ -20,6 +22,8 @@ Required environment:
 Optional environment:
   GATEWAY_CORE_RELEASE_GPG_HOME            GPG home for release key lookup.
   GATEWAY_CORE_RELEASE_GPG_PASSPHRASE      Passphrase for release signing key.
+  GATEWAY_CORE_JAVA17_HOME                 JDK 17 used for release consumer checks.
+                                           Defaults to JAVA_HOME/current Java when it is JDK 17.
   CENTRAL_API_BASE_URL                     Must be https://central.sonatype.com.
 
 Required only with --execute-upload:
@@ -55,6 +59,39 @@ project_version() {
   sed -n "s/^gatewayCoreVersion=\(.*\)$/\1/p" gradle.properties | head -n 1
 }
 
+java_major_version() {
+  "$1" -version 2>&1 | awk -F '"' '/version/ { print $2; exit }' | awk -F. '{ print $1 }'
+}
+
+resolve_java17_home() {
+  local requested_home="${GATEWAY_CORE_JAVA17_HOME:-}"
+  local candidate_home=""
+  local java_bin=""
+
+  if [ -n "$requested_home" ]; then
+    candidate_home="$requested_home"
+    java_bin="$candidate_home/bin/java"
+  elif [ -n "${JAVA_HOME:-}" ] && [ -x "${JAVA_HOME}/bin/java" ] \
+      && [ "$(java_major_version "${JAVA_HOME}/bin/java")" = "17" ]; then
+    candidate_home="$JAVA_HOME"
+    java_bin="$candidate_home/bin/java"
+  else
+    java_bin="$(command -v java || true)"
+    if [ -n "$java_bin" ] && [ "$(java_major_version "$java_bin")" = "17" ]; then
+      candidate_home="$(cd "$(dirname "$java_bin")/.." && pwd -P)"
+      java_bin="$candidate_home/bin/java"
+    fi
+  fi
+
+  if [ -z "$candidate_home" ] || [ ! -x "$java_bin" ] \
+      || [ ! -x "$candidate_home/bin/javac" ] \
+      || [ "$(java_major_version "$java_bin")" != "17" ]; then
+    fail "GATEWAY_CORE_JAVA17_HOME must point to a JDK 17 installation (or the current JAVA_HOME/java must be JDK 17)"
+  fi
+
+  printf '%s\n' "$candidate_home"
+}
+
 uppercase_fingerprint() {
   printf '%s' "$1" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]'
 }
@@ -82,7 +119,6 @@ cleanup_sensitive_files() {
     rm -f "$central_curl_config"
   fi
 }
-trap cleanup_sensitive_files EXIT
 
 validate_central_api_base_url() {
   local raw="${CENTRAL_API_BASE_URL:-https://central.sonatype.com}"
@@ -145,10 +181,15 @@ PY
 
 configure_gpg() {
   local fingerprint="$gateway_core_release_gpg_fingerprint"
+  local key_listing
+  local primary_fingerprint
   if is_placeholder "$fingerprint"; then
     fail "GATEWAY_CORE_RELEASE_GPG_FINGERPRINT is required and must not be a placeholder"
   fi
   gateway_core_release_gpg_fingerprint="$(uppercase_fingerprint "$fingerprint")"
+  if [[ ! "$gateway_core_release_gpg_fingerprint" =~ ^([0-9A-F]{40}|[0-9A-F]{64})$ ]]; then
+    fail "GATEWAY_CORE_RELEASE_GPG_FINGERPRINT must be a full 40- or 64-character hexadecimal fingerprint"
+  fi
 
   gpg_base_args=(--batch)
   if [ -n "$gateway_core_release_gpg_home" ]; then
@@ -157,9 +198,13 @@ configure_gpg() {
     gpg_base_args+=(--homedir "$gateway_core_release_gpg_home")
   fi
 
-  gpg "${gpg_base_args[@]}" --list-secret-keys --with-colons "$gateway_core_release_gpg_fingerprint" \
-    | grep -q '^sec' \
-    || fail "release GPG secret key was not found for GATEWAY_CORE_RELEASE_GPG_FINGERPRINT"
+  key_listing="$(
+    gpg "${gpg_base_args[@]}" --with-colons --fingerprint --list-secret-keys \
+      "$gateway_core_release_gpg_fingerprint" 2>/dev/null
+  )" || fail "release GPG secret key was not found for GATEWAY_CORE_RELEASE_GPG_FINGERPRINT"
+  primary_fingerprint="$(awk -F: '$1 == "sec" { in_primary = 1; next } in_primary && $1 == "fpr" { print $10; exit }' <<<"$key_listing")"
+  [ "$primary_fingerprint" = "$gateway_core_release_gpg_fingerprint" ] \
+    || fail "GATEWAY_CORE_RELEASE_GPG_FINGERPRINT must identify the full primary-key fingerprint"
 }
 
 sign_artifact() {
@@ -188,7 +233,9 @@ verify_signature() {
   local status
   status="$(gpg "${gpg_base_args[@]}" --status-fd 1 --verify "$signature" "$artifact" 2>/dev/null)" \
     || fail "invalid detached signature for Central validation artifact: $(basename "$artifact")"
-  grep -Fq "[GNUPG:] VALIDSIG ${gateway_core_release_gpg_fingerprint}" <<<"$status" \
+  awk -v expected="$gateway_core_release_gpg_fingerprint" \
+    '$1 == "[GNUPG:]" && $2 == "VALIDSIG" && ($3 == expected || $NF == expected) { valid = 1 }
+     END { exit valid ? 0 : 1 }' <<<"$status" \
     || fail "signature for $(basename "$artifact") was not made by GATEWAY_CORE_RELEASE_GPG_FINGERPRINT"
 }
 
@@ -339,6 +386,34 @@ require_upload_env() {
     || fail "CENTRAL_UPLOAD_CONFIRMATION must exactly equal: $expected_confirmation"
 }
 
+ensure_version_is_unpublished() {
+  local version="$1"
+  local artifact_id
+  local pom_url
+  local status
+
+  while IFS= read -r artifact_id; do
+    pom_url="https://repo1.maven.org/maven2/io/github/dtkmn/${artifact_id}/${version}/${artifact_id}-${version}.pom"
+    status="$(
+      curl --silent --show-error --location --head \
+        --output /dev/null \
+        --write-out '%{http_code}' \
+        "$pom_url"
+    )" || fail "could not verify whether ${artifact_id}:${version} is already published"
+
+    case "$status" in
+      200)
+        fail "refusing to reuse immutable Maven Central coordinate io.github.dtkmn:${artifact_id}:${version}"
+        ;;
+      404)
+        ;;
+      *)
+        fail "Maven Central returned HTTP ${status} while checking io.github.dtkmn:${artifact_id}:${version}"
+        ;;
+    esac
+  done < <(public_artifact_ids)
+}
+
 upload_user_managed_deployment() {
   local version="$1"
   local bundle="$2"
@@ -411,7 +486,12 @@ EOF
   echo "Status lookup stderr is saved to $status_error." >&2
 }
 
-execute_upload=false
+main() {
+  local execute_upload=false
+  local java17_home
+
+  cd "$ROOT_DIR"
+  trap cleanup_sensitive_files EXIT
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -420,7 +500,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     -h|--help)
       usage
-      exit 0
+      return 0
       ;;
     *)
       fail "unknown argument: $1"
@@ -444,17 +524,35 @@ publishing_type="${CENTRAL_PUBLISHING_TYPE:-USER_MANAGED}"
 
 version="$(project_version)"
 [ -n "$version" ] || fail "could not resolve gatewayCoreVersion from gradle.properties"
+if [[ ! "$version" =~ ^[0-9]+([.][0-9]+){2}([.-][0-9A-Za-z]+)*$ ]]; then
+  fail "gatewayCoreVersion must be a Maven-safe semantic version, got: $version"
+fi
 case "$version" in
   *-SNAPSHOT)
     fail "Central validation upload requires a release version, got: $version"
     ;;
 esac
 
+if [ "$execute_upload" = "true" ]; then
+  ensure_version_is_unpublished "$version"
+fi
+
+java17_home="$(resolve_java17_home)"
+
 configure_gpg
 
 ./gradlew verifyGatewayPublicPreviewPublication \
+  -PgatewayCoreGroup="io.github.dtkmn" \
+  -PgatewayCoreVersion="$version" \
   -PgatewayCorePublicationRepositoryUrl="file://$(pwd)/build/staging-repository" \
-  --no-daemon --stacktrace
+  --no-daemon --stacktrace --warning-mode fail
+
+GATEWAY_CORE_STAGING_REPOSITORY="$ROOT_DIR/build/staging-repository" \
+  JAVA_HOME="$java17_home" \
+  "$ROOT_DIR/bin/java17-consumer-smoke.sh"
+GATEWAY_CORE_STAGING_REPOSITORY="$ROOT_DIR/build/staging-repository" \
+  JAVA_HOME="$java17_home" \
+  "$ROOT_DIR/bin/java17-source-compat-0.6-consumer.sh"
 
 work_root="build/gateway-public-preview-central-validation-upload"
 release_root="$work_root/publication"
@@ -469,6 +567,7 @@ verify_release_bundle "$version" "$bundle" "$verification_root"
 
 if [ "$execute_upload" = "true" ]; then
   require_upload_env "$confirmation_token"
+  ensure_version_is_unpublished "$version"
   upload_user_managed_deployment "$version" "$bundle" "$work_root"
   deployment_id="$(cat "$work_root/deployment-id.txt")"
   cat <<EOF
@@ -494,4 +593,9 @@ MCP Gateway public-preview Central validation upload dry run passed.
 - To upload for Central validation, rerun with:
   CENTRAL_UPLOAD_CONFIRMATION=${confirmation_token} ./bin/gateway-public-preview-central-validation-upload.sh --execute-upload
 EOF
+fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
 fi

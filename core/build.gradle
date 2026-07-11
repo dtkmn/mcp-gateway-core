@@ -40,6 +40,7 @@ repositories {
 dependencies {
     testImplementation platform('org.junit:junit-bom:6.1.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.snakeyaml:snakeyaml-engine:3.0.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
@@ -488,6 +489,60 @@ tasks.withType(GenerateModuleMetadata).configureEach {
     enabled = false
 }
 
+def gatewayCorePublicationArtifact = { File publicationDir, String extension, String classifier = null ->
+    String resolvedVersion = gatewayCorePublicationVersion
+    if (gatewayCorePublicationVersion.endsWith('-SNAPSHOT')) {
+        File metadataFile = new File(publicationDir, 'maven-metadata.xml')
+        if (!metadataFile.isFile()) {
+            throw new GradleException("Missing gateway-core snapshot metadata: ${metadataFile}")
+        }
+        def metadata = new groovy.xml.XmlSlurper(false, false).parse(metadataFile)
+        def matches = metadata.versioning.snapshotVersions.snapshotVersion.findAll { snapshotVersion ->
+            String metadataClassifier = snapshotVersion.classifier.text()
+            snapshotVersion.extension.text() == extension
+                    && (classifier == null ? metadataClassifier.isEmpty() : metadataClassifier == classifier)
+        }
+        if (matches.size() != 1) {
+            throw new GradleException(
+                    "Expected one ${classifier == null ? 'main' : classifier} ${extension} entry in ${metadataFile}, got ${matches.size()}"
+            )
+        }
+        resolvedVersion = matches[0].value.text()
+        if (resolvedVersion.isBlank()) {
+            throw new GradleException("Snapshot metadata entry has no resolved version in ${metadataFile}")
+        }
+    }
+
+    String classifierSuffix = classifier == null ? '' : "-${classifier}"
+    new File(publicationDir, "${gatewayCoreArtifactId}-${resolvedVersion}${classifierSuffix}.${extension}")
+}
+
+tasks.register('verifyGatewayCorePublication') {
+    group = 'verification'
+    description = 'Verifies the local Maven publication shape for mcp-gateway-core.'
+    dependsOn tasks.named('publishGatewayCorePublicationToGatewayCoreStagingRepository')
+
+    doLast {
+        File publicationDir = gatewayCorePublicationDirectory()
+        List<File> publicationArtifacts = [
+                gatewayCorePublicationArtifact(publicationDir, 'pom'),
+                gatewayCorePublicationArtifact(publicationDir, 'jar'),
+                gatewayCorePublicationArtifact(publicationDir, 'jar', 'sources'),
+                gatewayCorePublicationArtifact(publicationDir, 'jar', 'javadoc')
+        ]
+        publicationArtifacts.each { artifact ->
+            if (!artifact.isFile()) {
+                throw new GradleException("Missing gateway-core publication artifact: ${artifact}")
+            }
+            verifyChecksumFile(artifact, 'MD5', 'md5')
+            verifyChecksumFile(artifact, 'SHA-1', 'sha1')
+            verifyChecksumFile(artifact, 'SHA-256', 'sha256')
+            verifyChecksumFile(artifact, 'SHA-512', 'sha512')
+        }
+        verifyPomMetadata(publicationArtifacts[0])
+    }
+}
+
 tasks.register('stageGatewayCoreCentralPortalBundle', Zip) {
     group = 'publishing'
     description = 'Stages a Central Portal upload bundle for mcp-gateway-core without signatures.'
@@ -569,6 +624,9 @@ tasks.register('verifyGatewayCorePublicPreviewPublication') {
     group = 'verification'
     description = 'Runs the public-preview mcp-gateway-core build and Central Portal dry-run proof.'
     dependsOn tasks.named('build')
+    dependsOn tasks.named('verifyGatewayCorePublication')
+    dependsOn tasks.named('verifyGatewayCoreCentralPortalBundle')
+    dependsOn tasks.named('verifyGatewayCoreSignedCentralPortalDryRun')
 }
 
 tasks.named('test') {
@@ -581,6 +639,4 @@ tasks.named('check') {
     dependsOn tasks.named('verifyGatewayCoreJarClosedWorld')
     dependsOn tasks.named('verifyGatewayCoreJdeps')
     dependsOn tasks.named('verifyGatewayCoreJavaReleaseBytecode')
-    dependsOn tasks.named('verifyGatewayCoreCentralPortalBundle')
-    dependsOn tasks.named('verifyGatewayCoreSignedCentralPortalDryRun')
 }

@@ -80,6 +80,14 @@ class McpJsonRpcToolInvocationParserTest {
         assertReason("{\"jsonrpc\":\"2.0\",\"method\":7}", McpJsonRpcRequestRejectionReason.INVALID_METHOD);
         assertReason("{\"jsonrpc\":\"2.0\",\"method\":true}", McpJsonRpcRequestRejectionReason.INVALID_METHOD);
         assertReason("{\"jsonrpc\":\"2.0\",\"method\":\"  \"}", McpJsonRpcRequestRejectionReason.INVALID_METHOD);
+        assertReason("{\"jsonrpc\":\"2.0\",\"method\":\" tools/call\",\"params\":{\"name\":\"demo_tool\"}}",
+                McpJsonRpcRequestRejectionReason.INVALID_METHOD);
+        assertReason("{\"jsonrpc\":\"2.0\",\"method\":\"ping \"}",
+                McpJsonRpcRequestRejectionReason.INVALID_METHOD);
+        assertReason("{\"jsonrpc\":\"2.0\",\"method\":\" tools/call\",\"params\":{\"name\":\"demo_tool\"}}",
+                McpJsonRpcRequestRejectionReason.INVALID_METHOD);
+        assertReason("{\"jsonrpc\":\"2.0\",\"method\":\"ping\u00a0\"}",
+                McpJsonRpcRequestRejectionReason.INVALID_METHOD);
         assertReason("{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\"}",
                 McpJsonRpcRequestRejectionReason.INVALID_TOOL_CALL_PARAMS);
         assertReason("{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":null}",
@@ -96,6 +104,22 @@ class McpJsonRpcToolInvocationParserTest {
                 McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
         assertReason("{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"  \"}}",
                 McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
+        assertReason("{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\" demo_tool \"}}",
+                McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
+        assertReason("{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\" demo_tool\"}}",
+                McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
+        assertReason("{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"demo_tool\u00a0\"}}",
+                McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
+    }
+
+    @Test
+    void rejectsDuplicateObjectFieldsToPreventParserDifferentials() {
+        assertReason("{\"method\":\"tools/call\",\"method\":\"ping\",\"params\":{\"name\":\"demo_tool\"}}",
+                McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
+        assertReason("{\"method\":\"tools/call\",\"params\":{\"name\":\"demo_tool\",\"name\":\"other_tool\"}}",
+                McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
+        assertReason("{\"method\":\"tools/call\",\"params\":{\"name\":\"demo_tool\",\"arguments\":{\"value\":1,\"value\":2}}}",
+                McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
     }
 
     @Test

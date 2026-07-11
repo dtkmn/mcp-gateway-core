@@ -23,10 +23,13 @@ final class McpGatewayWebFluxRequestBodies {
         return DataBufferUtils.join(exchange.getRequest().getBody(), maxBodyBytes)
                 .defaultIfEmpty(exchange.getResponse().bufferFactory().wrap(new byte[0]))
                 .map(dataBuffer -> {
-                    byte[] bodyBytes = new byte[dataBuffer.readableByteCount()];
-                    dataBuffer.read(bodyBytes);
-                    DataBufferUtils.release(dataBuffer);
-                    return bodyBytes;
+                    try {
+                        byte[] bodyBytes = new byte[dataBuffer.readableByteCount()];
+                        dataBuffer.read(bodyBytes);
+                        return bodyBytes;
+                    } finally {
+                        DataBufferUtils.release(dataBuffer);
+                    }
                 });
     }
 
@@ -38,6 +41,7 @@ final class McpGatewayWebFluxRequestBodies {
                 HttpHeaders headers = new HttpHeaders();
                 headers.putAll(super.getHeaders());
                 headers.remove(HttpHeaders.CONTENT_LENGTH);
+                headers.remove(HttpHeaders.TRANSFER_ENCODING);
                 headers.setContentLength(bodyBytes.length);
                 return headers;
             }
