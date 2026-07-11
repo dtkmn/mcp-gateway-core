@@ -318,7 +318,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         String docsPackage = Files.readString(Path.of("docs-site/package.json"));
 
         assertTrue(gradleProperties.contains("gatewayCoreVersion="));
-        assertTrue(!gradleProperties.contains("gatewayCoreVersion=0.7.0"));
+        assertTrue(gradleProperties.contains("gatewayCorePublishedVersion="));
         assertTrue(wrapperProperties.contains(
                 "distributionSha256Sum=9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14"));
 
@@ -401,6 +401,7 @@ class ProjectDocumentationAndSecurityToolingTest {
         String docsIndex = Files.readString(Path.of("docs-site/src/content/docs/index.md"));
         String centralRunbook = Files.readString(Path.of("docs/CENTRAL_VALIDATION_UPLOAD.md"));
         String releasePolicy = Files.readString(Path.of("docs/RELEASE_POLICY.md"));
+        String roadmap = Files.readString(Path.of("docs/ROADMAP.md"));
         String security = Files.readString(Path.of("SECURITY.md"));
 
         var versionMatcher = Pattern.compile(
@@ -409,6 +410,16 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(versionMatcher.find(), "gradle.properties must define gatewayCoreVersion exactly once");
         String configuredVersion = versionMatcher.group(1);
         assertFalse(versionMatcher.find(), "gradle.properties must not define gatewayCoreVersion more than once");
+        var publishedVersionMatcher = Pattern.compile(
+                        "(?m)^\\s*gatewayCorePublishedVersion\\s*=\\s*([^\\s#]+)\\s*$")
+                .matcher(gradleProperties);
+        assertTrue(publishedVersionMatcher.find(),
+                "gradle.properties must define gatewayCorePublishedVersion exactly once");
+        String declaredPublishedVersion = publishedVersionMatcher.group(1);
+        assertFalse(publishedVersionMatcher.find(),
+                "gradle.properties must not define gatewayCorePublishedVersion more than once");
+        assertFalse(declaredPublishedVersion.endsWith("-SNAPSHOT"),
+                "gatewayCorePublishedVersion must identify a Maven Central release");
         boolean snapshot = configuredVersion.endsWith("-SNAPSHOT");
         String releaseVersion = snapshot
                 ? configuredVersion.substring(0, configuredVersion.length() - "-SNAPSHOT".length())
@@ -436,10 +447,23 @@ class ProjectDocumentationAndSecurityToolingTest {
         }
 
         String publishedVersion = assertPublishedCoordinatesMatch("README.md", readme);
+        assertEquals(declaredPublishedVersion, publishedVersion,
+                "Public dependency examples must match gatewayCorePublishedVersion");
         assertEquals(publishedVersion,
                 assertPublishedCoordinatesMatch("docs/GETTING_STARTED.md", gettingStarted));
         assertEquals(publishedVersion,
                 assertPublishedCoordinatesMatch("docs-site/src/content/docs/index.md", docsIndex));
+        for (var document : Map.of(
+                "docs/RELEASE_NOTES.md", releaseNotes,
+                "docs/CENTRAL_VALIDATION_UPLOAD.md", centralRunbook,
+                "docs/RELEASE_POLICY.md", releasePolicy,
+                "docs/ROADMAP.md", roadmap).entrySet()) {
+            assertContainsPattern(
+                    document.getValue(),
+                    Pattern.quote("`" + declaredPublishedVersion + "`")
+                            + ".{0,160}latest published.{0,160}version",
+                    document.getKey() + " must identify gatewayCorePublishedVersion as the latest published version");
+        }
         if (unreleased) {
             assertNotEquals(releaseVersion, publishedVersion,
                     "An unreleased candidate must not be advertised as the published coordinate");

@@ -1,19 +1,18 @@
 # Release Notes
 
-## 0.7.1 (Unreleased)
+## 0.7.1 Public Preview
 
-`0.7.1` is the current public-preview release candidate on `main`. Its
-non-snapshot version is intentional so the guarded release workflow can build,
-sign, and validate the candidate. `0.7.0` remains the latest published version
-until both `0.7.1` coordinates are public in Maven Central and have passed the
-post-publication checks.
+`0.7.1` is the latest published version of both public-preview artifacts. The
+core library and optional Spring WebFlux adapter are available from Maven
+Central at `io.github.dtkmn:mcp-gateway-core:0.7.1` and
+`io.github.dtkmn:mcp-gateway-spring-webflux:0.7.1`.
 
 ### Security And Release Integrity
 
 - Update the WebFlux adapter's default `jackson-databind` dependency to `2.21.5`,
-  the fixed 2.21.x release for CVE-2026-54515. Consumers of the published
-  `mcp-gateway-spring-webflux:0.7.0` artifact should override Jackson to a fixed
-  release while waiting for `0.7.1`.
+  the fixed 2.21.x release for CVE-2026-54515. Consumers should upgrade to
+  `mcp-gateway-spring-webflux:0.7.1`; consumers temporarily held on `0.7.0`
+  should override Jackson to a fixed release.
 - Pin the Gradle 9.6.1 distribution checksum and validate the checked-in Gradle
   Wrapper in every GitHub workflow that executes it.
 - Pin every remote GitHub Action and reusable workflow to a reviewed full
@@ -78,16 +77,20 @@ post-publication checks.
 
 ### Verification
 
-The candidate code passed development CI, CodeQL, Snyk, the public-preview
+The release code passed development CI, CodeQL, Snyk, the public-preview
 publication proof, both clean Java 17 consumer checks, and the documentation
-build. An approval-gated dry run from `main` then passed after the
-repository-level release-secret copies were removed: it imported the
-environment-scoped signing key, built and signed both `0.7.1` modules, verified
-the closed-world bundle and detached signatures, and produced the confirmation
-token. That run used `execute_upload=false`, so it neither uploaded a deployment
-to Central nor published artifacts. Any later change to `main`, including
-release-documentation finalization, requires a fresh approval-gated dry run of
-the new exact head before validation upload.
+build. Independently approved dry-run and validation-upload jobs from exact
+source commit `0f5fe82da70fc335f0e0fc9e93833621077d1064` imported only the
+environment-scoped signing key, built and signed both `0.7.1` modules, and
+verified the closed-world bundle and detached signatures before upload.
+
+After manual publication, both coordinates and all 48 expected POM, binary,
+sources, Javadocs, checksum, and detached-signature files were retrieved from
+Maven Central and matched the approved upload bundle byte for byte. Signatures
+resolved to primary fingerprint
+`CC460079AB0687AC3DBB96DDE15DFDE144C104C1`, Maven metadata reported `0.7.1` as
+the latest release for both modules, and a fresh external Java 17 consumer
+resolved and ran both artifacts using Maven Central as its only repository.
 
 There are no new public API/binary deltas in this patch.
 
