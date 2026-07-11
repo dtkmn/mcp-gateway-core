@@ -45,7 +45,7 @@ The repository uses GitHub-native checks first:
   GitHub Action or reusable workflow reference, backed by a structural YAML
   regression allowlist. Local action and reusable-workflow references are
   prohibited because their nested manifests are not recursively audited;
-- repository settings must also enforce full-SHA pinning before a release;
+- repository settings independently enforce full-SHA pinning;
 - Gradle distribution checksum pinning and Wrapper JAR validation before CI
   workflows execute the build;
 - CodeQL Java analysis with an explicit Gradle test build;
@@ -53,9 +53,12 @@ The repository uses GitHub-native checks first:
   JAR contents, `jdeps`, bytecode, API compatibility, and staged-publication
   checks;
 - the release-only public-preview gate for Central bundle shape, checksums, and
-  signed dry-run payload validation. Its job is bound to
-  `central-validation-upload`, which must be protected as specified in the
-  release runbook before release credentials are moved there.
+  signed dry-run payload validation. Its job is bound to the protected
+  `central-validation-upload` environment. Release refs are restricted to
+  `main` only. At least one required reviewer must be distinct from the workflow
+  dispatcher. Self-review is prevented. Administrator bypass is disabled.
+  Release credentials exist only as environment secrets; Central Portal and GPG
+  credentials are never stored as repository secrets.
 
 The repository also has an explicit Snyk Open Source workflow for the Gradle
 project graph. That workflow requires:

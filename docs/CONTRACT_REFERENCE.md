@@ -400,9 +400,8 @@ Duplicate fields anywhere in the JSON object are rejected to avoid parser
 differentials. Method and `tools/call` tool-name strings must not be blank or
 carry leading/trailing whitespace.
 
-For `0.7.0`, the adapter does not require or validate the JSON-RPC `jsonrpc`
-version field. That protocol validation remains the downstream runtime's
-responsibility.
+The adapter does not require or validate the JSON-RPC `jsonrpc` version field.
+That protocol validation remains the downstream runtime's responsibility.
 
 Batch arrays are unsupported by the governance adapter only while governance is
 active. They return `400` with reason `batch_not_supported` in that mode. This

@@ -371,8 +371,8 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(centralWorkflow.contains("cancel-in-progress: false"));
         assertTrue(centralWorkflow.contains("    environment: central-validation-upload"));
         assertTrue(centralRunbook.contains("**environment secrets** on `central-validation-upload`"));
-        assertTrue(centralRunbook.contains("Require reviewer approval"));
-        assertTrue(centralRunbook.contains("prevent self-review"));
+        assertTrue(centralRunbook.contains("At least one required reviewer"));
+        assertTrue(centralRunbook.contains("Self-review is prevented"));
         assertTrue(centralRunbook.contains("full-length commit SHA"));
         assertTrue(centralUpload.indexOf("./gradlew verifyGatewayPublicPreviewPublication")
                 < centralUpload.indexOf("$ROOT_DIR/bin/java17-consumer-smoke.sh"));
@@ -390,6 +390,183 @@ class ProjectDocumentationAndSecurityToolingTest {
         assertTrue(snykPolicy.contains("ignore: {}"));
         assertTrue(!snykPolicy.contains("SNYK-JAVA-COMFASTERXMLJACKSONCORE-17457695"));
         assertTrue(docsPackage.contains("\"node\": \">=22.12.0\""));
+    }
+
+    @Test
+    void releaseDocumentationTracksBuildStatePublishedCoordinatesAndReleaseProtections() throws IOException {
+        String gradleProperties = Files.readString(Path.of("gradle.properties"));
+        String releaseNotes = Files.readString(Path.of("docs/RELEASE_NOTES.md"));
+        String readme = Files.readString(Path.of("README.md"));
+        String gettingStarted = Files.readString(Path.of("docs/GETTING_STARTED.md"));
+        String docsIndex = Files.readString(Path.of("docs-site/src/content/docs/index.md"));
+        String centralRunbook = Files.readString(Path.of("docs/CENTRAL_VALIDATION_UPLOAD.md"));
+        String releasePolicy = Files.readString(Path.of("docs/RELEASE_POLICY.md"));
+        String security = Files.readString(Path.of("SECURITY.md"));
+
+        var versionMatcher = Pattern.compile(
+                        "(?m)^\\s*gatewayCoreVersion\\s*=\\s*([^\\s#]+)\\s*$")
+                .matcher(gradleProperties);
+        assertTrue(versionMatcher.find(), "gradle.properties must define gatewayCoreVersion exactly once");
+        String configuredVersion = versionMatcher.group(1);
+        assertFalse(versionMatcher.find(), "gradle.properties must not define gatewayCoreVersion more than once");
+        boolean snapshot = configuredVersion.endsWith("-SNAPSHOT");
+        String releaseVersion = snapshot
+                ? configuredVersion.substring(0, configuredVersion.length() - "-SNAPSHOT".length())
+                : configuredVersion;
+
+        var releaseHeadingMatcher = Pattern.compile(
+                        "(?m)^##\\s+" + Pattern.quote(releaseVersion)
+                                + "\\s+(\\(Unreleased\\)|Public Preview)\\s*$")
+                .matcher(releaseNotes);
+        assertTrue(releaseHeadingMatcher.find(),
+                () -> "Release notes must have an Unreleased or Public Preview heading for " + releaseVersion);
+        boolean unreleased = "(Unreleased)".equals(releaseHeadingMatcher.group(1));
+        assertFalse(releaseHeadingMatcher.find(),
+                () -> "Release notes must have exactly one release heading for " + releaseVersion);
+        if (snapshot) {
+            assertTrue(unreleased, "A snapshot development version must have an Unreleased release-notes heading");
+        } else {
+            assertFalse(releaseNotes.contains(releaseVersion + "-SNAPSHOT"),
+                    () -> "Release notes must not describe non-snapshot " + releaseVersion + " as a snapshot");
+            if (unreleased) {
+                assertTrue(releaseNotes.contains(
+                                "`" + releaseVersion + "` is the current public-preview release candidate"),
+                        () -> "A non-snapshot Unreleased version must be identified as the current release candidate");
+            }
+        }
+
+        String publishedVersion = assertPublishedCoordinatesMatch("README.md", readme);
+        assertEquals(publishedVersion,
+                assertPublishedCoordinatesMatch("docs/GETTING_STARTED.md", gettingStarted));
+        assertEquals(publishedVersion,
+                assertPublishedCoordinatesMatch("docs-site/src/content/docs/index.md", docsIndex));
+        if (unreleased) {
+            assertNotEquals(releaseVersion, publishedVersion,
+                    "An unreleased candidate must not be advertised as the published coordinate");
+            assertContainsPattern(
+                    releaseNotes,
+                    Pattern.quote("`" + publishedVersion + "`")
+                            + ".{0,100}latest published (?:coordinate|version)",
+                    "Unreleased notes must identify the version used by public dependency examples");
+        } else {
+            assertEquals(releaseVersion, publishedVersion,
+                    "Published release notes and public dependency examples must name the same version");
+        }
+
+        assertReleaseEnvironmentInvariants("SECURITY.md", security);
+        assertReleaseEnvironmentInvariants("docs/CENTRAL_VALIDATION_UPLOAD.md", centralRunbook);
+        assertReleaseEnvironmentInvariants("docs/RELEASE_POLICY.md", releasePolicy);
+
+        String postPublication = sectionToEnd(
+                centralRunbook,
+                "## Post-Publication Verification And Repository Finalization");
+        assertTrue(postPublication.contains("mcp-gateway-core"));
+        assertTrue(postPublication.contains("mcp-gateway-spring-webflux"));
+        assertContainsPattern(postPublication, "verify.{0,100}both.{0,100}Maven coordinates",
+                "Post-publication steps must verify both Maven coordinates");
+        assertContainsPattern(postPublication, "(?:tag.{0,40}exact source commit|exact source commit.{0,100}tag)",
+                "Post-publication steps must tag the exact validated source commit");
+        assertTrue(postPublication.contains("GitHub Release"),
+                "Post-publication steps must create or update the GitHub Release");
+        assertContainsPattern(postPublication, "finalize.{0,160}(?:public documentation|release notes).{0,160}examples",
+                "Post-publication steps must finalize release notes and public examples");
+        assertContainsPattern(postPublication, "advance.{0,60}`develop`.{0,100}next `-SNAPSHOT`",
+                "Post-publication steps must advance develop to the next snapshot");
+        assertTrue(postPublication.contains("`v<version>`")
+                        || postPublication.contains("`v" + releaseVersion + "`"),
+                "Post-publication steps must document the release tag naming convention");
+
+        assertContainsPattern(releaseNotes, "reviewed full commit SHA",
+                "Release notes must record immutable reviewed Action pins");
+        assertContainsPattern(releaseNotes, "structural(?:ly)? pars(?:e|es|ing).{0,40}(?:the )?decoded YAML.{0,160}`uses`",
+                "Release notes must record structural workflow parsing");
+        assertContainsPattern(releaseNotes, "aliases.{0,100}(?:merge-hidden|merges? that conceal)",
+                "Release notes must record YAML alias and merge-hidden reference enforcement");
+        assertContainsPattern(releaseNotes, "(?:reject|prohibit)[^.]{0,160}local action references",
+                "Release notes must record the local-action prohibition");
+        assertContainsPattern(
+                releaseNotes,
+                "(?:repository SHA-pinning enforcement.{0,60}enabled"
+                        + "|repository setting.{0,100}rejects non-SHA action references)",
+                "Release notes must record repository-level SHA enforcement");
+        assertContainsPattern(releaseNotes, "`central-validation-upload`.{0,500}environment secrets",
+                "Release notes must record the protected environment and credential migration");
+        assertContainsPattern(releaseNotes, "`UrlScope`.{0,500}(?:before|prior to).{0,60}normalization",
+                "Release notes must record validation-before-normalization hardening");
+    }
+
+    private static String assertPublishedCoordinatesMatch(String document, String content) {
+        String coreVersion = singleCoordinateVersion(document, content, "mcp-gateway-core");
+        String adapterVersion = singleCoordinateVersion(document, content, "mcp-gateway-spring-webflux");
+        assertEquals(coreVersion, adapterVersion,
+                () -> document + " must use one published version for both Maven coordinates");
+        assertFalse(coreVersion.endsWith("-SNAPSHOT"),
+                () -> document + " must not put a snapshot version in public dependency examples");
+        if (content.contains("<artifactId>")) {
+            assertEquals(coreVersion, singleMavenXmlVersion(document, content, "mcp-gateway-core"),
+                    () -> document + " Maven XML core example must match its Gradle coordinates");
+            assertEquals(adapterVersion, singleMavenXmlVersion(document, content, "mcp-gateway-spring-webflux"),
+                    () -> document + " Maven XML adapter example must match its Gradle coordinates");
+        }
+        return coreVersion;
+    }
+
+    private static String singleCoordinateVersion(String document, String content, String artifactId) {
+        var matcher = Pattern.compile(
+                        "io\\.github\\.dtkmn:" + Pattern.quote(artifactId)
+                                + ":([0-9]+(?:\\.[0-9]+){2}(?:[-+][0-9A-Za-z.-]+)?)")
+                .matcher(content);
+        Set<String> versions = new HashSet<>();
+        while (matcher.find()) {
+            versions.add(matcher.group(1));
+        }
+        assertEquals(1, versions.size(),
+                () -> document + " must contain " + artifactId + " examples at exactly one version: " + versions);
+        return versions.iterator().next();
+    }
+
+    private static String singleMavenXmlVersion(String document, String content, String artifactId) {
+        var matcher = Pattern.compile(
+                        "<artifactId>\\s*" + Pattern.quote(artifactId)
+                                + "\\s*</artifactId>\\s*<version>\\s*([^<\\s]+)\\s*</version>",
+                        Pattern.DOTALL)
+                .matcher(content);
+        Set<String> versions = new HashSet<>();
+        while (matcher.find()) {
+            versions.add(matcher.group(1));
+        }
+        assertEquals(1, versions.size(),
+                () -> document + " must contain one Maven XML version for " + artifactId + ": " + versions);
+        return versions.iterator().next();
+    }
+
+    private static void assertReleaseEnvironmentInvariants(String document, String content) {
+        // These assertions prevent source-documentation drift. Live GitHub settings
+        // still require independent inspection before every release.
+        String normalized = content.replaceAll("\\s+", " ").toLowerCase(java.util.Locale.ROOT);
+        assertTrue(normalized.contains("release refs are restricted to `main` only"),
+                () -> document + " must restrict release deployments to main only");
+        assertTrue(normalized.contains("at least one required reviewer must be distinct from the workflow dispatcher"),
+                () -> document + " must require a reviewer distinct from the workflow dispatcher");
+        assertTrue(normalized.contains("self-review is prevented"),
+                () -> document + " must prevent self-review");
+        assertTrue(normalized.contains("administrator bypass is disabled"),
+                () -> document + " must disable administrator bypass");
+        assertTrue(normalized.contains("release credentials exist only as environment secrets"),
+                () -> document + " must keep release credentials only in environment secrets");
+    }
+
+    private static void assertContainsPattern(String content, String expression, String message) {
+        assertTrue(Pattern.compile(expression, Pattern.CASE_INSENSITIVE | Pattern.DOTALL)
+                        .matcher(content.replaceAll("\\s+", " "))
+                        .find(),
+                message);
+    }
+
+    private static String sectionToEnd(String content, String startMarker) {
+        int start = content.indexOf(startMarker);
+        assertTrue(start >= 0, () -> "Missing section start: " + startMarker);
+        return content.substring(start);
     }
 
     private static Set<String> assertActionsPinnedToReviewedCommits(Path workflow, String content) {
