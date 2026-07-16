@@ -11,7 +11,7 @@ promise yet.
 Current focus:
 
 - operate and consume the independently verified `0.7.1` public-preview release
-  while development advances on the `0.7.2-SNAPSHOT` line;
+  while `0.7.2` is validated as the next public-preview release;
 - keep the core artifact JDK-only and framework support in separate adapter
   artifacts;
 - enforce accepted API/binary delta classifications against the frozen `0.6.0`
@@ -25,15 +25,15 @@ Current focus:
 
 ## Near-Term Work
 
-1. **0.7.1 consumer adoption and 0.7.2 development**
+1. **0.7.1 consumer adoption and 0.7.2 release validation**
 
    `0.7.1` is the latest published version. Both coordinates, their complete
    signed artifact sets, Maven metadata, and a fresh Maven-Central-only Java 17
    consumer have passed post-publication verification. Keep public dependency
    examples aligned with `gatewayCorePublishedVersion=0.7.1`, gather evidence
-   from real consumers, and limit `0.7.2-SNAPSHOT` work to contract hardening
-   justified by that evidence. Treat any disagreement between public docs and
-   Central as a release-blocking documentation defect.
+   from real consumers, and validate the `0.7.2` release candidate as a narrowly
+   scoped correctness patch justified by that evidence. Treat any disagreement
+   between public docs and Central as a release-blocking documentation defect.
 
 2. **Consumer proof**
 

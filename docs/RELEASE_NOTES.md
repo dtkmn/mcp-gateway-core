@@ -2,9 +2,8 @@
 
 ## 0.7.2 (Unreleased)
 
-`0.7.2-SNAPSHOT` is the current development version on `develop`. `0.7.1` is
-the latest published version and remains the version used by public dependency
-examples.
+`0.7.2` is the current public-preview release candidate. `0.7.1` is the latest
+published version and remains the version used by public dependency examples.
 
 ### Spring WebFlux Adapter Correctness
 
