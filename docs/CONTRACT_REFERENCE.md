@@ -379,8 +379,8 @@ accepted only when they contain log-safe ASCII letters, digits, `.`, `_`, `:`,
 
 Package: `mcp.gateway.spring.webflux`
 
-The adapter parses MCP JSON-RPC requests from a WebFlux exchange and applies
-core decisions before the request reaches your MCP runtime. It is not Spring
+The adapter parses MCP JSON-RPC messages from a WebFlux exchange and applies
+core decisions before request messages reach your MCP runtime. It is not Spring
 Boot auto-configuration.
 
 Only application-relative `POST` requests matching the configured endpoint are
@@ -390,18 +390,33 @@ not change a segment's route value, so `/app/mcp;v=1` can match a configured
 
 Governance is active when authorization policy is enabled or abuse protection is
 enabled. When governance is active, the adapter rejects invalid MCP JSON-RPC
-request shapes before principal lookup, context resolution, scope extraction,
+message shapes before principal lookup, context resolution, scope extraction,
 authorization, protection, or downstream body replay. Rejected invalid shapes
 return adapter JSON with HTTP `400`, `Content-Type: application/json`, `error`
 set to `invalid_json_rpc_request`, a low-cardinality `reason`, ISO-8601
 `timestamp`, resolved `correlationId`, and the server request id as `requestId`.
 JSON-RPC `id` is never reflected as `requestId`.
-Duplicate fields anywhere in the JSON object are rejected to avoid parser
-differentials. Method and `tools/call` tool-name strings must not be blank or
-carry leading/trailing whitespace.
+Duplicate fields anywhere in the JSON object and case variants of
+governance-significant `method`, `params`, and tool `name` fields are rejected
+to avoid parser differentials. Method and `tools/call` tool-name strings must
+not be blank or carry leading/trailing whitespace.
 
-The adapter does not require or validate the JSON-RPC `jsonrpc` version field.
-That protocol validation remains the downstream runtime's responsibility.
+A method-absent JSON object is recognized as a JSON-RPC response envelope only
+when it has a string or numeric `id` and exactly one of the `result` or `error`
+members. Member presence determines the envelope, so `result: null` is still a
+response. Any `method` member, including `method: null`, prevents response
+classification; adding a response field to a tool request cannot bypass
+governance. Recognized responses are replayed downstream byte-for-byte without
+principal lookup, context resolution, scope extraction, request authorization,
+action-based abuse protection, or their observers. Request headers, including
+`Mcp-Session-Id`, remain available downstream. The surrounding security filter
+chain, the adapter body-size limit, and downstream protocol/session validation
+still apply. The downstream MCP runtime owns response correlation and the final
+HTTP status.
+
+The adapter does not require or validate the JSON-RPC `jsonrpc` version field
+for requests or recognized responses. That protocol validation remains the
+downstream runtime's responsibility.
 
 Batch arrays are unsupported by the governance adapter only while governance is
 active. They return `400` with reason `batch_not_supported` in that mode. This
@@ -409,31 +424,31 @@ is not a global transport validator rule: when governance is inactive, batches
 pass downstream exactly like any other body.
 
 When neither authorization nor protection governance is active, the adapter does
-not validate, buffer, or replay MCP request bodies. Invalid JSON-RPC bodies,
+not validate, buffer, or replay MCP message bodies. Invalid JSON-RPC bodies,
 batch bodies, and bodies larger than `maxBodyBytes` pass downstream unchanged.
 
 When governance is active, only a body-size failure raised while the adapter is
-reading the request becomes its `413` response. A `DataBufferLimitException`
-raised later by downstream handling propagates unchanged. Replayed requests have
+reading the message becomes its `413` response. A `DataBufferLimitException`
+raised later by downstream handling propagates unchanged. Replayed messages have
 conflicting transfer framing removed and an exact `Content-Length` set.
 
 Valid non-tool JSON-RPC methods are parsed as non-authorizable invocations:
 authorization is skipped, and protection still runs when enabled.
 
-Invalid request reasons are:
+Invalid message reasons are:
 
 | Reason | Meaning |
 | --- | --- |
 | `invalid_json_rpc_request` | Body cannot be parsed as one complete JSON value, including duplicate object fields. |
 | `batch_not_supported` | Body is a JSON-RPC batch array. |
-| `invalid_request_shape` | Body is empty, not an object request, lacks an exact non-blank string `method`, or has invalid/padded `tools/call` params/name shape. |
+| `invalid_request_shape` | Body is empty, not an object message, is neither a recognized response nor a request with an exact non-blank string `method`, or has invalid/padded `tools/call` params/name shape. |
 
 `McpGatewayWebFluxProperties` contains:
 
 | Field | Meaning |
 | --- | --- |
 | `mcpEndpoint` | Application-relative HTTP path receiving MCP JSON-RPC. Default is `/mcp`; route matching is matrix-parameter aware. |
-| `maxBodyBytes` | Maximum request body buffered by the adapter filter. Minimum normalized value is `1024`. Default is `262144`. |
+| `maxBodyBytes` | Maximum message body buffered by the adapter filter. Minimum normalized value is `1024`. Default is `262144`. |
 | `governanceFilterOrder` | Spring `WebFilter` order for the WebFlux governance filter. |
 
 `McpGatewayAuthorizationMode` values:

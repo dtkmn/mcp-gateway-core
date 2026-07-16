@@ -99,11 +99,13 @@ Included:
 - gateway execution context and principal/workspace model
 - optional Spring WebFlux governance filter and JSON-RPC parsing adapters
 
-The Spring WebFlux adapter fails closed on invalid MCP JSON-RPC request shapes
-only when governance is active. When both authorization and abuse protection are
-inactive, it preserves exact downstream pass-through, including JSON-RPC batch
-bodies. See the [contract reference](docs/CONTRACT_REFERENCE.md) for the full
-wire contract.
+The Spring WebFlux adapter fails closed on invalid MCP JSON-RPC message shapes
+only when governance is active. It recognizes response-shaped envelopes used by
+clients to answer server-initiated requests and passes them downstream without
+request governance. When both authorization and abuse protection are inactive,
+it preserves exact downstream pass-through, including JSON-RPC batch bodies.
+See the [contract reference](docs/CONTRACT_REFERENCE.md) for the full wire
+contract.
 
 Excluded:
 

@@ -28,7 +28,7 @@ class ProjectDocumentationAndSecurityToolingTest {
             Map.entry("github/codeql-action/upload-sarif", "99df26d4f13ea111d4ec1a7dddef6063f76b97e9"),
             Map.entry("gradle/actions/wrapper-validation", "3f131e8634966bd73d06cc69884922b02e6faf92"),
             Map.entry("snyk/actions/setup", "9adf32b1121593767fc3c057af55b55db032dc04"),
-            Map.entry("withastro/action", "b7d53628f8b666036b0238aadb0b984a2a489f26"));
+            Map.entry("withastro/action", "e84f40bd8d2caa9e768ec82ad30dd81f0b280853"));
 
     @Test
     void readmeLinksModuleRoadmapSecurityAndReleaseDocs() throws IOException {

@@ -6,8 +6,8 @@ import java.net.URISyntaxException;
 /**
  * Runtime settings for the MCP gateway WebFlux governance filter.
  *
- * @param mcpEndpoint HTTP path that receives MCP JSON-RPC requests
- * @param maxBodyBytes maximum request body size buffered by the gateway filter
+ * @param mcpEndpoint HTTP path that receives MCP JSON-RPC messages
+ * @param maxBodyBytes maximum message body size buffered by the gateway filter
  *        while governance is active; values below 1024 normalize to 1024
  * @param governanceFilterOrder Spring WebFilter order for the governance filter
  */

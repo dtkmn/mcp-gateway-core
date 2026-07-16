@@ -1,5 +1,31 @@
 # Release Notes
 
+## 0.7.2 (Unreleased)
+
+`0.7.2-SNAPSHOT` is the current development version on `develop`. `0.7.1` is
+the latest published version and remains the version used by public dependency
+examples.
+
+### Spring WebFlux Adapter Correctness
+
+- Restore the response pass-through required for server-initiated Streamable
+  HTTP requests by distinguishing response envelopes from requests on the shared
+  MCP `POST` endpoint. Responses to server-initiated ping, roots, sampling,
+  elicitation, and other requests now reach the downstream MCP runtime instead
+  of being rejected for a missing `method`.
+- Keep the response path narrow: recognized envelopes require no `method`, a
+  string or numeric `id`, and exactly one of `result` or `error`. Any request
+  carrying a `method` remains governed even if response fields are also present.
+  Duplicate fields, case-variant governance fields, batch bodies, and objects
+  that fail this minimal discriminator retain fail-closed behavior. Full
+  JSON-RPC response validation and correlation remain downstream concerns.
+- Skip request context, scope extraction, authorization, and action-based abuse
+  protection for response envelopes while preserving the message body, session
+  headers, configured body-size limit, surrounding security chain, and
+  downstream protocol/session validation.
+
+There are no new public API/binary deltas in this patch.
+
 ## 0.7.1 Public Preview
 
 `0.7.1` is the latest published version of both public-preview artifacts. The

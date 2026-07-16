@@ -1,5 +1,6 @@
 package mcp.gateway.spring.webflux;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,6 +25,7 @@ import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.core.io.buffer.DataBufferLimitException;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
@@ -523,6 +525,224 @@ class McpGatewayWebFluxGovernanceFilterTest {
         assertTrue(protectionCalled.get());
         assertEquals("ping", protectedContext.get().actionName());
         assertTrue(downstreamCalled.get());
+    }
+
+    @Test
+    void passesServerInitiatedResponsesThroughWithoutRequestGovernance() {
+        AtomicBoolean principalResolved = new AtomicBoolean(false);
+        AtomicBoolean contextResolved = new AtomicBoolean(false);
+        AtomicBoolean scopesExtracted = new AtomicBoolean(false);
+        AtomicBoolean authorizationCalled = new AtomicBoolean(false);
+        AtomicBoolean protectionCalled = new AtomicBoolean(false);
+        AtomicBoolean downstreamCalled = new AtomicBoolean(false);
+        AtomicBoolean invalidRequestObserved = new AtomicBoolean(false);
+        AtomicReference<String> downstreamBody = new AtomicReference<>();
+        AtomicReference<String> downstreamSessionId = new AtomicReference<>();
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                PROPERTIES,
+                new McpGatewayAuthorizationEvaluator() {
+                    @Override
+                    public McpGatewayAuthorizationMode mode() {
+                        return McpGatewayAuthorizationMode.ENFORCE;
+                    }
+
+                    @Override
+                    public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
+                                                               GatewayToolExecutionContext context) {
+                        authorizationCalled.set(true);
+                        return authAllowed();
+                    }
+                },
+                new McpGatewayAbuseProtectionEvaluator() {
+                    @Override
+                    public boolean enabled() {
+                        return true;
+                    }
+
+                    @Override
+                    public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
+                        protectionCalled.set(true);
+                        return McpAbuseProtectionDecision.allow(
+                                "ping",
+                                "demo-client",
+                                "demo-workspace"
+                        );
+                    }
+                },
+                (authentication, exchange, invocation) -> {
+                    contextResolved.set(true);
+                    return contextResolver().resolve(authentication, exchange, invocation);
+                },
+                authentication -> {
+                    scopesExtracted.set(true);
+                    return List.of("demo:run");
+                },
+                McpAuthorizationObserver.noop(),
+                McpProtectionRejectionObserver.noop(),
+                McpGatewayCorrelationIdResolver.defaultResolver(),
+                (reason, requestId, correlationId) -> invalidRequestObserved.set(true)
+        );
+        for (String body : List.of(
+                "{\"jsonrpc\":\"2.0\",\"id\":\"server-ping-1\",\"result\":{}}",
+                "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":null}",
+                "{\"jsonrpc\":\"2.0\",\"id\":3,\"error\":{\"code\":-32603,\"message\":\"failed\"}}",
+                "{\"id\":4,\"result\":{}}",
+                "{\"jsonrpc\":\"1.0\",\"id\":5,\"result\":{}}"
+        )) {
+            downstreamCalled.set(false);
+            downstreamBody.set(null);
+            downstreamSessionId.set(null);
+            ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/mcp")
+                            .header("Mcp-Session-Id", "session-1")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(body))
+                    .mutate()
+                    .principal(Mono.defer(() -> {
+                        principalResolved.set(true);
+                        return Mono.just(authentication("demo-client", "SCOPE_demo:run"));
+                    }))
+                    .build();
+            WebFilterChain downstream = downstreamExchange -> {
+                downstreamCalled.set(true);
+                downstreamSessionId.set(downstreamExchange.getRequest().getHeaders().getFirst("Mcp-Session-Id"));
+                downstreamExchange.getResponse().setStatusCode(HttpStatus.ACCEPTED);
+                return DataBufferUtils.join(downstreamExchange.getRequest().getBody())
+                        .doOnNext(buffer -> {
+                            byte[] bytes = new byte[buffer.readableByteCount()];
+                            buffer.read(bytes);
+                            DataBufferUtils.release(buffer);
+                            downstreamBody.set(new String(bytes, StandardCharsets.UTF_8));
+                        })
+                        .then();
+            };
+
+            StepVerifier.create(filter.filter(exchange, downstream)).verifyComplete();
+
+            assertTrue(downstreamCalled.get(), body);
+            assertEquals(body, downstreamBody.get(), body);
+            assertEquals("session-1", downstreamSessionId.get(), body);
+            assertEquals(HttpStatus.ACCEPTED, exchange.getResponse().getStatusCode(), body);
+        }
+        assertFalse(principalResolved.get());
+        assertFalse(contextResolved.get());
+        assertFalse(scopesExtracted.get());
+        assertFalse(authorizationCalled.get());
+        assertFalse(protectionCalled.get());
+        assertFalse(invalidRequestObserved.get());
+    }
+
+    @Test
+    void replaysChunkedUtf8ResponseWithConsistentFramingAndHeaders() {
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                PROPERTIES,
+                authorization(McpGatewayAuthorizationMode.ENFORCE, authAllowed()),
+                null,
+                (authentication, exchange, invocation) -> {
+                    throw new AssertionError("response envelopes must not resolve request context");
+                }
+        );
+        String prefix = "{\"id\":\"utf8-response\",\"result\":{\"value\":\"";
+        String body = prefix + "雪🌊\"}}";
+        byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
+        int splitInsideFirstCharacter = prefix.getBytes(StandardCharsets.UTF_8).length + 1;
+        DefaultDataBufferFactory bufferFactory = new DefaultDataBufferFactory();
+        ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/mcp")
+                        .header("Mcp-Session-Id", "session-utf8")
+                        .header("X-Response-Route", "preserve-me")
+                        .header(HttpHeaders.TRANSFER_ENCODING, "chunked")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(Flux.just(
+                                bufferFactory.wrap(Arrays.copyOfRange(
+                                        bodyBytes,
+                                        0,
+                                        splitInsideFirstCharacter
+                                )),
+                                bufferFactory.wrap(Arrays.copyOfRange(
+                                        bodyBytes,
+                                        splitInsideFirstCharacter,
+                                        bodyBytes.length
+                                ))
+                        )))
+                .mutate()
+                .principal(Mono.just(authentication("demo-client", "SCOPE_demo:run")))
+                .build();
+        AtomicReference<byte[]> downstreamBody = new AtomicReference<>();
+        AtomicReference<HttpHeaders> downstreamHeaders = new AtomicReference<>();
+        WebFilterChain downstream = downstreamExchange -> {
+            HttpHeaders headers = new HttpHeaders();
+            headers.putAll(downstreamExchange.getRequest().getHeaders());
+            downstreamHeaders.set(headers);
+            return DataBufferUtils.join(downstreamExchange.getRequest().getBody())
+                    .doOnNext(buffer -> {
+                        byte[] bytes = new byte[buffer.readableByteCount()];
+                        buffer.read(bytes);
+                        DataBufferUtils.release(buffer);
+                        downstreamBody.set(bytes);
+                    })
+                    .then();
+        };
+
+        StepVerifier.create(filter.filter(exchange, downstream)).verifyComplete();
+
+        assertArrayEquals(bodyBytes, downstreamBody.get());
+        assertEquals("session-utf8", downstreamHeaders.get().getFirst("Mcp-Session-Id"));
+        assertEquals("preserve-me", downstreamHeaders.get().getFirst("X-Response-Route"));
+        assertEquals(bodyBytes.length, downstreamHeaders.get().getContentLength());
+        assertFalse(downstreamHeaders.get().containsHeader(HttpHeaders.TRANSFER_ENCODING));
+    }
+
+    @Test
+    void responseFieldsCannotBypassRequestGovernanceWhenMethodIsPresent() {
+        AtomicBoolean downstreamCalled = new AtomicBoolean(false);
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                PROPERTIES,
+                authorization(McpGatewayAuthorizationMode.ENFORCE, authDenied()),
+                null,
+                contextResolver()
+        );
+        ServerWebExchange exchange = exchange("""
+                {
+                  "jsonrpc":"2.0",
+                  "id":1,
+                  "method":"tools/call",
+                  "params":{"name":"demo_tool"},
+                  "result":{}
+                }
+                """, authentication("demo-client", "SCOPE_demo:read"));
+
+        StepVerifier.create(filter.filter(exchange, markCalledChain(downstreamCalled))).verifyComplete();
+
+        assertFalse(downstreamCalled.get());
+        assertEquals(HttpStatus.FORBIDDEN, exchange.getResponse().getStatusCode());
+    }
+
+    @Test
+    void caseVariantMethodCannotMasqueradeAsResponse() throws Exception {
+        AtomicBoolean downstreamCalled = new AtomicBoolean(false);
+        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
+                OBJECT_MAPPER,
+                PROPERTIES,
+                authorization(McpGatewayAuthorizationMode.ENFORCE, authAllowed()),
+                null,
+                contextResolver()
+        );
+        ServerWebExchange exchange = exchange("""
+                {
+                  "jsonrpc":"2.0",
+                  "id":1,
+                  "Method":"tools/call",
+                  "params":{"name":"demo_tool"},
+                  "result":{}
+                }
+                """, authentication("demo-client", "SCOPE_demo:run"));
+
+        StepVerifier.create(filter.filter(exchange, markCalledChain(downstreamCalled))).verifyComplete();
+
+        assertFalse(downstreamCalled.get());
+        assertInvalidRequestResponse(exchange, McpJsonRpcRequestRejectionReason.INVALID_METHOD);
     }
 
     @Test
