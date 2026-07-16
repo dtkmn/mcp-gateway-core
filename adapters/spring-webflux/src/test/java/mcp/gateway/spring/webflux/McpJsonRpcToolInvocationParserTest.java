@@ -7,7 +7,9 @@ import mcp.gateway.core.invocation.McpToolInvocationKind;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class McpJsonRpcToolInvocationParserTest {
     private final McpJsonRpcToolInvocationParser parser = new McpJsonRpcToolInvocationParser(new ObjectMapper());
@@ -44,6 +46,43 @@ class McpJsonRpcToolInvocationParserTest {
         assertEquals(McpToolInvocationKind.OTHER, invocation.kind());
         assertEquals("ping", invocation.actionName());
         assertNull(invocation.toolName());
+    }
+
+    @Test
+    void recognizesResponseEnvelopesWithoutTurningThemIntoInvocations() {
+        for (String body : new String[]{
+                "{\"jsonrpc\":\"2.0\",\"id\":\"server-ping-1\",\"result\":{}}",
+                "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":null}",
+                "{\"jsonrpc\":\"2.0\",\"id\":3,\"error\":{\"code\":-32603,\"message\":\"failed\"}}",
+                "{\"id\":4,\"result\":{}}",
+                "{\"jsonrpc\":\"1.0\",\"id\":5,\"result\":{}}",
+                "{\"jsonrpc\":\"2.0\",\"id\":6,\"result\":\"downstream-validates\"}",
+                "{\"jsonrpc\":\"2.0\",\"id\":7,\"error\":null}"
+        }) {
+            McpJsonRpcMessageClassification classification = parser.classify(bytes(body));
+
+            assertTrue(classification.valid(), body);
+            assertTrue(classification.response(), body);
+            assertNull(classification.rejectionReason(), body);
+            assertEquals(McpToolInvocationKind.UNKNOWN, classification.invocation().kind(), body);
+            assertEquals(McpToolInvocationKind.UNKNOWN, parser.parse(bytes(body)).kind(), body);
+        }
+    }
+
+    @Test
+    void rejectsMethodlessObjectsThatAreNotResponseEnvelopes() {
+        assertReason("{\"jsonrpc\":\"2.0\",\"id\":1}",
+                McpJsonRpcRequestRejectionReason.MISSING_METHOD);
+        assertReason("{\"jsonrpc\":\"2.0\",\"result\":{}}",
+                McpJsonRpcRequestRejectionReason.MISSING_METHOD);
+        assertReason("{\"jsonrpc\":\"2.0\",\"id\":null,\"result\":{}}",
+                McpJsonRpcRequestRejectionReason.MISSING_METHOD);
+        assertReason("{\"jsonrpc\":\"2.0\",\"id\":true,\"result\":{}}",
+                McpJsonRpcRequestRejectionReason.MISSING_METHOD);
+        assertReason("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{},\"error\":{}}",
+                McpJsonRpcRequestRejectionReason.MISSING_METHOD);
+        assertReason("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":null,\"result\":{}}",
+                McpJsonRpcRequestRejectionReason.MISSING_METHOD);
     }
 
     @Test
@@ -120,6 +159,20 @@ class McpJsonRpcToolInvocationParserTest {
                 McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
         assertReason("{\"method\":\"tools/call\",\"params\":{\"name\":\"demo_tool\",\"arguments\":{\"value\":1,\"value\":2}}}",
                 McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
+        assertReason("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{},\"result\":null}",
+                McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
+    }
+
+    @Test
+    void rejectsCaseVariantGovernanceFieldsToPreventParserDifferentials() {
+        assertReason("{\"Method\":\"tools/call\",\"id\":1,\"result\":{}}",
+                McpJsonRpcRequestRejectionReason.INVALID_METHOD);
+        assertReason("{\"method\":\"ping\",\"METHOD\":\"tools/call\",\"params\":{\"name\":\"restricted\"}}",
+                McpJsonRpcRequestRejectionReason.INVALID_METHOD);
+        assertReason("{\"method\":\"tools/call\",\"params\":{\"name\":\"allowed\"},\"Params\":{\"name\":\"restricted\"}}",
+                McpJsonRpcRequestRejectionReason.INVALID_TOOL_CALL_PARAMS);
+        assertReason("{\"method\":\"tools/call\",\"params\":{\"name\":\"allowed\",\"Name\":\"restricted\"}}",
+                McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
     }
 
     @Test
@@ -130,9 +183,10 @@ class McpJsonRpcToolInvocationParserTest {
     }
 
     private void assertReason(String json, McpJsonRpcRequestRejectionReason expected) {
-        McpJsonRpcRequestClassification classification = parser.classify(json == null ? null : bytes(json));
+        McpJsonRpcMessageClassification classification = parser.classify(json == null ? null : bytes(json));
 
         assertEquals(expected, classification.rejectionReason());
+        assertFalse(classification.response());
         assertEquals(McpToolInvocationKind.UNKNOWN, classification.invocation().kind());
     }
 

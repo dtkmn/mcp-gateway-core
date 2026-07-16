@@ -255,7 +255,10 @@ class McpGatewayConfiguration {
 The default scope extractor reads Spring Security authorities named
 `SCOPE_<scope>` and passes normalized scope names into the authorization
 evaluator. The governance filter evaluates authorization first, then protection,
-and preserves the request body for the downstream MCP runtime.
+and preserves the request body for the downstream MCP runtime. Recognized
+response envelopes used to answer server-initiated JSON-RPC requests pass
+through to that runtime without request authorization or action-based
+abuse-protection evaluation.
 
 ## Adoption Checklist
 
@@ -264,7 +267,11 @@ and preserves the request body for the downstream MCP runtime.
 3. Resolve a stable principal ID and workspace ID before gateway checks run.
 4. Decide whether unknown tools fail closed, warn, or bypass in your runtime. The
    core authorizer fails closed when enforcement is enabled.
-5. Add audit and metrics at your runtime boundary. Core supplies event values;
+5. Authenticate the MCP endpoint independently, and require the downstream
+   runtime to bind session IDs and pending response IDs to the authenticated
+   principal or tenant. Reject anonymous, cross-principal, unknown-session, and
+   mismatched-ID responses.
+6. Add audit and metrics at your runtime boundary. Core supplies event values;
    it does not persist them.
-6. Keep product-specific names and permissions in your app, not in reusable core
+7. Keep product-specific names and permissions in your app, not in reusable core
    contracts.

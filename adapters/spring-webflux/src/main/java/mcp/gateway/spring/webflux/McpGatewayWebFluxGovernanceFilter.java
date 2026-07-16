@@ -21,14 +21,15 @@ import reactor.core.publisher.Mono;
 
 /**
  * WebFlux filter that runs the shared MCP gateway governance pass once per MCP
- * JSON-RPC request.
+ * JSON-RPC request message.
  * <p>
  * The filter is active only for the configured MCP endpoint when authorization
  * or abuse protection governance is enabled. With governance inactive, matching
  * requests pass downstream without body buffering or validation. With governance
- * active, invalid MCP JSON-RPC request shapes are rejected before principal
- * lookup, context resolution, authorization, protection, or downstream handling.
- * Invalid or oversized bodies are reported through
+ * active, recognized JSON-RPC response envelopes pass downstream without request
+ * governance, while invalid MCP JSON-RPC message shapes are rejected before
+ * principal lookup, context resolution, authorization, protection, or downstream
+ * handling. Invalid or oversized bodies are reported through
  * {@link McpInvalidRequestObserver}; authorization and protection observers
  * are used only after a request has a valid governance shape.
  */
@@ -191,9 +192,12 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
 
         return cachedBody
                 .flatMap(bodyBytes -> {
-                    McpJsonRpcRequestClassification classification = parser.classify(bodyBytes);
+                    McpJsonRpcMessageClassification classification = parser.classify(bodyBytes);
                     if (!classification.valid()) {
                         return writeInvalidRequest(exchange, classification.rejectionReason());
+                    }
+                    if (classification.response()) {
+                        return chain.filter(McpGatewayWebFluxRequestBodies.decorate(exchange, bodyBytes));
                     }
                     McpToolInvocation invocation = classification.invocation();
                     return exchange.getPrincipal()

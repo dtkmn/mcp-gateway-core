@@ -1,11 +1,11 @@
 package mcp.gateway.spring.webflux;
 
 /**
- * Observes invalid MCP JSON-RPC requests rejected by the WebFlux adapter before
+ * Observes invalid MCP JSON-RPC messages rejected by the WebFlux adapter before
  * authorization, protection, or context resolution runs.
  * <p>
  * Implementations should treat the arguments as low-cardinality telemetry
- * fields. The adapter never passes the request payload to this observer.
+ * fields. The adapter never passes the message payload to this observer.
  * Stable reason values are {@code invalid_json_rpc_request},
  * {@code batch_not_supported}, {@code invalid_request_shape}, and
  * {@code request_body_too_large}.
