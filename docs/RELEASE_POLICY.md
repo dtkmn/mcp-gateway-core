@@ -19,9 +19,9 @@ Public preview means:
 Do not describe these artifacts as stable until this policy is updated and a
 stable release gate exists.
 
-`0.7.2` is the latest published public-preview version. `0.8.0` is the current
-release candidate and intentionally breaks adapter source and binary
-compatibility by migrating its public JSON boundary to Jackson 3.
+`0.8.0` is the latest published public-preview version. It intentionally breaks
+adapter source and binary compatibility with `0.7.2` by migrating its public
+JSON boundary to Jackson 3.
 
 ## Release Gates
 

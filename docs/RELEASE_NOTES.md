@@ -1,15 +1,16 @@
 # Release Notes
 
-## 0.8.0 (Unreleased)
+## 0.8.0 Public Preview
 
-`0.8.0` is the current public-preview release candidate and supersedes the
-published `0.7.2` release. `0.7.2` remains the version used by public dependency
-examples until `0.8.0` is published. Source-tree candidate guides label their
-`0.8.0` coordinates as unreleased.
+`0.8.0` is the latest published version of both public-preview artifacts and
+supersedes `0.7.2`. The core library and optional Spring WebFlux adapter are
+available from Maven Central at `io.github.dtkmn:mcp-gateway-core:0.8.0` and
+`io.github.dtkmn:mcp-gateway-spring-webflux:0.8.0`. The published source commit
+is `2f533f76032848e6d4abcef1144b008144f8e136`.
 
 ### API And Binary Deltas
 
-Breaking changes proposed for this release:
+Breaking changes included in this release:
 
 - Replace the Spring WebFlux adapter's Jackson 2 dependency
   (`com.fasterxml.jackson.core:jackson-databind`) with the Jackson 3.1 LTS line
@@ -41,9 +42,9 @@ the two modules are published as one release.
 
 ## 0.7.2 Public Preview
 
-`0.7.2` is the latest published version of both public-preview artifacts. The
-core library and optional Spring WebFlux adapter are available from Maven
-Central at `io.github.dtkmn:mcp-gateway-core:0.7.2` and
+`0.7.2` was the preceding published version of both public-preview artifacts.
+The core library and optional Spring WebFlux adapter remain available from
+Maven Central at `io.github.dtkmn:mcp-gateway-core:0.7.2` and
 `io.github.dtkmn:mcp-gateway-spring-webflux:0.7.2`. The published source commit
 is `c2f3eac20c3348fe48881cf19196edcf93e680eb`.
 

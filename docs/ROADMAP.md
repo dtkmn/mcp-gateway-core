@@ -10,8 +10,8 @@ promise yet.
 
 Current focus:
 
-- operate and consume the published `0.7.2` public-preview release
-  while `0.8.0` is validated as the next public-preview release;
+- operate and consume the published `0.8.0` public-preview release and gather
+  evidence from its Jackson 3 adapter migration;
 - keep the core artifact JDK-only and framework support in separate adapter
   artifacts;
 - prove published and staged artifacts with current Java 17 core-only and
@@ -23,14 +23,12 @@ Current focus:
 
 ## Near-Term Work
 
-1. **0.7.2 consumer adoption and 0.8.0 release validation**
+1. **0.8.0 consumer adoption**
 
-   `0.7.2` is the latest published version. Keep public dependency landing-page
-   examples on `0.7.2`, clearly label source-tree `0.8.0` candidate
-   instructions, gather evidence from real consumers, and validate the release
-   candidate with its explicit Jackson 3 adapter migration. Require downstream
-   adapter consumers to prove their new `JsonMapper` wiring. Treat any
-   disagreement between public docs and Central as a release-blocking
+   `0.8.0` is the latest published version. Keep public dependency landing-page
+   examples on `0.8.0`, gather evidence from real consumers, and require
+   downstream adapter consumers to prove their new `JsonMapper` wiring. Treat
+   any disagreement between public docs and Central as a release-blocking
    documentation defect.
 
 2. **Consumer proof**
