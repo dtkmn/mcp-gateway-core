@@ -15,11 +15,14 @@ def springWebFluxGroupId = project.group.toString()
 def springWebFluxPublicationVersion = project.version.toString()
 def springFrameworkVersion = providers.gradleProperty('springFrameworkVersion').orElse('7.0.8').get()
 def springSecurityVersion = providers.gradleProperty('springSecurityVersion').orElse('7.1.0').get()
-def jacksonDatabindVersion = providers.gradleProperty('jacksonDatabindVersion').orElse('3.1.4').get()
+def jacksonDatabindVersion = providers.gradleProperty('jacksonDatabindVersion').orElse('3.1.5').get()
 def reactorVersion = providers.gradleProperty('reactorVersion').orElse('3.8.6').get()
 def springBootVersion = providers.gradleProperty('springBootVersion').orElse('4.1.0').get()
 def springAiVersion = providers.gradleProperty('springAiVersion').orElse('2.0.0').get()
 def mcpJavaSdkVersion = providers.gradleProperty('mcpJavaSdkVersion').orElse('2.0.0').get()
+def nettyVersion = providers.gradleProperty('nettyVersion').orElse('4.2.16.Final').get()
+def logbackVersion = providers.gradleProperty('logbackVersion').orElse('1.5.36').get()
+def log4jVersion = providers.gradleProperty('log4jVersion').orElse('2.25.5').get()
 def publicationPath = "${springWebFluxGroupId.replace('.', '/')}/${springWebFluxArtifactId}/${springWebFluxPublicationVersion}"
 def springWebFluxCentralBundleName = "${springWebFluxArtifactId}-${springWebFluxPublicationVersion}-central-portal-bundle.zip"
 def gatewayJavaRelease = 17
@@ -107,8 +110,11 @@ dependencies {
     testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
     testImplementation platform("org.springframework.ai:spring-ai-bom:${springAiVersion}")
     testImplementation platform("io.modelcontextprotocol.sdk:mcp-bom:${mcpJavaSdkVersion}")
+    testImplementation platform("io.netty:netty-bom:${nettyVersion}")
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
+    testImplementation "ch.qos.logback:logback-classic:${logbackVersion}"
+    testImplementation "org.apache.logging.log4j:log4j-to-slf4j:${log4jVersion}"
     testImplementation 'org.springframework.ai:mcp-spring-webflux'
     testImplementation 'io.modelcontextprotocol.sdk:mcp-core'
     testImplementation 'io.modelcontextprotocol.sdk:mcp-json-jackson3'

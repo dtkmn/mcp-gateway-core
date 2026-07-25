@@ -13,7 +13,7 @@ Breaking changes proposed for this release:
 
 - Replace the Spring WebFlux adapter's Jackson 2 dependency
   (`com.fasterxml.jackson.core:jackson-databind`) with the Jackson 3.1 LTS line
-  (`tools.jackson.core:jackson-databind:3.1.4`).
+  (`tools.jackson.core:jackson-databind:3.1.5`).
 - Replace Jackson 2 `ObjectMapper` parameters on all public
   `McpGatewayWebFluxGovernanceFilter` constructors and the
   `McpJsonRpcToolInvocationParser` constructor with Jackson 3
