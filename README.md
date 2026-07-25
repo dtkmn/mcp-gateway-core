@@ -188,7 +188,10 @@ artifacts staged by the applicable gate:
 
 The smoke script uses separate clean external consumers for core-only and
 Spring WebFlux scenarios, resolves `io.github.dtkmn` artifacts only from the
-staged repository, and exercises the WebFlux filter path.
+staged repository, and exercises the current WebFlux filter path. The
+source-compatibility script preserves the frozen `0.6.0` core consumer. Adapter
+source compatibility is intentionally broken in `0.8.0` by the documented
+Jackson 3 migration and is enforced through accepted API deltas instead.
 
 ## Coordinates
 

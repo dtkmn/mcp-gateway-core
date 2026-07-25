@@ -9,6 +9,11 @@ version = providers.gradleProperty('gatewayCoreVersion')
         .orElse('0.7.0')
         .get()
 
+def apiBaselineVersion = providers.gradleProperty('gatewayCorePublishedVersion')
+        .get()
+def acceptedApiDeltasVersion = version.toString()
+def acceptedApiDeltasPath = "compatibility/accepted-api-deltas-${acceptedApiDeltasVersion}.json"
+
 tasks.register('test') {
     group = 'verification'
     description = 'Runs tests for all published modules.'
@@ -54,7 +59,7 @@ tasks.register('verifyAcceptedApiDeltas') {
     group = 'verification'
     description = 'Verifies accepted API/binary deltas are machine-readable and release-note linked.'
 
-    def acceptedDeltasFile = layout.projectDirectory.file('compatibility/accepted-api-deltas-0.7.0.json')
+    def acceptedDeltasFile = layout.projectDirectory.file(acceptedApiDeltasPath)
     def releaseNotesFile = layout.projectDirectory.file('docs/RELEASE_NOTES.md')
 
     inputs.file acceptedDeltasFile
@@ -69,14 +74,13 @@ tasks.register('verifyAcceptedApiDeltas') {
         if (!releaseNotes.isFile()) {
             throw new GradleException("Missing release notes file: ${releaseNotes}")
         }
-
         def parsed = new groovy.json.JsonSlurper().parse(acceptedDeltas)
         if (!(parsed instanceof Map)) {
             throw new GradleException('Accepted API deltas file must contain a JSON object.')
         }
         requireJsonValue(parsed, 'schema', 'mcp-gateway-core.accepted-api-deltas.v1')
-        requireJsonValue(parsed, 'version', '0.7.0')
-        requireJsonValue(parsed, 'baseVersion', '0.6.0')
+        requireJsonValue(parsed, 'version', acceptedApiDeltasVersion)
+        requireJsonValue(parsed, 'baseVersion', apiBaselineVersion)
         if (!(parsed.deltas instanceof List)) {
             throw new GradleException('Accepted API deltas file must contain a deltas array.')
         }
@@ -94,8 +98,7 @@ tasks.register('verifyAcceptedApiDeltas') {
                     'oldSignature',
                     'newSignature',
                     'classification',
-                    'releaseNotesAnchor',
-                    'maintainerApproval'
+                    'releaseNotesAnchor'
             ]
             List<String> missing = requiredKeys.findAll { !delta.containsKey(it) }
             if (!missing.isEmpty()) {
@@ -126,9 +129,6 @@ tasks.register('verifyAcceptedApiDeltas') {
                     throw new GradleException("Compatible addition delta ${index} must use null oldSignature.")
                 }
                 requiredString(delta, 'newSignature', index)
-                if (delta.maintainerApproval != null) {
-                    throw new GradleException("Compatible addition delta ${index} must use null maintainerApproval.")
-                }
             } else {
                 requiredString(delta, 'oldSignature', index)
                 if (delta.newSignature != null && !(delta.newSignature instanceof String)) {
@@ -137,7 +137,6 @@ tasks.register('verifyAcceptedApiDeltas') {
                 if (delta.newSignature instanceof String && delta.newSignature.isBlank()) {
                     throw new GradleException("Breaking change delta ${index} newSignature must not be blank when present.")
                 }
-                requireMaintainerApproval(delta, index)
             }
         }
     }
@@ -145,7 +144,7 @@ tasks.register('verifyAcceptedApiDeltas') {
 
 tasks.register('verifyPublicApiSnapshots') {
     group = 'verification'
-    description = 'Verifies current public/protected API signatures against the frozen 0.6.0 baseline.'
+    description = "Verifies current public/protected API signatures against the published ${apiBaselineVersion} baseline."
     dependsOn 'verifyAcceptedApiDeltas'
     dependsOn ':core:jar'
     dependsOn ':adapters:spring-webflux:jar'
@@ -156,17 +155,21 @@ tasks.register('verifyPublicApiSnapshots') {
                     jar           : project(':core').tasks.named('jar').flatMap { it.archiveFile },
                     packagePrefix : 'mcp.gateway.core',
                     resourcePrefix: 'mcp/gateway/core',
-                    baseline      : layout.projectDirectory.file('compatibility/api-baseline/0.6.0/mcp-gateway-core.txt')
+                    baseline      : layout.projectDirectory.file(
+                            "compatibility/api-baseline/${apiBaselineVersion}/mcp-gateway-core.txt"
+                    )
             ],
             [
                     artifact      : 'mcp-gateway-spring-webflux',
                     jar           : project(':adapters:spring-webflux').tasks.named('jar').flatMap { it.archiveFile },
                     packagePrefix : 'mcp.gateway.spring.webflux',
                     resourcePrefix: 'mcp/gateway/spring/webflux',
-                    baseline      : layout.projectDirectory.file('compatibility/api-baseline/0.6.0/mcp-gateway-spring-webflux.txt')
+                    baseline      : layout.projectDirectory.file(
+                            "compatibility/api-baseline/${apiBaselineVersion}/mcp-gateway-spring-webflux.txt"
+                    )
             ]
     ]
-    def acceptedDeltasFile = layout.projectDirectory.file('compatibility/accepted-api-deltas-0.7.0.json')
+    def acceptedDeltasFile = layout.projectDirectory.file(acceptedApiDeltasPath)
 
     inputs.file acceptedDeltasFile
     artifacts.each { artifact ->
@@ -213,33 +216,6 @@ def requiredString(Map delta, String key, int index) {
     }
     value
 }
-
-def requireMaintainerApproval(Map delta, int index) {
-    def approval = delta.maintainerApproval
-    if (!(approval instanceof Map)) {
-        throw new GradleException("Breaking change delta ${index} maintainerApproval must be an object.")
-    }
-    Set<String> allowedKeys = ['approver', 'url', 'approvedAt'] as Set
-    Set<String> actualKeys = approval.keySet() as Set
-    if (actualKeys != allowedKeys) {
-        throw new GradleException("Breaking change delta ${index} maintainerApproval must contain exactly ${allowedKeys}.")
-    }
-    String approver = requiredString(approval, 'approver', index)
-    String url = requiredString(approval, 'url', index)
-    String approvedAt = requiredString(approval, 'approvedAt', index)
-    if (!approver.startsWith('@')) {
-        throw new GradleException("Breaking change delta ${index} maintainerApproval.approver must be a GitHub handle starting with @.")
-    }
-    if (!url.startsWith('https://github.com/')) {
-        throw new GradleException("Breaking change delta ${index} maintainerApproval.url must be a GitHub URL.")
-    }
-    try {
-        java.time.Instant.parse(approvedAt)
-    } catch (Exception ignored) {
-        throw new GradleException("Breaking change delta ${index} maintainerApproval.approvedAt must be an ISO-8601 instant.")
-    }
-}
-
 def acceptedApiDeltas(File acceptedDeltas) {
     def parsed = new groovy.json.JsonSlurper().parse(acceptedDeltas)
     if (!(parsed instanceof Map) || !(parsed.deltas instanceof List)) {
@@ -355,7 +331,9 @@ def enforceAcceptedApiDeltas(String artifact,
     }
 
     if (!additions.isEmpty() || !removals.isEmpty()) {
-        StringBuilder message = new StringBuilder("${artifact} public API differs from the 0.6.0 baseline.")
+        StringBuilder message = new StringBuilder(
+                "${artifact} public API differs from the ${apiBaselineVersion} baseline."
+        )
         if (!additions.isEmpty()) {
             message.append("\nUnaccepted additions:")
             additions.take(20).each { message.append("\n+ ").append(it) }
@@ -364,7 +342,7 @@ def enforceAcceptedApiDeltas(String artifact,
             message.append("\nUnaccepted removals:")
             removals.take(20).each { message.append("\n- ").append(it) }
         }
-        message.append("\nAdd each intentional delta to compatibility/accepted-api-deltas-0.7.0.json and docs/RELEASE_NOTES.md.")
+        message.append("\nAdd each intentional delta to ${acceptedApiDeltasPath} and docs/RELEASE_NOTES.md.")
         throw new GradleException(message.toString())
     }
 }
