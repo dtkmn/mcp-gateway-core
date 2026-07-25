@@ -1,5 +1,3 @@
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
@@ -52,21 +50,6 @@ import mcp.gateway.core.tool.McpToolDescriptor;
 import mcp.gateway.core.tool.McpToolRegistry;
 import mcp.gateway.core.tool.McpToolSurface;
 import mcp.gateway.core.url.UrlScope;
-import mcp.gateway.spring.webflux.McpAuthorizationObservation;
-import mcp.gateway.spring.webflux.McpAuthorizationObserver;
-import mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator;
-import mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator;
-import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
-import mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver;
-import mcp.gateway.spring.webflux.McpGatewayWebFluxContextResolver;
-import mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter;
-import mcp.gateway.spring.webflux.McpGatewayWebFluxProperties;
-import mcp.gateway.spring.webflux.McpGrantedScopesExtractor;
-import mcp.gateway.spring.webflux.McpJsonRpcToolInvocationParser;
-import mcp.gateway.spring.webflux.McpProtectionRejectionObserver;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 public final class SourceCompat060 {
     public static void main(String[] args) {
@@ -184,89 +167,6 @@ public final class SourceCompat060 {
 
         require(CorrelationIds.resolve(" corr-a ", "legacy").equals("corr-a"), "correlation resolver should prefer primary");
         require(UrlScope.parse("https://example.com/app/").contains("https://example.com/app/page"), "url scope should contain child");
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        McpJsonRpcToolInvocationParser parser = new McpJsonRpcToolInvocationParser(objectMapper);
-        McpToolInvocation parsedInvocation = parser.parse(("""
-                {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"demo_tool"}}
-                """).getBytes(StandardCharsets.UTF_8));
-        require(parsedInvocation.kind() == McpToolInvocationKind.TOOL_CALL, "adapter parser should parse tool call");
-
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                "client-a",
-                "n/a",
-                List.of(new SimpleGrantedAuthority("SCOPE_DEMO:RUN"))
-        );
-        List<String> scopes = McpGrantedScopesExtractor.springSecurityScopes().extract(authentication);
-        require(scopes.contains("demo:run"), "scope extractor should normalize scopes");
-
-        McpGatewayAuthorizationEvaluator webFluxAuthorization = new McpGatewayAuthorizationEvaluator() {
-            @Override
-            public McpGatewayAuthorizationMode mode() {
-                return McpGatewayAuthorizationMode.ENFORCE;
-            }
-
-            @Override
-            public ToolAuthorizationDecision authorize(java.util.Collection<String> grantedScopes,
-                                                       GatewayToolExecutionContext context) {
-                return authorizer.authorize(context, grantedScopes, false, true);
-            }
-        };
-        require(webFluxAuthorization.enabled(), "mode-backed authorization should be enabled");
-        require(webFluxAuthorization.policy().enabled(), "mode-backed policy should be enabled");
-
-        McpGatewayAbuseProtectionEvaluator webFluxProtection = new McpGatewayAbuseProtectionEvaluator() {
-            @Override
-            public boolean enabled() {
-                return true;
-            }
-
-            @Override
-            public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
-                return McpAbuseProtectionDecision.allow(context.toolName(), context.principalId(), context.workspaceId());
-            }
-        };
-        McpGatewayWebFluxContextResolver contextResolver = (auth, exchange, parsed) -> GatewayToolExecutionContext.of(
-                auth == null ? null : auth.getName(),
-                "workspace-a",
-                McpGatewayCorrelationIdResolver.defaultResolver().resolve(exchange),
-                parsed,
-                null
-        );
-        McpGatewayWebFluxProperties properties = new McpGatewayWebFluxProperties("/mcp", 4096, 7);
-        McpGatewayWebFluxGovernanceFilter defaultFilter = new McpGatewayWebFluxGovernanceFilter(
-                objectMapper,
-                properties,
-                webFluxAuthorization,
-                webFluxProtection,
-                contextResolver
-        );
-        require(defaultFilter.getOrder() == 7, "filter order should come from properties");
-
-        McpAuthorizationObserver observer = McpAuthorizationObserver.noop();
-        observer.record(new McpAuthorizationObservation(
-                "demo_tool",
-                "allowed",
-                "scope_granted",
-                List.of("demo:run"),
-                List.of("demo:run"),
-                toolContext
-        ));
-        McpProtectionRejectionObserver.noop().rejected(
-                McpAbuseProtectionDecision.reject("rate_limited", "slow down", protectionContext, 5),
-                toolContext
-        );
-        new McpGatewayWebFluxGovernanceFilter(
-                objectMapper,
-                properties,
-                webFluxAuthorization,
-                webFluxProtection,
-                contextResolver,
-                McpGrantedScopesExtractor.springSecurityScopes(),
-                observer,
-                McpProtectionRejectionObserver.noop(),
-                McpGatewayCorrelationIdResolver.fromHeader("X-Correlation-Id")
-        );
     }
 
     private static void require(boolean condition, String message) {

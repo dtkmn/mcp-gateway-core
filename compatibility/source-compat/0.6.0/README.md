@@ -1,9 +1,15 @@
-# 0.6.0 Source Compatibility Fixture
+# 0.6.0 Core Source Compatibility Fixture
 
-This fixture is a frozen external-consumer source file from the `0.6.0`
-public-preview API surface. It must compile against newly staged artifacts
-without importing project source, test helpers, package-private types, or local
-build output.
+This fixture preserves the framework-neutral core usage from the `0.6.0`
+external-consumer source. It must compile against each newly staged core
+artifact without importing project source, test helpers, package-private types,
+or local build output.
+
+The old WebFlux portion is intentionally excluded as of `0.8.0`: the accepted
+Jackson 2 `ObjectMapper` to Jackson 3 `JsonMapper` constructor change is not
+source-compatible. Current adapter wiring is instead compiled and executed by
+`bin/java17-consumer-smoke.sh`, while the API snapshot gate accounts for every
+approved constructor removal and replacement.
 
 Run it through:
 
@@ -12,4 +18,4 @@ Run it through:
 ```
 
 The script copies this source into a clean temporary Gradle project and resolves
-`io.github.dtkmn` artifacts exclusively from the staged publication repository.
+`mcp-gateway-core` exclusively from the staged publication repository.
