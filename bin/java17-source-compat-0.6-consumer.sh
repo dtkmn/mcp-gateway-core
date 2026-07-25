@@ -23,10 +23,6 @@ if [[ ! -d "${STAGING_REPOSITORY}/io/github/dtkmn/mcp-gateway-core/${VERSION}" ]
   fail "Missing staged mcp-gateway-core ${VERSION} under ${STAGING_REPOSITORY}. Run ./gradlew verifyGatewayDevelopment for normal development or the release gate during release preparation."
 fi
 
-if [[ ! -d "${STAGING_REPOSITORY}/io/github/dtkmn/mcp-gateway-spring-webflux/${VERSION}" ]]; then
-  fail "Missing staged mcp-gateway-spring-webflux ${VERSION} under ${STAGING_REPOSITORY}. Run ./gradlew verifyGatewayDevelopment for normal development or the release gate during release preparation."
-fi
-
 if [[ -n "${JAVA_HOME:-}" ]]; then
   JAVA_BIN="${JAVA_HOME}/bin/java"
 else
@@ -95,7 +91,6 @@ java {
 
 dependencies {
     implementation "io.github.dtkmn:mcp-gateway-core:${VERSION}"
-    implementation "io.github.dtkmn:mcp-gateway-spring-webflux:${VERSION}"
 }
 
 application {
@@ -111,7 +106,7 @@ tasks.register('verifyGatewayFixtureResolution') {
         def gatewayArtifacts = configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts.findAll {
             it.moduleVersion.id.group == 'io.github.dtkmn'
         }
-        def expected = ['mcp-gateway-core', 'mcp-gateway-spring-webflux'] as Set
+        def expected = ['mcp-gateway-core'] as Set
         def actual = gatewayArtifacts.collect { it.name } as Set
         if (actual != expected) {
             throw new GradleException("Expected staged gateway artifacts \${expected}, got \${actual}.")
@@ -137,4 +132,4 @@ GATEWAY_CORE_STAGING_REPOSITORY="${STAGING_REPOSITORY}" \
   "${ROOT_DIR}/gradlew" -p "${WORK_DIR}" clean compileJava verifyGatewayFixtureResolution \
   --no-daemon --stacktrace
 
-echo "Java 17 frozen 0.6.0 source compatibility passed for mcp-gateway artifacts ${VERSION}."
+echo "Java 17 frozen 0.6.0 core source compatibility passed for mcp-gateway-core ${VERSION}."

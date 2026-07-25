@@ -277,7 +277,6 @@ JAVA
 
 mkdir -p "${WORK_DIR}/webflux-consumer/src/main/java"
 cat > "${WORK_DIR}/webflux-consumer/src/main/java/WebFluxSmoke.java" <<'JAVA'
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
@@ -309,10 +308,12 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
+import tools.jackson.databind.json.JsonMapper;
 
 public final class WebFluxSmoke {
     public static void main(String[] args) {
-        McpJsonRpcToolInvocationParser parser = new McpJsonRpcToolInvocationParser(new ObjectMapper());
+        McpJsonRpcToolInvocationParser parser =
+                new McpJsonRpcToolInvocationParser(JsonMapper.builder().build());
         McpToolInvocation invocation = parser.parse(("""
                 {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"demo_tool"}}
                 """).getBytes(StandardCharsets.UTF_8));
@@ -362,7 +363,7 @@ public final class WebFluxSmoke {
 
         AtomicReference<McpAuthorizationObservation> authorizationObservation = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                new ObjectMapper(),
+                JsonMapper.builder().build(),
                 new McpGatewayWebFluxProperties("/mcp", 4096, 7),
                 authorizationEvaluator,
                 protectionEvaluator,
@@ -415,7 +416,7 @@ public final class WebFluxSmoke {
 
         AtomicReference<McpAbuseProtectionDecision> protectionRejection = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter protectionFilter = new McpGatewayWebFluxGovernanceFilter(
-                new ObjectMapper(),
+                JsonMapper.builder().build(),
                 new McpGatewayWebFluxProperties("/mcp", 4096, 7),
                 authorizationEvaluator,
                 new McpGatewayAbuseProtectionEvaluator() {
@@ -476,7 +477,7 @@ public final class WebFluxSmoke {
         AtomicReference<String> rejectedRequestId = new AtomicReference<>();
         AtomicReference<String> rejectedCorrelationId = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter invalidFilter = new McpGatewayWebFluxGovernanceFilter(
-                new ObjectMapper(),
+                JsonMapper.builder().build(),
                 new McpGatewayWebFluxProperties("/mcp", 4096, 7),
                 authorizationEvaluator,
                 protectionEvaluator,
