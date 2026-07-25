@@ -11,25 +11,30 @@ own transport adapter.
 
 ## Choose The Artifact
 
-The examples below use the current `0.7.1` public-preview coordinates.
+The examples below target the unreleased `0.8.0` public-preview release
+candidate. `0.7.1` remains the latest version on Maven Central; consumers that
+must stay on `0.7.1` must also keep its Jackson 2 `ObjectMapper` wiring.
 
 Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.7.1"
+implementation "io.github.dtkmn:mcp-gateway-core:0.8.0"
 ```
 
 Use both artifacts when your MCP endpoint is a Spring WebFlux route:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.7.1"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.1"
+implementation "io.github.dtkmn:mcp-gateway-core:0.8.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.8.0"
 ```
 
-The adapter currently targets the Spring Framework 7 / Spring Security 7 line.
-If your application is on Spring Boot 3 / Spring Framework 6, use the core
-artifact directly or add a framework-specific adapter in your own runtime.
+The adapter currently targets Spring Framework 7, Spring Security 7, and
+Jackson 3. Its optional integration stack uses Spring AI 2.0 and MCP Java SDK
+2.0. Spring Boot 4.1 applications can inject Boot's Jackson 3 `JsonMapper`. If
+your application is on Spring Boot 3 / Spring Framework 6 or still exposes a
+Jackson 2 `ObjectMapper`, use the framework-neutral core artifact or remain on
+the `0.7.1` adapter while completing the migration.
 
 ## What Your App Still Owns
 
@@ -133,7 +138,6 @@ beans so your app stays in charge of authentication, tenant resolution, tool
 catalogs, protection limits, and enforcement mode.
 
 ```java
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Collection;
 import java.util.List;
 import mcp.gateway.core.authz.McpToolAccessRegistry;
@@ -153,6 +157,7 @@ import mcp.gateway.spring.webflux.McpGatewayWebFluxProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.Authentication;
+import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
 class McpGatewayConfiguration {
@@ -235,14 +240,14 @@ class McpGatewayConfiguration {
 
     @Bean
     McpGatewayWebFluxGovernanceFilter mcpGatewayGovernanceFilter(
-            ObjectMapper objectMapper,
+            JsonMapper jsonMapper,
             McpGatewayWebFluxProperties properties,
             McpGatewayAuthorizationEvaluator authorizationEvaluator,
             McpGatewayAbuseProtectionEvaluator protectionEvaluator,
             McpGatewayWebFluxContextResolver contextResolver
     ) {
         return new McpGatewayWebFluxGovernanceFilter(
-                objectMapper,
+                jsonMapper,
                 properties,
                 authorizationEvaluator,
                 protectionEvaluator,

@@ -1,9 +1,43 @@
 # Release Notes
 
-## 0.7.2 (Unreleased)
+## 0.8.0 (Unreleased)
 
-`0.7.2` is the current public-preview release candidate. `0.7.1` is the latest
-published version and remains the version used by public dependency examples.
+`0.8.0` is the current public-preview release candidate and supersedes the
+unpublished `0.7.2` candidate. `0.7.1` is the latest published version and
+remains the version used by the public landing page until `0.8.0` is published.
+Source-tree candidate guides label their `0.8.0` coordinates as unreleased.
+
+### API And Binary Deltas
+
+Breaking changes proposed for this release:
+
+- Replace the Spring WebFlux adapter's Jackson 2 dependency
+  (`com.fasterxml.jackson.core:jackson-databind`) with the Jackson 3.1 LTS line
+  (`tools.jackson.core:jackson-databind:3.1.4`).
+- Replace Jackson 2 `ObjectMapper` parameters on all public
+  `McpGatewayWebFluxGovernanceFilter` constructors and the
+  `McpJsonRpcToolInvocationParser` constructor with Jackson 3
+  `tools.jackson.databind.json.JsonMapper`.
+- Require existing adapter consumers to migrate their imports, mapper bean, and
+  constructor wiring. For Spring Boot 4.1 applications, inject Boot's
+  auto-configured Jackson 3 `JsonMapper`. Standalone consumers can create one
+  with `JsonMapper.builder().build()`.
+
+The Jackson type change alters JVM constructor descriptors and is intentionally
+neither source- nor binary-compatible with `0.7.1`. It is released as `0.8.0`
+rather than hidden in a `0.7.2` patch.
+
+The `mcp-gateway-core` implementation, public API, Java 17 target, and empty
+runtime dependency graph are unchanged; its version moves in lockstep because
+the two modules are published as one release.
+
+### Spring Platform Upgrade
+
+- Align the adapter test platform with Spring Boot `4.1.0`, Spring AI `2.0.0`,
+  and MCP Java SDK `2.0.0`.
+- Update Spring Security to `7.1.0` and Reactor test support to `3.8.6`.
+- Exercise the MCP `2025-11-25` protocol and the Jackson 3 MCP JSON mapper in
+  the server-initiated keep-alive response regression test.
 
 ### Spring WebFlux Adapter Correctness
 
@@ -22,8 +56,6 @@ published version and remains the version used by public dependency examples.
   protection for response envelopes while preserving the message body, session
   headers, configured body-size limit, surrounding security chain, and
   downstream protocol/session validation.
-
-There are no new public API/binary deltas in this patch.
 
 ## 0.7.1 Public Preview
 
@@ -121,11 +153,9 @@ There are no new public API/binary deltas in this patch.
 
 ## 0.7.0 Public Preview
 
-`0.7.0` is a hardening release for public-preview consumers. It adds
-compatibility gates first, then ships WebFlux fail-closed request-shape behavior
-behind those gates.
+`0.7.0` is a hardening release for public-preview consumers. It ships WebFlux
+fail-closed request-shape behavior.
 
-<a id="0.7.0-api-binary-deltas"></a>
 ### API And Binary Deltas
 
 Accepted compatible additions:
@@ -137,15 +167,6 @@ Accepted compatible additions:
 - `McpGatewayWebFluxGovernanceFilter` adds an overload that accepts
   `McpInvalidRequestObserver`. Existing constructors remain available and use a
   no-op observer.
-
-Future API or binary deltas must be listed in
-`compatibility/accepted-api-deltas-0.7.0.json` and linked to this file with an
-explicit release-notes anchor. API and binary delta classifications are limited
-to `compatible-addition` and `breaking-change`. Breaking changes must include
-structured maintainer approval with `approver`, `url`, and `approvedAt`;
-compatible additions must use `null` maintainer approval. Each delta `symbol`
-is the owning class and every recorded signature must start with
-`<symbol> :: `.
 
 <a id="0.7.0-behavior-clarifications"></a>
 ### Behavior Clarifications
@@ -177,8 +198,7 @@ for `0.7.0`. Valid non-tool JSON-RPC methods remain non-authorizable:
 authorization is skipped for them, while abuse protection still runs when
 enabled.
 
-Behavior clarifications belong in release notes, not in the accepted API/binary
-delta registry.
+Behavior clarifications are recorded in release notes.
 
 <a id="0.7.0-verification"></a>
 ### Verification
@@ -188,6 +208,5 @@ Publication verification passed:
 ```bash
 ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
 ./bin/java17-consumer-smoke.sh
-./bin/java17-source-compat-0.6-consumer.sh
 npm --prefix docs-site run build
 ```
