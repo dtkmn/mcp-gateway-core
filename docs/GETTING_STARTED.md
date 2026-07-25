@@ -11,9 +11,9 @@ own transport adapter.
 
 ## Choose The Artifact
 
-The examples below target the unreleased `0.8.0` public-preview release
-candidate. `0.7.2` is the latest version on Maven Central; consumers that remain
-on `0.7.2` must also keep its Jackson 2 `ObjectMapper` wiring.
+The examples below target the published `0.8.0` public-preview release.
+Consumers that remain on `0.7.2` must also keep its Jackson 2 `ObjectMapper`
+wiring.
 
 Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:

@@ -3,7 +3,7 @@
 ## Supported Versions
 
 `mcp-gateway-core` and `mcp-gateway-spring-webflux` are public preview.
-`0.7.2` is the latest published release and the only line expected to receive
+`0.8.0` is the latest published release and the only line expected to receive
 security fixes.
 
 Older public-preview versions may be replaced instead of patched if the safest
