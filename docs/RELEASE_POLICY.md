@@ -19,10 +19,9 @@ Public preview means:
 Do not describe these artifacts as stable until this policy is updated and a
 stable release gate exists.
 
-`0.7.1` is the latest published and independently verified public-preview
-version. `gatewayCorePublishedVersion` records that external fact for
-documentation-consistency checks; normal development continues on `develop`
-with the next `-SNAPSHOT` version.
+`0.7.2` is the latest published public-preview version. `0.8.0` is the current
+release candidate and intentionally breaks adapter source and binary
+compatibility by migrating its public JSON boundary to Jackson 3.
 
 ## Release Gates
 
@@ -32,8 +31,8 @@ Normal development CI runs the snapshot-safe gate:
 ./gradlew verifyGatewayDevelopment --no-daemon --stacktrace --warning-mode fail
 ```
 
-That gate runs tests, compatibility and artifact-boundary checks, and stages both
-Maven publications for downstream Java 17 consumer checks. It always omits
+That gate runs tests and artifact-boundary checks, and stages both Maven
+publications for the downstream Java 17 consumer smoke test. It always omits
 Central Portal bundles and release signing; this matches the normal snapshot
 state and prevents routine development from entering the release path during a
 short non-snapshot release cut.
@@ -48,15 +47,9 @@ unpublished, non-snapshot version must additionally pass:
 That gate proves:
 
 - unit tests pass;
-- every parsed job-level and step-level remote GitHub Action or reusable workflow
-  is pinned to an explicitly reviewed full commit SHA, and local references are
-  prohibited unless recursive manifest inspection is added first;
 - the Gradle distribution checksum is pinned, while CI separately validates the
   checked-in Gradle Wrapper JAR before executing it;
 - Gradle deprecations fail the build instead of becoming release-prep noise;
-- accepted API/binary deltas are machine-readable and release-note linked;
-- public/protected API signatures remain compatible with the frozen `0.6.0`
-  baseline unless an intentional delta is accepted;
 - the core JAR contains only `mcp/gateway/core/**` classes and manifest metadata;
 - `jdeps` reports only `java.base`;
 - adapter JARs contain only their adapter package classes and manifest metadata;
@@ -67,20 +60,13 @@ That gate proves:
 - checksums match the ZIP payload;
 - the signed dry-run ZIP verifies detached signatures from extracted payloads.
 
-CI and release preparation must also run `bin/java17-consumer-smoke.sh` and
-`bin/java17-source-compat-0.6-consumer.sh` after the public-preview proof.
-Those checks switch to a Java 17 runtime. The development gate stages snapshot
-artifacts; the release gate stages the selected release version. The smoke test
-compiles and runs separate clean downstream consumers: one that depends only on
-staged `mcp-gateway-core`, and one that depends on staged
-`mcp-gateway-spring-webflux` and its published transitive API dependencies. The
-source-compatibility fixture compiles frozen `0.6.0` consumer source from a
-temporary external Gradle project that resolves `io.github.dtkmn` artifacts
-exclusively from the staged publication repository.
-
-The API snapshot gate is scoped to public/protected members under
-`mcp.gateway.core.*` and `mcp.gateway.spring.webflux.*`. It fails on
-unaccepted additions, unaccepted removals, and stale accepted deltas.
+CI and release preparation must also run `bin/java17-consumer-smoke.sh` after
+the public-preview proof. That check switches to a Java 17 runtime. The
+development gate stages snapshot artifacts; the release gate stages the
+selected release version. The smoke test compiles and runs separate clean
+downstream consumers: one that depends only on staged `mcp-gateway-core`, and
+one that depends on staged `mcp-gateway-spring-webflux` and its published
+transitive API dependencies.
 
 The separate Snyk workflow is an external dependency scan for the Gradle
 project graph. It is enforced when the workflow runs: missing `SNYK_TOKEN`
@@ -103,8 +89,8 @@ bundle containing `mcp-gateway-core` and `mcp-gateway-spring-webflux`, verifies
 the extracted ZIP payload, and prints the exact confirmation token required for
 an optional `USER_MANAGED` validation upload. Before signing or uploading, it
 also requires a JDK 17 (through `GATEWAY_CORE_JAVA17_HOME` when necessary) and
-runs both downstream consumer scripts against the exact release-version staging
-repository.
+runs the downstream consumer smoke test against the exact release-version
+staging repository.
 
 The GitHub validation-upload job must use the protected
 `central-validation-upload` environment. The environment is operational only
@@ -120,9 +106,8 @@ when all of these controls hold:
   repository- or organization-level duplicates that bypass the gate.
 
 Repository settings must also require full-length commit SHA references for
-GitHub Actions. Checked-in workflow enforcement must structurally parse decoded
-job-level and step-level `uses` nodes and prohibit local actions unless recursive
-manifest inspection is implemented.
+GitHub Actions. New third-party action and reusable-workflow references must be
+pinned to reviewed full commit SHAs.
 
 ## Publishing Boundary
 

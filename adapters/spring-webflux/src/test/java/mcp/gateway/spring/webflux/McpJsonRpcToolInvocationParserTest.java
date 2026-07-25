@@ -1,10 +1,10 @@
 package mcp.gateway.spring.webflux;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import mcp.gateway.core.invocation.McpToolInvocation;
 import mcp.gateway.core.invocation.McpToolInvocationKind;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -12,7 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class McpJsonRpcToolInvocationParserTest {
-    private final McpJsonRpcToolInvocationParser parser = new McpJsonRpcToolInvocationParser(new ObjectMapper());
+    private final McpJsonRpcToolInvocationParser parser =
+            new McpJsonRpcToolInvocationParser(JsonMapper.builder().build());
 
     @Test
     void parsesToolCall() {

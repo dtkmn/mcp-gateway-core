@@ -5,8 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.time.Instant;
@@ -38,16 +36,18 @@ import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 class McpGatewayWebFluxGovernanceFilterTest {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
     private static final McpGatewayWebFluxProperties PROPERTIES =
             new McpGatewayWebFluxProperties("/mcp", 4096, 10);
 
     @Test
     void getOrderUsesConfiguredGovernanceFilterOrder() {
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 new McpGatewayWebFluxProperties("/mcp", 4096, 123),
                 null,
                 null,
@@ -61,7 +61,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
     void governsApplicationRelativeEndpointUnderContextPath() {
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.ENFORCE, authDenied()),
                 null,
@@ -85,7 +85,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
     @Test
     void governsMatrixParameterizedEndpointWithoutBroadeningToSubpaths() {
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.ENFORCE, authDenied()),
                 null,
@@ -123,7 +123,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         List<McpAuthorizationObservation> observations = new ArrayList<>();
         AtomicReference<String> downstreamBody = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.ENFORCE, authAllowed()),
                 protection(McpAbuseProtectionDecision.allow("demo_tool", "demo-client", "demo-workspace")),
@@ -151,7 +151,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicBoolean invalidRequestObserved = new AtomicBoolean(false);
         DataBufferLimitException downstreamFailure = new DataBufferLimitException("downstream response limit");
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.ENFORCE, authAllowed()),
                 null,
@@ -181,7 +181,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         List<McpAuthorizationObservation> observations = new ArrayList<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.ENFORCE, authDenied()),
                 new McpGatewayAbuseProtectionEvaluator() {
@@ -219,7 +219,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
     @Test
     void rejectionFallsBackToResolvedRequestIdWhenContextHasNoCorrelationId() throws Exception {
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.ENFORCE, authDenied()),
                 null,
@@ -232,8 +232,8 @@ class McpGatewayWebFluxGovernanceFilterTest {
 
         StepVerifier.create(filter.filter(exchange, ignored -> Mono.empty())).verifyComplete();
 
-        JsonNode body = OBJECT_MAPPER.readTree(responseBody(exchange));
-        assertEquals(exchange.getRequest().getId(), body.get("correlationId").asText());
+        JsonNode body = JSON_MAPPER.readTree(responseBody(exchange));
+        assertEquals(exchange.getRequest().getId(), body.get("correlationId").asString());
     }
 
     @Test
@@ -242,7 +242,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         List<McpAbuseProtectionDecision> rejections = new ArrayList<>();
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.WARN, authDenied()),
                 protection(McpAbuseProtectionDecision.reject(
@@ -279,7 +279,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicBoolean protectionCalled = new AtomicBoolean(false);
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 new McpGatewayAuthorizationEvaluator() {
                     @Override
@@ -332,7 +332,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicReference<Collection<String>> evaluatedScopes = new AtomicReference<>();
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 new McpGatewayAuthorizationEvaluator() {
                     @Override
@@ -370,7 +370,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicBoolean contextResolved = new AtomicBoolean(false);
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.ENFORCE, authAllowed()),
                 null,
@@ -406,7 +406,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         List<McpAuthorizationObservation> observations = new ArrayList<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 new McpGatewayAuthorizationEvaluator() {
                     @Override
@@ -454,7 +454,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
     void protectionOnlyModeStillEvaluatesAnonymousRequests() {
         AtomicReference<GatewayToolExecutionContext> context = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.DISABLED, authDenied()),
                 new McpGatewayAbuseProtectionEvaluator() {
@@ -485,7 +485,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         AtomicReference<GatewayToolExecutionContext> protectedContext = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 new McpGatewayAuthorizationEvaluator() {
                     @Override
@@ -539,7 +539,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicReference<String> downstreamBody = new AtomicReference<>();
         AtomicReference<String> downstreamSessionId = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 new McpGatewayAuthorizationEvaluator() {
                     @Override
@@ -635,7 +635,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
     @Test
     void replaysChunkedUtf8ResponseWithConsistentFramingAndHeaders() {
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.ENFORCE, authAllowed()),
                 null,
@@ -697,7 +697,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
     void responseFieldsCannotBypassRequestGovernanceWhenMethodIsPresent() {
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.ENFORCE, authDenied()),
                 null,
@@ -723,7 +723,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
     void caseVariantMethodCannotMasqueradeAsResponse() throws Exception {
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.ENFORCE, authAllowed()),
                 null,
@@ -749,7 +749,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
     void governedRequestsDoNotRequireJsonRpcVersionField() {
         AtomicReference<String> downstreamBody = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 authorization(McpGatewayAuthorizationMode.ENFORCE, authAllowed()),
                 null,
@@ -768,21 +768,21 @@ class McpGatewayWebFluxGovernanceFilterTest {
     void rejectsInvalidRequestShapesWhenAnyGovernanceIsActive() throws Exception {
         List<McpGatewayWebFluxGovernanceFilter> filters = List.of(
                 new McpGatewayWebFluxGovernanceFilter(
-                        OBJECT_MAPPER,
+                        JSON_MAPPER,
                         PROPERTIES,
                         authorization(McpGatewayAuthorizationMode.ENFORCE, authAllowed()),
                         null,
                         contextResolver()
                 ),
                 new McpGatewayWebFluxGovernanceFilter(
-                        OBJECT_MAPPER,
+                        JSON_MAPPER,
                         PROPERTIES,
                         authorization(McpGatewayAuthorizationMode.DISABLED, authAllowed()),
                         protection(McpAbuseProtectionDecision.allow("demo_tool", "demo-client", "demo-workspace")),
                         contextResolver()
                 ),
                 new McpGatewayWebFluxGovernanceFilter(
-                        OBJECT_MAPPER,
+                        JSON_MAPPER,
                         PROPERTIES,
                         authorization(McpGatewayAuthorizationMode.WARN, authAllowed()),
                         protection(McpAbuseProtectionDecision.allow("demo_tool", "demo-client", "demo-workspace")),
@@ -815,7 +815,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicReference<String> observedRequestId = new AtomicReference<>();
         AtomicReference<String> observedCorrelationId = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 new McpGatewayAuthorizationEvaluator() {
                     @Override
@@ -881,9 +881,9 @@ class McpGatewayWebFluxGovernanceFilterTest {
         assertEquals(exchange.getRequest().getId(), observedRequestId.get());
         assertEquals("corr-1", observedCorrelationId.get());
         assertInvalidRequestResponse(exchange, McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
-        JsonNode body = OBJECT_MAPPER.readTree(responseBody(exchange));
-        assertEquals(exchange.getRequest().getId(), body.get("requestId").asText());
-        assertFalse("99".equals(body.get("requestId").asText()));
+        JsonNode body = JSON_MAPPER.readTree(responseBody(exchange));
+        assertEquals(exchange.getRequest().getId(), body.get("requestId").asString());
+        assertFalse("99".equals(body.get("requestId").asString()));
     }
 
     @Test
@@ -935,7 +935,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
     @Test
     void invalidAndOversizedBodiesPassThroughExactlyWhenGovernanceIsInactive() {
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 new McpGatewayWebFluxProperties("/mcp", 1024, 10),
                 authorization(McpGatewayAuthorizationMode.DISABLED, authDenied()),
                 null,
@@ -975,7 +975,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicReference<String> observedRequestId = new AtomicReference<>();
         AtomicReference<String> observedCorrelationId = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 new McpGatewayWebFluxProperties("/mcp", 1024, 10),
                 new McpGatewayAuthorizationEvaluator() {
                     @Override
@@ -1050,7 +1050,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicBoolean scopesExtracted = new AtomicBoolean(false);
         AtomicBoolean downstreamCalled = new AtomicBoolean(false);
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 new McpGatewayWebFluxProperties("/mcp", 1024, 10),
                 new McpGatewayAuthorizationEvaluator() {
                     @Override
@@ -1174,7 +1174,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         AtomicReference<String> observedRequestId = new AtomicReference<>();
         AtomicReference<String> observedCorrelationId = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                OBJECT_MAPPER,
+                JSON_MAPPER,
                 PROPERTIES,
                 new McpGatewayAuthorizationEvaluator() {
                     @Override
@@ -1240,7 +1240,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         JsonNode body = assertInvalidRequestResponse(exchange, testCase.reason(), exchange.getRequest().getId());
         assertFalse(body.has("id"), testCase.name());
         if (testCase.jsonRpcId() != null) {
-            assertFalse(testCase.jsonRpcId().equals(body.get("requestId").asText()), testCase.name());
+            assertFalse(testCase.jsonRpcId().equals(body.get("requestId").asString()), testCase.name());
         }
     }
 
@@ -1354,15 +1354,15 @@ class McpGatewayWebFluxGovernanceFilterTest {
                                                          String expectedCorrelationId) throws Exception {
         assertEquals(400, exchange.getResponse().getStatusCode().value());
         assertTrue(exchange.getResponse().getHeaders().getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
-        JsonNode body = OBJECT_MAPPER.readTree(responseBody(exchange));
-        Instant.parse(body.get("timestamp").asText());
+        JsonNode body = JSON_MAPPER.readTree(responseBody(exchange));
+        Instant.parse(body.get("timestamp").asString());
         assertEquals(400, body.get("status").asInt());
-        assertEquals("invalid_json_rpc_request", body.get("error").asText());
-        assertEquals(reason.code(), body.get("reason").asText());
+        assertEquals("invalid_json_rpc_request", body.get("error").asString());
+        assertEquals(reason.code(), body.get("reason").asString());
         assertFalse(body.has("message"));
         assertFalse(body.has("id"));
-        assertEquals(expectedCorrelationId, body.get("correlationId").asText());
-        assertEquals(exchange.getRequest().getId(), body.get("requestId").asText());
+        assertEquals(expectedCorrelationId, body.get("correlationId").asString());
+        assertEquals(exchange.getRequest().getId(), body.get("requestId").asString());
         return body;
     }
 
@@ -1371,16 +1371,16 @@ class McpGatewayWebFluxGovernanceFilterTest {
                                                           String expectedCorrelationId) throws Exception {
         assertEquals(413, exchange.getResponse().getStatusCode().value());
         assertTrue(exchange.getResponse().getHeaders().getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
-        JsonNode body = OBJECT_MAPPER.readTree(responseBody(exchange));
-        Instant.parse(body.get("timestamp").asText());
+        JsonNode body = JSON_MAPPER.readTree(responseBody(exchange));
+        Instant.parse(body.get("timestamp").asString());
         assertEquals(413, body.get("status").asInt());
-        assertEquals("request_body_too_large", body.get("error").asText());
-        assertEquals("MCP request body exceeds the configured limit", body.get("reason").asText());
+        assertEquals("request_body_too_large", body.get("error").asString());
+        assertEquals("MCP request body exceeds the configured limit", body.get("reason").asString());
         assertEquals(maxBodyBytes, body.get("maxBodyBytes").asInt());
         assertFalse(body.has("message"));
         assertFalse(body.has("id"));
-        assertEquals(expectedCorrelationId, body.get("correlationId").asText());
-        assertEquals(exchange.getRequest().getId(), body.get("requestId").asText());
+        assertEquals(expectedCorrelationId, body.get("correlationId").asString());
+        assertEquals(exchange.getRequest().getId(), body.get("requestId").asString());
         return body;
     }
 

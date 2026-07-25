@@ -1,13 +1,12 @@
 package mcp.gateway.spring.webflux;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.StreamReadFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.util.Iterator;
 import java.util.Objects;
 import mcp.gateway.core.invocation.McpToolInvocation;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.StreamReadFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Parses MCP JSON-RPC messages into normalized core invocation values.
@@ -21,15 +20,18 @@ import mcp.gateway.core.invocation.McpToolInvocation;
  * contract.
  */
 public final class McpJsonRpcToolInvocationParser {
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
 
     /**
      * Creates a parser backed by Jackson.
      *
-     * @param objectMapper object mapper used to parse message bodies
+     * @param jsonMapper JSON mapper used to parse message bodies
      */
-    public McpJsonRpcToolInvocationParser(ObjectMapper objectMapper) {
-        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
+    public McpJsonRpcToolInvocationParser(JsonMapper jsonMapper) {
+        this.jsonMapper = Objects.requireNonNull(jsonMapper, "jsonMapper must not be null")
+                .rebuild()
+                .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+                .build();
     }
 
     /**
@@ -54,15 +56,12 @@ public final class McpJsonRpcToolInvocationParser {
         }
 
         JsonNode root;
-        try (JsonParser jsonParser = objectMapper.getFactory().createParser(bodyBytes)) {
-            // A downstream JSON-RPC decoder may resolve duplicate fields differently.
-            // Reject them here instead of authorizing one interpretation and executing another.
-            jsonParser.enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION.mappedFeature());
-            root = objectMapper.readTree(jsonParser);
+        try (JsonParser jsonParser = jsonMapper.createParser(bodyBytes)) {
+            root = jsonMapper.readTree(jsonParser);
             if (jsonParser.nextToken() != null) {
                 return McpJsonRpcMessageClassification.rejected(McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
             }
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             return McpJsonRpcMessageClassification.rejected(McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
         }
 
@@ -88,13 +87,13 @@ public final class McpJsonRpcToolInvocationParser {
         if (methodNode.isNull()) {
             return McpJsonRpcMessageClassification.rejected(McpJsonRpcRequestRejectionReason.MISSING_METHOD);
         }
-        if (!methodNode.isTextual()
-                || methodNode.textValue().isBlank()
-                || hasBoundaryWhitespace(methodNode.textValue())) {
+        if (!methodNode.isString()
+                || methodNode.stringValue().isBlank()
+                || hasBoundaryWhitespace(methodNode.stringValue())) {
             return McpJsonRpcMessageClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_METHOD);
         }
 
-        String method = methodNode.textValue();
+        String method = methodNode.stringValue();
         if (!McpToolInvocation.METHOD_TOOLS_CALL.equals(method)) {
             return McpJsonRpcMessageClassification.request(McpToolInvocation.fromJsonRpc(method, null));
         }
@@ -113,25 +112,24 @@ public final class McpJsonRpcToolInvocationParser {
         if (toolNameNode == null || toolNameNode.isNull()) {
             return McpJsonRpcMessageClassification.rejected(McpJsonRpcRequestRejectionReason.MISSING_TOOL_NAME);
         }
-        if (!toolNameNode.isTextual()
-                || toolNameNode.textValue().isBlank()
-                || hasBoundaryWhitespace(toolNameNode.textValue())) {
+        if (!toolNameNode.isString()
+                || toolNameNode.stringValue().isBlank()
+                || hasBoundaryWhitespace(toolNameNode.stringValue())) {
             return McpJsonRpcMessageClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
         }
-        return McpJsonRpcMessageClassification.request(McpToolInvocation.fromJsonRpc(method, toolNameNode.textValue()));
+        return McpJsonRpcMessageClassification.request(McpToolInvocation.fromJsonRpc(method, toolNameNode.stringValue()));
     }
 
     private boolean isResponseEnvelope(JsonNode root) {
         JsonNode idNode = root.get("id");
-        if (idNode == null || (!idNode.isTextual() && !idNode.isNumber())) {
+        if (idNode == null || (!idNode.isString() && !idNode.isNumber())) {
             return false;
         }
         return root.has("result") ^ root.has("error");
     }
 
     private boolean hasCaseVariantField(JsonNode object, String expectedName) {
-        for (Iterator<String> names = object.fieldNames(); names.hasNext();) {
-            String name = names.next();
+        for (String name : object.propertyNames()) {
             if (!expectedName.equals(name) && expectedName.equalsIgnoreCase(name)) {
                 return true;
             }

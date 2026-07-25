@@ -9,11 +9,10 @@ artifacts to Sonatype Central as one `USER_MANAGED` deployment:
 It does not publish the deployment. Publishing must remain a deliberate manual
 Portal action until the release policy says otherwise.
 
-`0.7.1` is the latest published version. `gatewayCorePublishedVersion` records
-the version that public dependency examples must use; preparing or validating a
-future candidate does not change it. Update that property only after both new
-coordinates have propagated through Maven Central and passed the
-post-publication checks below.
+`0.7.2` is the latest published version. Public dependency examples must keep
+using it while a future candidate is prepared or validated. Update those
+examples only after both new coordinates have propagated through Maven Central
+and passed the post-publication checks below.
 
 ## Protected Release Environment
 
@@ -48,10 +47,7 @@ Do not duplicate these as repository or organization secrets that are available
 without the environment approval gate. In the repository Actions settings, also
 require actions to be pinned to a full-length commit SHA. Every third-party
 action in the checked-in workflows is pinned to a reviewed commit; version
-comments are informational and are not executable references. The repository's
-structural YAML check inspects decoded job-level and step-level `uses` nodes and
-prohibits local action references until their manifests can be inspected
-recursively.
+comments are informational and are not executable references.
 
 The Central credentials must be a Central Portal user token.
 
@@ -238,7 +234,7 @@ complete:
    sources JAR, Javadocs JAR, checksums, and detached signatures is publicly
    retrievable. Use a fresh external Java 17 Gradle or Maven project whose only
    artifact repository is Maven Central to confirm both coordinates resolve;
-   the repository's staging-only consumer scripts do not prove Central
+   the repository's staging-only consumer smoke test does not prove Central
    propagation.
 2. Tag the exact source commit recorded by the successful validation-upload
    workflow, not a later `main` head. Create and push an annotated `v<version>`

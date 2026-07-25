@@ -39,16 +39,16 @@ pass-through when governance is inactive.
 | Understand every field and enum value | [Contract reference](reference/contract-reference/) |
 | See package ownership boundaries | [Module map](reference/modules/) |
 | Check compatibility promises and non-promises | [Compatibility](reference/compatibility/) |
-| Check release delta classifications | [Release notes](maintainers/release-notes/) |
+| Review release history and migration notes | [Release notes](maintainers/release-notes/) |
 | Understand where this project is going | [Roadmap](project/roadmap/) |
 
 ## Coordinates
 
-These are the current `0.7.1` public-preview coordinates.
+These are the current `0.7.2` public-preview coordinates.
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.7.1"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.1" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.7.2"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.2" // optional
 ```
 
 ## Boundary

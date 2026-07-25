@@ -16,9 +16,9 @@ contracts.
 It is not a gateway runtime, router, scanner integration, UI, service mesh, or
 traffic-management data plane.
 
-Current status: public preview. The latest published preview line is `0.7.x`.
-The package and coordinate are intended for early integration proof, not a
-stable compatibility promise.
+Current status: public preview. The latest published version is `0.7.2`. The
+package and coordinates are intended for early integration proof, not a stable
+compatibility promise.
 
 ## Positioning
 
@@ -167,9 +167,9 @@ published artifact.
 
 This snapshot-safe development gate runs the core and adapter builds,
 forbidden-coupling checks, closed-world JAR checks, Java 17 bytecode checks,
-adapter runtime-classpath bytecode checks, core `jdeps`, API compatibility checks,
-and Gradle deprecation enforcement. It also stages both Maven artifacts for the
-Java 17 downstream-consumer checks.
+adapter runtime-classpath bytecode checks, core `jdeps`, and Gradle deprecation
+enforcement. It also stages both Maven artifacts for the Java 17
+downstream-consumer smoke test.
 
 Release preparation sets an unpublished, non-snapshot version and additionally
 runs the release-only Central bundle and signing proof:
@@ -178,41 +178,40 @@ runs the release-only Central bundle and signing proof:
 ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
 ```
 
-CI and release preparation also run the Java 17 consumer checks against the
+CI and release preparation also run the Java 17 consumer smoke test against the
 artifacts staged by the applicable gate:
 
 ```bash
 ./bin/java17-consumer-smoke.sh
-./bin/java17-source-compat-0.6-consumer.sh
 ```
 
 The smoke script uses separate clean external consumers for core-only and
 Spring WebFlux scenarios, resolves `io.github.dtkmn` artifacts only from the
-staged repository, and exercises the WebFlux filter path.
+staged repository, and exercises the current WebFlux filter path.
 
 ## Coordinates
 
-These are the current published `0.7.1` public-preview coordinates. The source
-tree may use the next `-SNAPSHOT` development version; do not substitute that
-snapshot into Maven Central examples.
+These are the current published `0.7.2` public-preview coordinates. The source
+tree currently targets the unreleased `0.8.0` candidate; do not substitute its
+coordinates into Maven Central examples until publication is confirmed.
 
 Core coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.7.1
+io.github.dtkmn:mcp-gateway-core:0.7.2
 ```
 
 Optional Spring WebFlux adapter coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-spring-webflux:0.7.1
+io.github.dtkmn:mcp-gateway-spring-webflux:0.7.2
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.7.1"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.1" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.7.2"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.2" // optional
 ```
 
 Maven:
@@ -221,12 +220,12 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.7.1</version>
+  <version>0.7.2</version>
 </dependency>
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-spring-webflux</artifactId>
-  <version>0.7.1</version>
+  <version>0.7.2</version>
 </dependency>
 ```
 
@@ -257,11 +256,8 @@ Maven:
 The repository uses GitHub-native security automation first:
 
 - Dependabot version updates for GitHub Actions, Gradle, and npm.
-- Full-length reviewed commit pins for every parsed job-level and step-level
-  GitHub Action or reusable workflow reference. A structural YAML regression
-  check walks actual `uses` nodes, enforces the reviewed allowlist, and rejects
-  local action and reusable-workflow references; repository settings also
-  require full-SHA references.
+- Checked-in third-party GitHub Actions and reusable workflows use reviewed
+  full-length commit SHAs, and repository settings require full-SHA references.
 - Gradle distribution checksum pinning and Wrapper JAR validation before CI
   workflows execute the build.
 - CodeQL Java analysis with an explicit Gradle test build.

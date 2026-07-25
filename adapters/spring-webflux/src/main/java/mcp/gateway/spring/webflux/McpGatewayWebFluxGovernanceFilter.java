@@ -1,6 +1,5 @@
 package mcp.gateway.spring.webflux;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -18,6 +17,7 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * WebFlux filter that runs the shared MCP gateway governance pass once per MCP
@@ -34,7 +34,7 @@ import reactor.core.publisher.Mono;
  * are used only after a request has a valid governance shape.
  */
 public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Ordered {
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
     private final McpJsonRpcToolInvocationParser parser;
     private final McpGatewayWebFluxProperties properties;
     private final PathContainer mcpEndpointPath;
@@ -55,19 +55,19 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
      * IDs come from {@code X-Correlation-Id} with request-id fallback, and all
      * observers are no-ops.
      *
-     * @param objectMapper JSON mapper used for parsing and rejection responses
+     * @param jsonMapper JSON mapper used for parsing and rejection responses
      * @param properties WebFlux adapter properties
      * @param authorizationEvaluator authorization evaluator backed by core contracts
      * @param protectionEvaluator protection evaluator backed by core contracts
      * @param contextResolver resolver that maps the request into core execution context
      */
-    public McpGatewayWebFluxGovernanceFilter(ObjectMapper objectMapper,
+    public McpGatewayWebFluxGovernanceFilter(JsonMapper jsonMapper,
                                              McpGatewayWebFluxProperties properties,
                                              McpGatewayAuthorizationEvaluator authorizationEvaluator,
                                              McpGatewayAbuseProtectionEvaluator protectionEvaluator,
                                              McpGatewayWebFluxContextResolver contextResolver) {
         this(
-                objectMapper,
+                jsonMapper,
                 properties,
                 authorizationEvaluator,
                 protectionEvaluator,
@@ -86,7 +86,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
      * that accepts {@link McpInvalidRequestObserver} when runtimes need telemetry
      * for adapter-level invalid request rejections.
      *
-     * @param objectMapper JSON mapper used for parsing and rejection responses
+     * @param jsonMapper JSON mapper used for parsing and rejection responses
      * @param properties WebFlux adapter properties
      * @param authorizationEvaluator authorization evaluator backed by core contracts
      * @param protectionEvaluator protection evaluator backed by core contracts
@@ -96,7 +96,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
      * @param rejectionObserver receives protection rejection observations
      * @param correlationIdResolver resolves correlation IDs for fallback responses
      */
-    public McpGatewayWebFluxGovernanceFilter(ObjectMapper objectMapper,
+    public McpGatewayWebFluxGovernanceFilter(JsonMapper jsonMapper,
                                              McpGatewayWebFluxProperties properties,
                                              McpGatewayAuthorizationEvaluator authorizationEvaluator,
                                              McpGatewayAbuseProtectionEvaluator protectionEvaluator,
@@ -106,7 +106,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                                              McpProtectionRejectionObserver rejectionObserver,
                                              McpGatewayCorrelationIdResolver correlationIdResolver) {
         this(
-                objectMapper,
+                jsonMapper,
                 properties,
                 authorizationEvaluator,
                 protectionEvaluator,
@@ -123,11 +123,11 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
      * Creates a filter.
      * <p>
      * Any nullable optional collaborator falls back to the adapter default except
-     * {@code objectMapper} and {@code contextResolver}, which are required.
+     * {@code jsonMapper} and {@code contextResolver}, which are required.
      * The invalid-request observer receives only stable reason, server request id,
      * and correlation id fields; request payloads are never exposed to it.
      *
-     * @param objectMapper JSON mapper used for parsing and rejection responses
+     * @param jsonMapper JSON mapper used for parsing and rejection responses
      * @param properties WebFlux adapter properties
      * @param authorizationEvaluator authorization evaluator backed by core contracts
      * @param protectionEvaluator protection evaluator backed by core contracts
@@ -138,7 +138,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
      * @param correlationIdResolver resolves correlation IDs for fallback responses
      * @param invalidRequestObserver receives invalid request observations
      */
-    public McpGatewayWebFluxGovernanceFilter(ObjectMapper objectMapper,
+    public McpGatewayWebFluxGovernanceFilter(JsonMapper jsonMapper,
                                              McpGatewayWebFluxProperties properties,
                                              McpGatewayAuthorizationEvaluator authorizationEvaluator,
                                              McpGatewayAbuseProtectionEvaluator protectionEvaluator,
@@ -148,8 +148,8 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                                              McpProtectionRejectionObserver rejectionObserver,
                                              McpGatewayCorrelationIdResolver correlationIdResolver,
                                              McpInvalidRequestObserver invalidRequestObserver) {
-        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
-        this.parser = new McpJsonRpcToolInvocationParser(objectMapper);
+        this.jsonMapper = Objects.requireNonNull(jsonMapper, "jsonMapper must not be null");
+        this.parser = new McpJsonRpcToolInvocationParser(jsonMapper);
         this.properties = properties == null ? McpGatewayWebFluxProperties.defaults() : properties;
         this.mcpEndpointPath = PathContainer.parsePath(this.properties.mcpEndpoint());
         this.authorizationEvaluator = authorizationEvaluator;
@@ -238,14 +238,14 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
             rejectionObserver.rejected(decision.protectionDecision(), context);
             return McpGatewayWebFluxResponses.protectionRejected(
                     exchange,
-                    objectMapper,
+                    jsonMapper,
                     decision.protectionDecision(),
                     correlationId(exchange, context)
             );
         }
         return McpGatewayWebFluxResponses.forbidden(
                 exchange,
-                objectMapper,
+                jsonMapper,
                 decision.authorizationDecision(),
                 decision.reason().code(),
                 correlationId(exchange, context)
@@ -342,7 +342,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
         );
         return McpGatewayWebFluxResponses.payloadTooLarge(
                 exchange,
-                objectMapper,
+                jsonMapper,
                 properties.maxBodyBytes(),
                 correlationId
         );
@@ -358,7 +358,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
         );
         return McpGatewayWebFluxResponses.invalidRequest(
                 exchange,
-                objectMapper,
+                jsonMapper,
                 reason.code(),
                 correlationId
         );

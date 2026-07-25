@@ -2,8 +2,8 @@
 
 ## Supported Versions
 
-`mcp-gateway-core` and `mcp-gateway-spring-webflux` are public preview. The
-latest published `0.7.x` artifact line is the only line expected to receive
+`mcp-gateway-core` and `mcp-gateway-spring-webflux` are public preview.
+`0.7.2` is the latest published release and the only line expected to receive
 security fixes.
 
 Older public-preview versions may be replaced instead of patched if the safest
@@ -41,17 +41,14 @@ Out of scope:
 The repository uses GitHub-native checks first:
 
 - Dependabot version updates for GitHub Actions, Gradle, and npm;
-- full-length reviewed commit pins for every parsed job-level and step-level
-  GitHub Action or reusable workflow reference, backed by a structural YAML
-  regression allowlist. Local action and reusable-workflow references are
-  prohibited because their nested manifests are not recursively audited;
-- repository settings independently enforce full-SHA pinning;
+- checked-in third-party GitHub Actions and reusable workflows use reviewed
+  full-length commit SHAs;
+- repository settings enforce full-SHA pinning;
 - Gradle distribution checksum pinning and Wrapper JAR validation before CI
   workflows execute the build;
 - CodeQL Java analysis with an explicit Gradle test build;
 - the snapshot-safe Gradle development gate for forbidden coupling, closed-world
-  JAR contents, `jdeps`, bytecode, API compatibility, and staged-publication
-  checks;
+  JAR contents, `jdeps`, bytecode, and staged-publication checks;
 - the release-only public-preview gate for Central bundle shape, checksums, and
   signed dry-run payload validation. Its job is bound to the protected
   `central-validation-upload` environment. Release refs are restricted to

@@ -10,14 +10,12 @@ promise yet.
 
 Current focus:
 
-- operate and consume the independently verified `0.7.1` public-preview release
-  while `0.7.2` is validated as the next public-preview release;
+- operate and consume the published `0.7.2` public-preview release
+  while `0.8.0` is validated as the next public-preview release;
 - keep the core artifact JDK-only and framework support in separate adapter
   artifacts;
-- enforce accepted API/binary delta classifications against the frozen `0.6.0`
-  baseline;
-- prove published and staged artifacts with Java 17 core-only, WebFlux, and
-  frozen `0.6.0` source-compatibility consumers;
+- prove published and staged artifacts with current Java 17 core-only and
+  WebFlux consumers;
 - keep WebFlux request-shape, activation, pass-through, and invalid-request
   observer behavior pinned by tests;
 - reject scanner, runtime, private, and data-plane coupling;
@@ -25,15 +23,15 @@ Current focus:
 
 ## Near-Term Work
 
-1. **0.7.1 consumer adoption and 0.7.2 release validation**
+1. **0.7.2 consumer adoption and 0.8.0 release validation**
 
-   `0.7.1` is the latest published version. Both coordinates, their complete
-   signed artifact sets, Maven metadata, and a fresh Maven-Central-only Java 17
-   consumer have passed post-publication verification. Keep public dependency
-   examples aligned with `gatewayCorePublishedVersion=0.7.1`, gather evidence
-   from real consumers, and validate the `0.7.2` release candidate as a narrowly
-   scoped correctness patch justified by that evidence. Treat any disagreement
-   between public docs and Central as a release-blocking documentation defect.
+   `0.7.2` is the latest published version. Keep public dependency landing-page
+   examples on `0.7.2`, clearly label source-tree `0.8.0` candidate
+   instructions, gather evidence from real consumers, and validate the release
+   candidate with its explicit Jackson 3 adapter migration. Require downstream
+   adapter consumers to prove their new `JsonMapper` wiring. Treat any
+   disagreement between public docs and Central as a release-blocking
+   documentation defect.
 
 2. **Consumer proof**
 
@@ -43,8 +41,8 @@ Current focus:
 
 3. **Contract hardening**
 
-   Expand source, binary, and behavior regression checks only around public
-   contract families that downstream consumers actually use.
+   Expand behavior regression tests only around public contract families that
+   downstream consumers actually use.
 
 4. **Adapter proof**
 
@@ -69,7 +67,6 @@ Do not call this stable until all of these are true:
 
 - at least two downstream consumers use the published artifact without source
   copying;
-- breaking-change detection continues to cover public/protected contracts;
 - release notes clearly distinguish compatible additions from breaking changes;
 - Javadocs are clean enough for public API users;
 - security scanning and release-signing gates are required in CI;

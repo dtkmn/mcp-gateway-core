@@ -1,6 +1,5 @@
 package mcp.gateway.spring.webflux;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -12,13 +11,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import tools.jackson.databind.json.JsonMapper;
 
 final class McpGatewayWebFluxResponses {
     private McpGatewayWebFluxResponses() {
     }
 
     static Mono<Void> forbidden(ServerWebExchange exchange,
-                                ObjectMapper objectMapper,
+                                JsonMapper jsonMapper,
                                 ToolAuthorizationDecision decision,
                                 String errorCode,
                                 String correlationId) {
@@ -38,11 +38,11 @@ final class McpGatewayWebFluxResponses {
         body.put("grantedScopes", decision.grantedScopes());
         body.put("correlationId", correlationId);
         body.put("requestId", exchange.getRequest().getId());
-        return writeJson(exchange, objectMapper, body, "{\"error\":\"insufficient_scope\"}");
+        return writeJson(exchange, jsonMapper, body, "{\"error\":\"insufficient_scope\"}");
     }
 
     static Mono<Void> protectionRejected(ServerWebExchange exchange,
-                                         ObjectMapper objectMapper,
+                                         JsonMapper jsonMapper,
                                          McpAbuseProtectionDecision decision,
                                          String correlationId) {
         exchange.getResponse().setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
@@ -63,11 +63,11 @@ final class McpGatewayWebFluxResponses {
         body.put("retryAfterSeconds", Math.max(1L, decision.retryAfterSeconds()));
         body.put("correlationId", correlationId);
         body.put("requestId", exchange.getRequest().getId());
-        return writeJson(exchange, objectMapper, body, "{\"error\":\"rate_limited\"}");
+        return writeJson(exchange, jsonMapper, body, "{\"error\":\"rate_limited\"}");
     }
 
     static Mono<Void> payloadTooLarge(ServerWebExchange exchange,
-                                      ObjectMapper objectMapper,
+                                      JsonMapper jsonMapper,
                                       int maxBodyBytes,
                                       String correlationId) {
         exchange.getResponse().setStatusCode(HttpStatus.CONTENT_TOO_LARGE);
@@ -81,11 +81,11 @@ final class McpGatewayWebFluxResponses {
         body.put("maxBodyBytes", maxBodyBytes);
         body.put("correlationId", correlationId);
         body.put("requestId", exchange.getRequest().getId());
-        return writeJson(exchange, objectMapper, body, "{\"error\":\"request_body_too_large\"}");
+        return writeJson(exchange, jsonMapper, body, "{\"error\":\"request_body_too_large\"}");
     }
 
     static Mono<Void> invalidRequest(ServerWebExchange exchange,
-                                     ObjectMapper objectMapper,
+                                     JsonMapper jsonMapper,
                                      String reason,
                                      String correlationId) {
         exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
@@ -98,15 +98,15 @@ final class McpGatewayWebFluxResponses {
         body.put("reason", reason);
         body.put("correlationId", correlationId);
         body.put("requestId", exchange.getRequest().getId());
-        return writeJson(exchange, objectMapper, body, "{\"error\":\"invalid_json_rpc_request\"}");
+        return writeJson(exchange, jsonMapper, body, "{\"error\":\"invalid_json_rpc_request\"}");
     }
 
     private static Mono<Void> writeJson(ServerWebExchange exchange,
-                                        ObjectMapper objectMapper,
+                                        JsonMapper jsonMapper,
                                         Map<String, Object> body,
                                         String fallbackJson) {
         try {
-            byte[] bytes = objectMapper.writeValueAsBytes(body);
+            byte[] bytes = jsonMapper.writeValueAsBytes(body);
             return exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
         } catch (Exception e) {
             return exchange.getResponse().writeWith(Mono.just(exchange.getResponse()

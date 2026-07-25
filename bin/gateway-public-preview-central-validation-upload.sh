@@ -550,9 +550,6 @@ configure_gpg
 GATEWAY_CORE_STAGING_REPOSITORY="$ROOT_DIR/build/staging-repository" \
   JAVA_HOME="$java17_home" \
   "$ROOT_DIR/bin/java17-consumer-smoke.sh"
-GATEWAY_CORE_STAGING_REPOSITORY="$ROOT_DIR/build/staging-repository" \
-  JAVA_HOME="$java17_home" \
-  "$ROOT_DIR/bin/java17-source-compat-0.6-consumer.sh"
 
 work_root="build/gateway-public-preview-central-validation-upload"
 release_root="$work_root/publication"
