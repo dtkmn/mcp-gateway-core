@@ -19,10 +19,9 @@ Public preview means:
 Do not describe these artifacts as stable until this policy is updated and a
 stable release gate exists.
 
-`0.7.1` is the latest published and independently verified public-preview
-version. `0.8.0` is the current release candidate; it supersedes the unpublished
-`0.7.2` candidate because the adapter's Jackson 3 migration is intentionally
-breaking.
+`0.7.2` is the latest published public-preview version. `0.8.0` is the current
+release candidate and intentionally breaks adapter source and binary
+compatibility by migrating its public JSON boundary to Jackson 3.
 
 ## Release Gates
 
@@ -48,9 +47,6 @@ unpublished, non-snapshot version must additionally pass:
 That gate proves:
 
 - unit tests pass;
-- every parsed job-level and step-level remote GitHub Action or reusable workflow
-  is pinned to an explicitly reviewed full commit SHA, and local references are
-  prohibited unless recursive manifest inspection is added first;
 - the Gradle distribution checksum is pinned, while CI separately validates the
   checked-in Gradle Wrapper JAR before executing it;
 - Gradle deprecations fail the build instead of becoming release-prep noise;
@@ -93,8 +89,8 @@ bundle containing `mcp-gateway-core` and `mcp-gateway-spring-webflux`, verifies
 the extracted ZIP payload, and prints the exact confirmation token required for
 an optional `USER_MANAGED` validation upload. Before signing or uploading, it
 also requires a JDK 17 (through `GATEWAY_CORE_JAVA17_HOME` when necessary) and
-runs both downstream consumer scripts against the exact release-version staging
-repository.
+runs the downstream consumer smoke test against the exact release-version
+staging repository.
 
 The GitHub validation-upload job must use the protected
 `central-validation-upload` environment. The environment is operational only
@@ -110,9 +106,8 @@ when all of these controls hold:
   repository- or organization-level duplicates that bypass the gate.
 
 Repository settings must also require full-length commit SHA references for
-GitHub Actions. Checked-in workflow enforcement must structurally parse decoded
-job-level and step-level `uses` nodes and prohibit local actions unless recursive
-manifest inspection is implemented.
+GitHub Actions. New third-party action and reusable-workflow references must be
+pinned to reviewed full commit SHAs.
 
 ## Publishing Boundary
 

@@ -12,8 +12,8 @@ own transport adapter.
 ## Choose The Artifact
 
 The examples below target the unreleased `0.8.0` public-preview release
-candidate. `0.7.1` remains the latest version on Maven Central; consumers that
-must stay on `0.7.1` must also keep its Jackson 2 `ObjectMapper` wiring.
+candidate. `0.7.2` is the latest version on Maven Central; consumers that remain
+on `0.7.2` must also keep its Jackson 2 `ObjectMapper` wiring.
 
 Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:
@@ -34,7 +34,7 @@ Jackson 3. Its optional integration stack uses Spring AI 2.0 and MCP Java SDK
 2.0. Spring Boot 4.1 applications can inject Boot's Jackson 3 `JsonMapper`. If
 your application is on Spring Boot 3 / Spring Framework 6 or still exposes a
 Jackson 2 `ObjectMapper`, use the framework-neutral core artifact or remain on
-the `0.7.1` adapter while completing the migration.
+the `0.7.2` adapter while completing the migration.
 
 ## What Your App Still Owns
 

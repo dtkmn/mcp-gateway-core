@@ -16,9 +16,9 @@ contracts.
 It is not a gateway runtime, router, scanner integration, UI, service mesh, or
 traffic-management data plane.
 
-Current status: public preview. The latest published preview line is `0.7.x`.
-The package and coordinate are intended for early integration proof, not a
-stable compatibility promise.
+Current status: public preview. The latest published version is `0.7.2`. The
+package and coordinates are intended for early integration proof, not a stable
+compatibility promise.
 
 ## Positioning
 
@@ -191,27 +191,27 @@ staged repository, and exercises the current WebFlux filter path.
 
 ## Coordinates
 
-These are the current published `0.7.1` public-preview coordinates. The source
-tree may use the next `-SNAPSHOT` development version; do not substitute that
-snapshot into Maven Central examples.
+These are the current published `0.7.2` public-preview coordinates. The source
+tree currently targets the unreleased `0.8.0` candidate; do not substitute its
+coordinates into Maven Central examples until publication is confirmed.
 
 Core coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.7.1
+io.github.dtkmn:mcp-gateway-core:0.7.2
 ```
 
 Optional Spring WebFlux adapter coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-spring-webflux:0.7.1
+io.github.dtkmn:mcp-gateway-spring-webflux:0.7.2
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.7.1"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.1" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.7.2"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.2" // optional
 ```
 
 Maven:
@@ -220,12 +220,12 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.7.1</version>
+  <version>0.7.2</version>
 </dependency>
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-spring-webflux</artifactId>
-  <version>0.7.1</version>
+  <version>0.7.2</version>
 </dependency>
 ```
 
@@ -256,11 +256,8 @@ Maven:
 The repository uses GitHub-native security automation first:
 
 - Dependabot version updates for GitHub Actions, Gradle, and npm.
-- Full-length reviewed commit pins for every parsed job-level and step-level
-  GitHub Action or reusable workflow reference. A structural YAML regression
-  check walks actual `uses` nodes, enforces the reviewed allowlist, and rejects
-  local action and reusable-workflow references; repository settings also
-  require full-SHA references.
+- Checked-in third-party GitHub Actions and reusable workflows use reviewed
+  full-length commit SHAs, and repository settings require full-SHA references.
 - Gradle distribution checksum pinning and Wrapper JAR validation before CI
   workflows execute the build.
 - CodeQL Java analysis with an explicit Gradle test build.

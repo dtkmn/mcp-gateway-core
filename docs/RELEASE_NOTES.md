@@ -3,9 +3,9 @@
 ## 0.8.0 (Unreleased)
 
 `0.8.0` is the current public-preview release candidate and supersedes the
-unpublished `0.7.2` candidate. `0.7.1` is the latest published version and
-remains the version used by the public landing page until `0.8.0` is published.
-Source-tree candidate guides label their `0.8.0` coordinates as unreleased.
+published `0.7.2` release. `0.7.2` remains the version used by public dependency
+examples until `0.8.0` is published. Source-tree candidate guides label their
+`0.8.0` coordinates as unreleased.
 
 ### API And Binary Deltas
 
@@ -24,8 +24,8 @@ Breaking changes proposed for this release:
   with `JsonMapper.builder().build()`.
 
 The Jackson type change alters JVM constructor descriptors and is intentionally
-neither source- nor binary-compatible with `0.7.1`. It is released as `0.8.0`
-rather than hidden in a `0.7.2` patch.
+neither source- nor binary-compatible with `0.7.2`. It is released as `0.8.0`
+rather than presented as a backward-compatible `0.7.x` patch.
 
 The `mcp-gateway-core` implementation, public API, Java 17 target, and empty
 runtime dependency graph are unchanged; its version moves in lockstep because
@@ -38,6 +38,14 @@ the two modules are published as one release.
 - Update Spring Security to `7.1.0` and Reactor test support to `3.8.6`.
 - Exercise the MCP `2025-11-25` protocol and the Jackson 3 MCP JSON mapper in
   the server-initiated keep-alive response regression test.
+
+## 0.7.2 Public Preview
+
+`0.7.2` is the latest published version of both public-preview artifacts. The
+core library and optional Spring WebFlux adapter are available from Maven
+Central at `io.github.dtkmn:mcp-gateway-core:0.7.2` and
+`io.github.dtkmn:mcp-gateway-spring-webflux:0.7.2`. The published source commit
+is `c2f3eac20c3348fe48881cf19196edcf93e680eb`.
 
 ### Spring WebFlux Adapter Correctness
 
@@ -57,11 +65,13 @@ the two modules are published as one release.
   headers, configured body-size limit, surrounding security chain, and
   downstream protocol/session validation.
 
+There were no public API changes in this patch.
+
 ## 0.7.1 Public Preview
 
-`0.7.1` is the latest published version of both public-preview artifacts. The
-core library and optional Spring WebFlux adapter are available from Maven
-Central at `io.github.dtkmn:mcp-gateway-core:0.7.1` and
+`0.7.1` was the preceding public-preview release of both artifacts. The core
+library and optional Spring WebFlux adapter remain available from Maven Central
+at `io.github.dtkmn:mcp-gateway-core:0.7.1` and
 `io.github.dtkmn:mcp-gateway-spring-webflux:0.7.1`.
 
 ### Security And Release Integrity
@@ -146,8 +156,9 @@ sources, Javadocs, checksum, and detached-signature files were retrieved from
 Maven Central and matched the approved upload bundle byte for byte. Signatures
 resolved to primary fingerprint
 `CC460079AB0687AC3DBB96DDE15DFDE144C104C1`, Maven metadata reported `0.7.1` as
-the latest release for both modules, and a fresh external Java 17 consumer
-resolved and ran both artifacts using Maven Central as its only repository.
+the latest release for both modules at that time, and a fresh external Java 17
+consumer resolved and ran both artifacts using Maven Central as its only
+repository.
 
 There are no new public API/binary deltas in this patch.
 

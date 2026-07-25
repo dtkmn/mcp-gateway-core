@@ -53,7 +53,7 @@ const pages = [
     source: 'docs/RELEASE_NOTES.md',
     target: 'maintainers/release-notes.md',
     title: 'Release Notes',
-    description: 'Public-preview release notes and accepted API delta anchors.',
+    description: 'Public-preview release history and migration notes.',
   },
   {
     source: 'docs/CENTRAL_VALIDATION_UPLOAD.md',
