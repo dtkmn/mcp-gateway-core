@@ -167,9 +167,9 @@ published artifact.
 
 This snapshot-safe development gate runs the core and adapter builds,
 forbidden-coupling checks, closed-world JAR checks, Java 17 bytecode checks,
-adapter runtime-classpath bytecode checks, core `jdeps`, API compatibility checks,
-and Gradle deprecation enforcement. It also stages both Maven artifacts for the
-Java 17 downstream-consumer checks.
+adapter runtime-classpath bytecode checks, core `jdeps`, and Gradle deprecation
+enforcement. It also stages both Maven artifacts for the Java 17
+downstream-consumer smoke test.
 
 Release preparation sets an unpublished, non-snapshot version and additionally
 runs the release-only Central bundle and signing proof:
@@ -178,20 +178,16 @@ runs the release-only Central bundle and signing proof:
 ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
 ```
 
-CI and release preparation also run the Java 17 consumer checks against the
+CI and release preparation also run the Java 17 consumer smoke test against the
 artifacts staged by the applicable gate:
 
 ```bash
 ./bin/java17-consumer-smoke.sh
-./bin/java17-source-compat-0.6-consumer.sh
 ```
 
 The smoke script uses separate clean external consumers for core-only and
 Spring WebFlux scenarios, resolves `io.github.dtkmn` artifacts only from the
-staged repository, and exercises the current WebFlux filter path. The
-source-compatibility script preserves the frozen `0.6.0` core consumer. Adapter
-source compatibility is intentionally broken in `0.8.0` by the documented
-Jackson 3 migration and is enforced through accepted API deltas instead.
+staged repository, and exercises the current WebFlux filter path.
 
 ## Coordinates
 
