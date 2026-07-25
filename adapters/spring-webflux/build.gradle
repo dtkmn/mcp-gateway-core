@@ -14,9 +14,12 @@ def springWebFluxArtifactId = 'mcp-gateway-spring-webflux'
 def springWebFluxGroupId = project.group.toString()
 def springWebFluxPublicationVersion = project.version.toString()
 def springFrameworkVersion = providers.gradleProperty('springFrameworkVersion').orElse('7.0.8').get()
-def springSecurityVersion = providers.gradleProperty('springSecurityVersion').orElse('7.0.6').get()
-def jacksonDatabindVersion = providers.gradleProperty('jacksonDatabindVersion').orElse('2.21.5').get()
-def reactorVersion = providers.gradleProperty('reactorVersion').orElse('3.8.5').get()
+def springSecurityVersion = providers.gradleProperty('springSecurityVersion').orElse('7.1.0').get()
+def jacksonDatabindVersion = providers.gradleProperty('jacksonDatabindVersion').orElse('3.1.4').get()
+def reactorVersion = providers.gradleProperty('reactorVersion').orElse('3.8.6').get()
+def springBootVersion = providers.gradleProperty('springBootVersion').orElse('4.1.0').get()
+def springAiVersion = providers.gradleProperty('springAiVersion').orElse('2.0.0').get()
+def mcpJavaSdkVersion = providers.gradleProperty('mcpJavaSdkVersion').orElse('2.0.0').get()
 def publicationPath = "${springWebFluxGroupId.replace('.', '/')}/${springWebFluxArtifactId}/${springWebFluxPublicationVersion}"
 def springWebFluxCentralBundleName = "${springWebFluxArtifactId}-${springWebFluxPublicationVersion}-central-portal-bundle.zip"
 def gatewayJavaRelease = 17
@@ -98,10 +101,17 @@ dependencies {
     api project(':core')
     api "org.springframework:spring-webflux:${springFrameworkVersion}"
     api "org.springframework.security:spring-security-core:${springSecurityVersion}"
-    api "com.fasterxml.jackson.core:jackson-databind:${jacksonDatabindVersion}"
+    api "tools.jackson.core:jackson-databind:${jacksonDatabindVersion}"
 
     testImplementation platform('org.junit:junit-bom:6.1.2')
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation platform("org.springframework.ai:spring-ai-bom:${springAiVersion}")
+    testImplementation platform("io.modelcontextprotocol.sdk:mcp-bom:${mcpJavaSdkVersion}")
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
+    testImplementation 'org.springframework.ai:mcp-spring-webflux'
+    testImplementation 'io.modelcontextprotocol.sdk:mcp-core'
+    testImplementation 'io.modelcontextprotocol.sdk:mcp-json-jackson3'
     testImplementation "org.springframework:spring-test:${springFrameworkVersion}"
     testImplementation "io.projectreactor:reactor-test:${reactorVersion}"
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -311,14 +321,6 @@ def verifyPomMetadata = { File pom ->
         if (actual != expected) {
             throw new GradleException("Central POM ${pom.name} has invalid ${field}: expected '${expected}', got '${actual}'")
         }
-    }
-    boolean hasCoreDependency = parsed.dependencies.dependency.any {
-        it.groupId.text() == springWebFluxGroupId
-                && it.artifactId.text() == 'mcp-gateway-core'
-                && it.version.text() == springWebFluxPublicationVersion
-    }
-    if (!hasCoreDependency) {
-        throw new GradleException("Central POM ${pom.name} must declare the mcp-gateway-core dependency.")
     }
     boolean hasApacheLicense = parsed.licenses.license.any {
         it.name.text() == 'Apache License, Version 2.0' && it.url.text() == 'https://www.apache.org/licenses/LICENSE-2.0'

@@ -2,7 +2,6 @@ package mcp.gateway.spring.webflux;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import mcp.gateway.core.authz.ToolAuthorizationDecision;
 import org.junit.jupiter.api.Test;
@@ -10,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.test.StepVerifier;
+import tools.jackson.databind.json.JsonMapper;
 
 class McpGatewayWebFluxResponsesTest {
 
@@ -19,7 +19,7 @@ class McpGatewayWebFluxResponsesTest {
 
         StepVerifier.create(McpGatewayWebFluxResponses.forbidden(
                 exchange,
-                new ObjectMapper(),
+                JsonMapper.builder().build(),
                 denied(List.of("demo:read", "workspace/tool.run")),
                 "insufficient_scope",
                 "corr-1"
@@ -44,7 +44,7 @@ class McpGatewayWebFluxResponsesTest {
 
             StepVerifier.create(McpGatewayWebFluxResponses.forbidden(
                     exchange,
-                    new ObjectMapper(),
+                    JsonMapper.builder().build(),
                     denied(List.of("safe", unsafeScope)),
                     "insufficient_scope",
                     "corr-1"
