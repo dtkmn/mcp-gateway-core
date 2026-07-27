@@ -27,9 +27,11 @@ scanner integration, UI, or service mesh.
 contracts for Java MCP tool runtimes. It is not an MCP server SDK, Spring Boot
 starter, OAuth provider, policy language, plugin system, proxy, or data plane.
 
-The latest published preview line is `0.7.x`. The WebFlux adapter documents
-fail-closed request-shape behavior when governance is active and exact downstream
-pass-through when governance is inactive.
+The latest published preview release is `0.8.0`. This release moves the optional
+WebFlux adapter's public JSON boundary to Jackson 3
+`tools.jackson.databind.json.JsonMapper`; the core artifact remains JDK-only.
+The adapter documents fail-closed request-shape behavior when governance is
+active and exact downstream pass-through when governance is inactive.
 
 ## Choose Your Path
 
@@ -44,11 +46,11 @@ pass-through when governance is inactive.
 
 ## Coordinates
 
-These are the current `0.7.2` public-preview coordinates.
+These are the current `0.8.0` public-preview coordinates.
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.7.2"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.7.2" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.8.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.8.0" // optional
 ```
 
 ## Boundary
