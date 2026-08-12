@@ -1,5 +1,29 @@
 # Release Notes
 
+## Unreleased — Planned 0.9.0 Public Preview
+
+`0.8.0` remains the latest published version. The changes in this section are on
+the development branch and must not be treated as available from Maven Central
+until `0.9.0` is published.
+
+### Spring WebFlux Adapter Configuration
+
+- Add a fluent `McpGatewayWebFluxGovernanceFilter` builder with required
+  `JsonMapper` and `McpGatewayWebFluxContextResolver` inputs.
+- Preserve the existing filter defaults for properties, Spring Security scope
+  extraction, correlation resolution, and no-op observers.
+- Require at least one authorization or protection evaluator before `build()`
+  succeeds, catching accidental omission of both governance concerns. Dynamic
+  evaluators may still disable governance at request time.
+- Add paired callback configuration for dynamic authorization mode plus
+  authorization decisions, and dynamic protection enablement plus protection
+  decisions. Consumers with custom evaluator implementations can supply them
+  directly instead.
+- Keep every existing public filter constructor. This is an additive source- and
+  binary-compatible API change, not a required migration.
+- Keep Spring bean registration and all application policy decisions in the
+  consuming runtime; the builder is not Spring Boot auto-configuration.
+
 ## 0.8.0 Public Preview
 
 `0.8.0` is the latest published version of both public-preview artifacts and

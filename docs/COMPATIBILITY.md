@@ -67,6 +67,14 @@ During public preview, changes should stay source-compatible when reasonable,
 but correctness and clean boundaries win over compatibility. Any breaking change
 must be deliberate, reviewed, and described in release notes.
 
+The development branch for the planned `0.9.0` release adds a fluent
+`McpGatewayWebFluxGovernanceFilter` builder. This is a source- and
+binary-compatible addition: all existing public constructors remain available,
+and the builder delegates to the same full filter construction path. It does not
+add Spring Boot auto-configuration or change ownership of authentication,
+workspace resolution, policy, protection, or observations. The builder is not
+available in the published `0.8.0` artifact.
+
 For `0.8.0`, the WebFlux adapter deliberately moves its public JSON boundary
 from Jackson 2 `ObjectMapper` to Jackson 3 `JsonMapper`. This is an intentional
 source and binary break. Existing adapter consumers must update their mapper

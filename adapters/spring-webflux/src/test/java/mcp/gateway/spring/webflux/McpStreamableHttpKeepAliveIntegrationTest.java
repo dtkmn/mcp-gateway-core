@@ -247,35 +247,28 @@ class McpStreamableHttpKeepAliveIntegrationTest {
     }
 
     private static McpGatewayWebFluxGovernanceFilter governanceFilter(List<String> protectedActions) {
-        McpGatewayAbuseProtectionEvaluator protectionEvaluator = new McpGatewayAbuseProtectionEvaluator() {
-            @Override
-            public boolean enabled() {
-                return true;
-            }
-
-            @Override
-            public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
-                protectedActions.add(context.actionName());
-                return McpAbuseProtectionDecision.allow(
-                        context.actionName(),
-                        context.principalId(),
-                        context.workspaceId()
-                );
-            }
-        };
-        return new McpGatewayWebFluxGovernanceFilter(
-                JSON_MAPPER,
-                McpGatewayWebFluxProperties.defaults(),
-                null,
-                protectionEvaluator,
-                (authentication, exchange, invocation) -> GatewayToolExecutionContext.of(
-                        authentication == null ? null : authentication.getName(),
-                        "integration-workspace",
-                        exchange.getRequest().getId(),
-                        invocation,
-                        null
+        return McpGatewayWebFluxGovernanceFilter.builder(
+                        JSON_MAPPER,
+                        (authentication, exchange, invocation) -> GatewayToolExecutionContext.of(
+                                authentication == null ? null : authentication.getName(),
+                                "integration-workspace",
+                                exchange.getRequest().getId(),
+                                invocation,
+                                null
+                        )
                 )
-        );
+                .protection(
+                        () -> true,
+                        context -> {
+                            protectedActions.add(context.actionName());
+                            return McpAbuseProtectionDecision.allow(
+                                    context.actionName(),
+                                    context.principalId(),
+                                    context.workspaceId()
+                            );
+                        }
+                )
+                .build();
     }
 
     private static WebFilter authenticationFilter(AtomicInteger authenticatedRequests) {

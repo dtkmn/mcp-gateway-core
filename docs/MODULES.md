@@ -38,7 +38,12 @@ consume these contracts without moving their runtime behavior into this repo.
 | `mcp.gateway.core.rate` | JDK-only token-bucket rate limiter with bounded key tracking. | Distributed rate limiting, cache coordination, operator configuration. |
 | `mcp.gateway.core.logging` | Correlation ID constants and sanitization/resolution helpers. | MDC wiring, web filters, request attributes. |
 | `mcp.gateway.core.url` | URL scope normalization and matching helpers. | Target allowlist policy, scan evidence selection, crawler behavior. |
-| `mcp.gateway.spring.webflux` | WebFlux governance filter, JSON-RPC request parsing, request body replay, safe denial/rejection responses, and resolver interfaces for mapping Spring requests into core context. | Spring Boot auto-configuration, Spring AI SDK integration, auth-provider setup, persistence, product-specific scope catalogs. |
+| `mcp.gateway.spring.webflux` | WebFlux governance filter and its fluent construction API, JSON-RPC request parsing, request body replay, safe denial/rejection responses, and resolver interfaces for mapping Spring requests into core context. | Spring Boot auto-configuration, Spring AI SDK integration, auth-provider setup, persistence, product-specific scope catalogs. |
+
+The fluent filter builder is currently on the development branch and is planned
+for `0.9.0`; it is not part of the published `0.8.0` artifact. It reduces manual
+adapter plumbing without taking ownership of application policy or Spring bean
+registration.
 
 ## Current Consumer Pattern
 

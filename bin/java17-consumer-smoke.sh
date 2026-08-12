@@ -281,22 +281,20 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import mcp.gateway.core.authz.ToolAuthorizationDecision;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.invocation.McpToolInvocation;
 import mcp.gateway.core.invocation.McpToolInvocationKind;
 import mcp.gateway.core.protection.McpAbuseProtectionDecision;
 import mcp.gateway.spring.webflux.McpAuthorizationObservation;
-import mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator;
-import mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator;
 import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
 import mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver;
+import mcp.gateway.spring.webflux.McpGatewayWebFluxContextResolver;
 import mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter;
 import mcp.gateway.spring.webflux.McpGatewayWebFluxProperties;
-import mcp.gateway.spring.webflux.McpGrantedScopesExtractor;
 import mcp.gateway.spring.webflux.McpInvalidRequestObserver;
 import mcp.gateway.spring.webflux.McpJsonRpcToolInvocationParser;
-import mcp.gateway.spring.webflux.McpProtectionRejectionObserver;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -312,8 +310,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 public final class WebFluxSmoke {
     public static void main(String[] args) {
-        McpJsonRpcToolInvocationParser parser =
-                new McpJsonRpcToolInvocationParser(JsonMapper.builder().build());
+        JsonMapper jsonMapper = JsonMapper.builder().build();
+        McpJsonRpcToolInvocationParser parser = new McpJsonRpcToolInvocationParser(jsonMapper);
         McpToolInvocation invocation = parser.parse(("""
                 {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"demo_tool"}}
                 """).getBytes(StandardCharsets.UTF_8));
@@ -326,60 +324,47 @@ public final class WebFluxSmoke {
         invalidObserver.rejected("invalid_request_shape", "request-1", "correlation-1");
         require("invalid_request_shape".equals(invalidReason.get()), "expected invalid observer to run");
 
-        McpGatewayAuthorizationEvaluator authorizationEvaluator = new McpGatewayAuthorizationEvaluator() {
-            @Override
-            public McpGatewayAuthorizationMode mode() {
-                return McpGatewayAuthorizationMode.WARN;
-            }
-
-            @Override
-            public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
-                                                       GatewayToolExecutionContext context) {
-                List<String> granted = List.copyOf(grantedScopes);
-                boolean allowed = granted.contains("demo:run");
-                return new ToolAuthorizationDecision(
-                        allowed,
-                        true,
-                        context.actionName(),
-                        List.of("demo:run"),
-                        granted,
-                        allowed ? List.of() : List.of("demo:run")
-                );
-            }
-        };
-        require(authorizationEvaluator.policy().enabled(), "WARN mode should enable authorization evaluation");
-
-        McpGatewayAbuseProtectionEvaluator protectionEvaluator = new McpGatewayAbuseProtectionEvaluator() {
-            @Override
-            public boolean enabled() {
-                return true;
-            }
-
-            @Override
-            public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
-                return McpAbuseProtectionDecision.allow(context.toolName(), context.principalId(), context.workspaceId());
-            }
-        };
-
-        AtomicReference<McpAuthorizationObservation> authorizationObservation = new AtomicReference<>();
-        McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
-                JsonMapper.builder().build(),
-                new McpGatewayWebFluxProperties("/mcp", 4096, 7),
-                authorizationEvaluator,
-                protectionEvaluator,
-                (authentication, exchange, parsed) -> GatewayToolExecutionContext.of(
+        BiFunction<Collection<String>, GatewayToolExecutionContext, ToolAuthorizationDecision> authorization =
+                (grantedScopes, context) -> {
+                    List<String> granted = List.copyOf(grantedScopes);
+                    boolean allowed = granted.contains("demo:run");
+                    return new ToolAuthorizationDecision(
+                            allowed,
+                            true,
+                            context.actionName(),
+                            List.of("demo:run"),
+                            granted,
+                            allowed ? List.of() : List.of("demo:run")
+                    );
+                };
+        McpGatewayCorrelationIdResolver correlationIds =
+                McpGatewayCorrelationIdResolver.fromHeader("X-Correlation-Id");
+        McpGatewayWebFluxContextResolver contextResolver = (authentication, exchange, parsed) ->
+                GatewayToolExecutionContext.of(
                         authentication == null ? null : authentication.getName(),
                         "workspace-a",
-                        McpGatewayCorrelationIdResolver.defaultResolver().resolve(exchange),
+                        correlationIds.resolve(exchange),
                         parsed,
                         null
-                ),
-                McpGrantedScopesExtractor.springSecurityScopes(),
-                authorizationObservation::set,
-                McpProtectionRejectionObserver.noop(),
-                McpGatewayCorrelationIdResolver.fromHeader("X-Correlation-Id"),
-                invalidObserver
-        );
+                );
+
+        AtomicReference<McpAuthorizationObservation> authorizationObservation = new AtomicReference<>();
+        McpGatewayWebFluxGovernanceFilter filter = McpGatewayWebFluxGovernanceFilter
+                .builder(jsonMapper, contextResolver)
+                .properties(new McpGatewayWebFluxProperties("/mcp", 4096, 7))
+                .authorization(() -> McpGatewayAuthorizationMode.WARN, authorization)
+                .protection(
+                        () -> true,
+                        context -> McpAbuseProtectionDecision.allow(
+                                context.toolName(),
+                                context.principalId(),
+                                context.workspaceId()
+                        )
+                )
+                .authorizationObserver(authorizationObservation::set)
+                .correlationIdResolver(correlationIds)
+                .invalidRequestObserver(invalidObserver)
+                .build();
 
         require(filter.getOrder() == 7, "expected configured filter order");
 
@@ -415,42 +400,26 @@ public final class WebFluxSmoke {
                 "expected observed correlation id");
 
         AtomicReference<McpAbuseProtectionDecision> protectionRejection = new AtomicReference<>();
-        McpGatewayWebFluxGovernanceFilter protectionFilter = new McpGatewayWebFluxGovernanceFilter(
-                JsonMapper.builder().build(),
-                new McpGatewayWebFluxProperties("/mcp", 4096, 7),
-                authorizationEvaluator,
-                new McpGatewayAbuseProtectionEvaluator() {
-                    @Override
-                    public boolean enabled() {
-                        return true;
-                    }
-
-                    @Override
-                    public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
-                        return McpAbuseProtectionDecision.reject(
+        McpGatewayWebFluxGovernanceFilter protectionFilter = McpGatewayWebFluxGovernanceFilter
+                .builder(jsonMapper, contextResolver)
+                .properties(new McpGatewayWebFluxProperties("/mcp", 4096, 7))
+                .authorization(() -> McpGatewayAuthorizationMode.WARN, authorization)
+                .protection(
+                        () -> true,
+                        context -> McpAbuseProtectionDecision.reject(
                                 "rate_limited",
                                 "too many requests",
                                 context.toolName(),
                                 context.principalId(),
                                 context.workspaceId(),
                                 5
-                        );
-                    }
-                },
-                (authentication, exchange, parsed) -> GatewayToolExecutionContext.of(
-                        authentication == null ? null : authentication.getName(),
-                        "workspace-a",
-                        McpGatewayCorrelationIdResolver.defaultResolver().resolve(exchange),
-                        parsed,
-                        null
-                ),
-                McpGrantedScopesExtractor.springSecurityScopes(),
-                observation -> {
-                },
-                (decision, context) -> protectionRejection.set(decision),
-                McpGatewayCorrelationIdResolver.fromHeader("X-Correlation-Id"),
-                invalidObserver
-        );
+                        )
+                )
+                .protectionRejectionObserver((decision, context) -> protectionRejection.set(decision))
+                .correlationIdResolver(correlationIds)
+                .invalidRequestObserver(invalidObserver)
+                .build();
+
         ServerWebExchange protectedExchange = MockServerWebExchange.from(MockServerHttpRequest.post("/mcp")
                         .header("X-Correlation-Id", "correlation-protected")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -476,29 +445,26 @@ public final class WebFluxSmoke {
         AtomicReference<String> rejectedReason = new AtomicReference<>();
         AtomicReference<String> rejectedRequestId = new AtomicReference<>();
         AtomicReference<String> rejectedCorrelationId = new AtomicReference<>();
-        McpGatewayWebFluxGovernanceFilter invalidFilter = new McpGatewayWebFluxGovernanceFilter(
-                JsonMapper.builder().build(),
-                new McpGatewayWebFluxProperties("/mcp", 4096, 7),
-                authorizationEvaluator,
-                protectionEvaluator,
-                (authentication, exchange, parsed) -> GatewayToolExecutionContext.of(
-                        authentication == null ? null : authentication.getName(),
-                        "workspace-a",
-                        McpGatewayCorrelationIdResolver.defaultResolver().resolve(exchange),
-                        parsed,
-                        null
-                ),
-                McpGrantedScopesExtractor.springSecurityScopes(),
-                observation -> {
-                },
-                McpProtectionRejectionObserver.noop(),
-                McpGatewayCorrelationIdResolver.fromHeader("X-Correlation-Id"),
-                (reason, requestId, correlationId) -> {
+        McpGatewayWebFluxGovernanceFilter invalidFilter = McpGatewayWebFluxGovernanceFilter
+                .builder(jsonMapper, contextResolver)
+                .properties(new McpGatewayWebFluxProperties("/mcp", 4096, 7))
+                .authorization(() -> McpGatewayAuthorizationMode.WARN, authorization)
+                .protection(
+                        () -> true,
+                        context -> McpAbuseProtectionDecision.allow(
+                                context.toolName(),
+                                context.principalId(),
+                                context.workspaceId()
+                        )
+                )
+                .correlationIdResolver(correlationIds)
+                .invalidRequestObserver((reason, requestId, correlationId) -> {
                     rejectedReason.set(reason);
                     rejectedRequestId.set(requestId);
                     rejectedCorrelationId.set(correlationId);
-                }
-        );
+                })
+                .build();
+
         ServerWebExchange invalidExchange = MockServerWebExchange.from(MockServerHttpRequest.post("/mcp")
                         .header("X-Correlation-Id", "correlation-2")
                         .contentType(MediaType.APPLICATION_JSON)
