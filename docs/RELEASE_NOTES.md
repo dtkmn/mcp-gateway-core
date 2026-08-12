@@ -1,6 +1,12 @@
 # Release Notes
 
-## Unreleased 0.9.0 Public Preview
+## 0.9.0 Public Preview
+
+`0.9.0` is the latest published version of both public-preview artifacts and
+supersedes `0.8.0`. The core library and optional Spring WebFlux adapter are
+available from Maven Central at `io.github.dtkmn:mcp-gateway-core:0.9.0` and
+`io.github.dtkmn:mcp-gateway-spring-webflux:0.9.0`. The published source commit
+is `46b0ec29e43466c9aea5251c53bcc2f0f6a96f58`.
 
 ### Spring WebFlux Adapter Configuration
 
@@ -13,8 +19,7 @@
 
 ## 0.8.0 Public Preview
 
-`0.8.0` is the latest published version of both public-preview artifacts and
-supersedes `0.7.2`. The core library and optional Spring WebFlux adapter are
+`0.8.0` supersedes `0.7.2`. The core library and optional Spring WebFlux adapter are
 available from Maven Central at `io.github.dtkmn:mcp-gateway-core:0.8.0` and
 `io.github.dtkmn:mcp-gateway-spring-webflux:0.8.0`. The published source commit
 is `2f533f76032848e6d4abcef1144b008144f8e136`.

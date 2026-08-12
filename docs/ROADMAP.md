@@ -10,8 +10,8 @@ promise yet.
 
 Current focus:
 
-- operate and consume the published `0.8.0` public-preview release and gather
-  evidence from its Jackson 3 adapter migration;
+- operate and consume the published `0.9.0` public-preview release and gather
+  evidence from its fluent WebFlux adapter configuration;
 - keep the core artifact JDK-only and framework support in separate adapter
   artifacts;
 - prove published and staged artifacts with current Java 17 core-only and
@@ -23,13 +23,13 @@ Current focus:
 
 ## Near-Term Work
 
-1. **0.8.0 consumer adoption**
+1. **0.9.0 consumer adoption**
 
-   `0.8.0` is the latest published version. Keep public dependency landing-page
-   examples on `0.8.0`, gather evidence from real consumers, and require
-   downstream adapter consumers to prove their new `JsonMapper` wiring. Treat
-   any disagreement between public docs and Central as a release-blocking
-   documentation defect.
+   `0.9.0` is the latest published version. Keep public dependency landing-page
+   examples on `0.9.0`, gather evidence from real consumers, and require
+   downstream adapter consumers to keep identity, policy, and observability
+   decisions explicit when using the fluent builder. Treat any disagreement
+   between public docs and Central as a release-blocking documentation defect.
 
 2. **Consumer proof**
 
