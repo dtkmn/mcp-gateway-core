@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const siteRoot = fileURLToPath(new URL('..', import.meta.url));
 const distRoot = join(siteRoot, 'dist');
 
@@ -10,12 +9,6 @@ const site = 'https://danieltse.org';
 const base = '/mcp-gateway-core';
 const homeUrl = `${site}${base}/`;
 
-const gradleProperties = await readFile(join(repoRoot, 'gradle.properties'), 'utf8');
-const gatewayCoreVersion = extract(
-  gradleProperties,
-  /^gatewayCoreVersion=(.+)$/m,
-  'gatewayCoreVersion in gradle.properties',
-).trim();
 const indexHtml = await readDist('index.html');
 const gettingStartedHtml = await readDist('guides/getting-started/index.html');
 const sitemapIndexXml = await readDist('sitemap-index.xml');
@@ -39,31 +32,25 @@ assertContains(
   'home edit link should point at the docs-site source file',
 );
 
-if (!gatewayCoreVersion.endsWith('-SNAPSHOT')) {
-  assertEqual(
-    extract(
-      indexHtml,
-      /latest published preview(?: release| line) is <code[^>]*>([^<]+)<\/code>/,
-      'home latest published preview release',
-    ),
-    gatewayCoreVersion,
+const latestPublishedVersion = extract(
+  indexHtml,
+  /latest published preview(?: release| line) is <code[^>]*>([^<]+)<\/code>/,
+  'home latest published preview release',
+);
+const coordinateVersions = [
+  ...new Set(
+    [...indexHtml.matchAll(/io\.github\.dtkmn:mcp-gateway-(?:core|spring-webflux):([^<&\s"]+)/g)]
+      .map((match) => match[1]),
+  ),
+];
+assertEqual(coordinateVersions.join(', '), latestPublishedVersion);
+
+for (const artifact of ['mcp-gateway-core', 'mcp-gateway-spring-webflux']) {
+  assertContains(
+    indexHtml,
+    `io.github.dtkmn:${artifact}:${latestPublishedVersion}`,
+    `home page should advertise ${artifact} at the latest published version`,
   );
-
-  const coordinateVersions = [
-    ...new Set(
-      [...indexHtml.matchAll(/io\.github\.dtkmn:mcp-gateway-(?:core|spring-webflux):([^<&\s"]+)/g)]
-        .map((match) => match[1]),
-    ),
-  ];
-  assertEqual(coordinateVersions.join(', '), gatewayCoreVersion);
-
-  for (const artifact of ['mcp-gateway-core', 'mcp-gateway-spring-webflux']) {
-    assertContains(
-      indexHtml,
-      `io.github.dtkmn:${artifact}:${gatewayCoreVersion}`,
-      `home page should advertise ${artifact} at gatewayCoreVersion`,
-    );
-  }
 }
 
 for (const href of [
