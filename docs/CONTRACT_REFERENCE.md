@@ -383,18 +383,14 @@ The adapter parses MCP JSON-RPC messages from a WebFlux exchange and applies
 core decisions before request messages reach your MCP runtime. It is not Spring
 Boot auto-configuration.
 
-### Unreleased 0.9.0 Filter Builder
+### Filter Builder
 
-The development branch adds
 `McpGatewayWebFluxGovernanceFilter.builder(JsonMapper,
-McpGatewayWebFluxContextResolver)`, planned for `0.9.0`. The builder is not
-present in the published `0.8.0` artifact. Existing public constructors remain
-available; the builder is an additive configuration path over the same filter
-behavior.
+McpGatewayWebFluxContextResolver)` provides named configuration over the same
+filter behavior as the public constructors.
 
 The mapper and context resolver are required, and all builder method arguments
-must be non-null. Calling `build()` delegates to the filter's full constructor
-after applying these defaults:
+must be non-null. Unspecified options use these defaults:
 
 - `McpGatewayWebFluxProperties.defaults()`;
 - `McpGrantedScopesExtractor.springSecurityScopes()`;

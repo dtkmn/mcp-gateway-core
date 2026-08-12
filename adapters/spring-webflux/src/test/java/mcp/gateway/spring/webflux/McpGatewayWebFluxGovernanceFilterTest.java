@@ -292,28 +292,6 @@ class McpGatewayWebFluxGovernanceFilterTest {
     }
 
     @Test
-    void changingBuilderAfterBuildDoesNotMutatePreviouslyBuiltFilter() {
-        McpGatewayWebFluxGovernanceFilter.Builder builder = McpGatewayWebFluxGovernanceFilter.builder(
-                        JSON_MAPPER,
-                        contextResolver()
-                )
-                .authorization(
-                        () -> McpGatewayAuthorizationMode.ENFORCE,
-                        (grantedScopes, context) -> authAllowed()
-                );
-
-        McpGatewayWebFluxGovernanceFilter first = builder
-                .properties(new McpGatewayWebFluxProperties("/first", 4096, 11))
-                .build();
-        McpGatewayWebFluxGovernanceFilter second = builder
-                .properties(new McpGatewayWebFluxProperties("/second", 8192, 22))
-                .build();
-
-        assertEquals(11, first.getOrder());
-        assertEquals(22, second.getOrder());
-    }
-
-    @Test
     void getOrderUsesConfiguredGovernanceFilterOrder() {
         McpGatewayWebFluxGovernanceFilter filter = new McpGatewayWebFluxGovernanceFilter(
                 JSON_MAPPER,

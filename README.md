@@ -20,11 +20,6 @@ Current status: public preview. The latest published version is `0.8.0`. The
 package and coordinates are intended for early integration proof, not a stable
 compatibility promise.
 
-The development branch includes a fluent WebFlux filter builder planned for
-`0.9.0`. Published `0.8.0` consumers must continue using the constructor wiring
-shown in the getting-started guide until a release containing the builder is
-available.
-
 ## Positioning
 
 `mcp-gateway-core` is an embeddable Java governance contract library for MCP

@@ -11,9 +11,9 @@ own transport adapter.
 
 ## Choose The Artifact
 
-Unless a section is explicitly marked unreleased, the examples below target the
-published `0.8.0` public-preview release. Consumers that remain on `0.7.2` must
-also keep its Jackson 2 `ObjectMapper` wiring.
+The examples below target the published `0.8.0` public-preview release.
+Consumers that remain on `0.7.2` must also keep its Jackson 2 `ObjectMapper`
+wiring.
 
 Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:
@@ -136,11 +136,6 @@ long retryAfterSeconds = limiter.retryAfterSeconds(key, policy);
 The Spring WebFlux adapter is deliberately not auto-configuration. You wire the
 beans so your app stays in charge of authentication, tenant resolution, tool
 catalogs, protection limits, and enforcement mode.
-
-### Published 0.8.0 Constructor Wiring
-
-The following configuration works with the currently published `0.8.0`
-artifacts.
 
 ```java
 import java.util.Collection;
@@ -269,91 +264,6 @@ and preserves the request body for the downstream MCP runtime. Recognized
 response envelopes used to answer server-initiated JSON-RPC requests pass
 through to that runtime without request authorization or action-based
 abuse-protection evaluation.
-
-### Unreleased 0.9.0 Builder
-
-The development branch adds a fluent builder planned for `0.9.0`. It is not in
-the published `0.8.0` artifact and code using it will not compile until a
-release containing the builder is selected.
-
-Keep the access-registry and authorizer beans from the `0.8.0` example above.
-The builder lets the context resolver, evaluator adapters, defaults, and filter
-construction live in one filter bean:
-
-```java
-@Bean
-McpGatewayWebFluxGovernanceFilter mcpGatewayGovernanceFilter(
-        JsonMapper jsonMapper,
-        McpToolAuthorizer authorizer
-) {
-    TokenBucketRateLimiter limiter = new TokenBucketRateLimiter();
-    TokenBucketRateLimiter.Policy policy =
-            new TokenBucketRateLimiter.Policy(true, 60, 60, 60, 10_000, 1);
-
-    McpGatewayWebFluxContextResolver contextResolver =
-            (authentication, exchange, invocation) -> {
-                String principalId = authentication == null
-                        ? "anonymous"
-                        : authentication.getName();
-                String workspaceId = exchange.getRequest()
-                        .getHeaders()
-                        .getFirst("X-Workspace-Id");
-                String correlationId = exchange.getRequest()
-                        .getHeaders()
-                        .getFirst("X-Correlation-Id");
-                return GatewayToolExecutionContext.of(
-                        principalId,
-                        workspaceId,
-                        correlationId,
-                        invocation,
-                        null
-                );
-            };
-
-    return McpGatewayWebFluxGovernanceFilter
-            .builder(jsonMapper, contextResolver)
-            .authorization(
-                    () -> McpGatewayAuthorizationMode.ENFORCE,
-                    (grantedScopes, context) -> authorizer.authorize(
-                            context,
-                            grantedScopes,
-                            false,
-                            true
-                    )
-            )
-            .protection(
-                    () -> true,
-                    context -> {
-                        String key = context.principalId()
-                                + ":"
-                                + context.actionName();
-                        if (limiter.tryConsume(key, policy)) {
-                            return McpAbuseProtectionDecision.allow(
-                                    context.toolName(),
-                                    context.principalId(),
-                                    context.workspaceId()
-                            );
-                        }
-                        return McpAbuseProtectionDecision.reject(
-                                "rate_limited",
-                                "Too many MCP requests",
-                                context.toolName(),
-                                context.principalId(),
-                                context.workspaceId(),
-                                limiter.retryAfterSeconds(key, policy)
-                        );
-                    }
-            )
-            .build();
-}
-```
-
-Omitting `properties(...)`, scope extraction, correlation resolution, or
-observers uses the same defaults as the shortest existing constructor. Use the
-named builder methods when the application needs to replace those defaults.
-The builder still returns an ordinary filter; the application must expose it as
-a Spring bean. It is configuration convenience, not Spring Boot
-auto-configuration.
 
 ## Adoption Checklist
 
