@@ -11,7 +11,7 @@ own transport adapter.
 
 ## Choose The Artifact
 
-The examples below target the published `0.8.0` public-preview release.
+The examples below target the published `0.9.0` public-preview release.
 Consumers that remain on `0.7.2` must also keep its Jackson 2 `ObjectMapper`
 wiring.
 
@@ -19,14 +19,14 @@ Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.8.0"
+implementation "io.github.dtkmn:mcp-gateway-core:0.9.0"
 ```
 
 Use both artifacts when your MCP endpoint is a Spring WebFlux route:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.8.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.8.0"
+implementation "io.github.dtkmn:mcp-gateway-core:0.9.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.9.0"
 ```
 
 The adapter currently targets Spring Framework 7, Spring Security 7, and
@@ -138,34 +138,22 @@ beans so your app stays in charge of authentication, tenant resolution, tool
 catalogs, protection limits, and enforcement mode.
 
 ```java
-import java.util.Collection;
 import java.util.List;
 import mcp.gateway.core.authz.McpToolAccessRegistry;
 import mcp.gateway.core.authz.McpToolAccessRule;
 import mcp.gateway.core.authz.McpToolAuthorizer;
-import mcp.gateway.core.authz.ToolAuthorizationDecision;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.protection.McpAbuseProtectionDecision;
 import mcp.gateway.core.rate.TokenBucketRateLimiter;
 import mcp.gateway.core.tool.McpToolSurface;
-import mcp.gateway.spring.webflux.McpGatewayAbuseProtectionEvaluator;
-import mcp.gateway.spring.webflux.McpGatewayAuthorizationEvaluator;
 import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
-import mcp.gateway.spring.webflux.McpGatewayWebFluxContextResolver;
 import mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter;
-import mcp.gateway.spring.webflux.McpGatewayWebFluxProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.core.Authentication;
 import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
 class McpGatewayConfiguration {
-
-    @Bean
-    McpGatewayWebFluxProperties mcpGatewayWebFluxProperties() {
-        return McpGatewayWebFluxProperties.defaults();
-    }
 
     @Bean
     McpToolAccessRegistry mcpToolAccessRegistry() {
@@ -180,79 +168,58 @@ class McpGatewayConfiguration {
     }
 
     @Bean
-    McpGatewayWebFluxContextResolver mcpGatewayContextResolver() {
-        return (authentication, exchange, invocation) -> {
-            String principalId = authentication == null ? "anonymous" : authentication.getName();
-            String workspaceId = exchange.getRequest().getHeaders().getFirst("X-Workspace-Id");
-            String correlationId = exchange.getRequest().getHeaders().getFirst("X-Correlation-Id");
-            return GatewayToolExecutionContext.of(principalId, workspaceId, correlationId, invocation, null);
-        };
-    }
-
-    @Bean
-    McpGatewayAuthorizationEvaluator mcpGatewayAuthorizationEvaluator(McpToolAuthorizer authorizer) {
-        return new McpGatewayAuthorizationEvaluator() {
-            @Override
-            public McpGatewayAuthorizationMode mode() {
-                return McpGatewayAuthorizationMode.ENFORCE;
-            }
-
-            @Override
-            public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
-                                                       GatewayToolExecutionContext context) {
-                return authorizer.authorize(context, grantedScopes, false, true);
-            }
-        };
-    }
-
-    @Bean
-    McpGatewayAbuseProtectionEvaluator mcpGatewayAbuseProtectionEvaluator() {
+    McpGatewayWebFluxGovernanceFilter mcpGatewayGovernanceFilter(
+            JsonMapper jsonMapper,
+            McpToolAuthorizer authorizer
+    ) {
         TokenBucketRateLimiter limiter = new TokenBucketRateLimiter();
         TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(true, 60, 60, 60, 10_000, 1);
 
-        return new McpGatewayAbuseProtectionEvaluator() {
-            @Override
-            public boolean enabled() {
-                return true;
-            }
-
-            @Override
-            public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
-                String key = context.principalId() + ":" + context.actionName();
-                if (limiter.tryConsume(key, policy)) {
-                    return McpAbuseProtectionDecision.allow(
-                            context.toolName(),
-                            context.principalId(),
-                            context.workspaceId()
-                    );
-                }
-                return McpAbuseProtectionDecision.reject(
-                        "rate_limited",
-                        "Too many MCP requests",
-                        context.toolName(),
-                        context.principalId(),
-                        context.workspaceId(),
-                        limiter.retryAfterSeconds(key, policy)
-                );
-            }
-        };
-    }
-
-    @Bean
-    McpGatewayWebFluxGovernanceFilter mcpGatewayGovernanceFilter(
-            JsonMapper jsonMapper,
-            McpGatewayWebFluxProperties properties,
-            McpGatewayAuthorizationEvaluator authorizationEvaluator,
-            McpGatewayAbuseProtectionEvaluator protectionEvaluator,
-            McpGatewayWebFluxContextResolver contextResolver
-    ) {
-        return new McpGatewayWebFluxGovernanceFilter(
-                jsonMapper,
-                properties,
-                authorizationEvaluator,
-                protectionEvaluator,
-                contextResolver
-        );
+        return McpGatewayWebFluxGovernanceFilter.builder(
+                        jsonMapper,
+                        (authentication, exchange, invocation) -> {
+                            String principalId = authentication == null
+                                    ? "anonymous"
+                                    : authentication.getName();
+                            String workspaceId = exchange.getRequest().getHeaders()
+                                    .getFirst("X-Workspace-Id");
+                            String correlationId = exchange.getRequest().getHeaders()
+                                    .getFirst("X-Correlation-Id");
+                            return GatewayToolExecutionContext.of(
+                                    principalId,
+                                    workspaceId,
+                                    correlationId,
+                                    invocation,
+                                    null
+                            );
+                        }
+                )
+                .authorization(
+                        () -> McpGatewayAuthorizationMode.ENFORCE,
+                        (grantedScopes, context) -> authorizer.authorize(context, grantedScopes, false, true)
+                )
+                .protection(
+                        () -> true,
+                        context -> {
+                            String key = context.principalId() + ":" + context.actionName();
+                            if (limiter.tryConsume(key, policy)) {
+                                return McpAbuseProtectionDecision.allow(
+                                        context.toolName(),
+                                        context.principalId(),
+                                        context.workspaceId()
+                                );
+                            }
+                            return McpAbuseProtectionDecision.reject(
+                                    "rate_limited",
+                                    "Too many MCP requests",
+                                    context.toolName(),
+                                    context.principalId(),
+                                    context.workspaceId(),
+                                    limiter.retryAfterSeconds(key, policy)
+                            );
+                        }
+                )
+                .build();
     }
 }
 ```

@@ -67,6 +67,11 @@ During public preview, changes should stay source-compatible when reasonable,
 but correctness and clean boundaries win over compatibility. Any breaking change
 must be deliberate, reviewed, and described in release notes.
 
+For `0.9.0`, the WebFlux adapter adds the fluent
+`McpGatewayWebFluxGovernanceFilter` builder. Existing public constructors,
+defaults, and governance behavior remain unchanged. The framework-neutral core
+API is unchanged.
+
 For `0.8.0`, the WebFlux adapter deliberately moves its public JSON boundary
 from Jackson 2 `ObjectMapper` to Jackson 3 `JsonMapper`. This is an intentional
 source and binary break. Existing adapter consumers must update their mapper

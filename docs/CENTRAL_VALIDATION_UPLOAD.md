@@ -9,7 +9,7 @@ artifacts to Sonatype Central as one `USER_MANAGED` deployment:
 It does not publish the deployment. Publishing must remain a deliberate manual
 Portal action until the release policy says otherwise.
 
-`0.8.0` is the latest published version, and public dependency examples use it.
+`0.9.0` is the latest published version, and public dependency examples use it.
 For future releases, update those examples only after both new coordinates have
 propagated through Maven Central and passed the post-publication checks below.
 
