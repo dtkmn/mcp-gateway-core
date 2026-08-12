@@ -385,6 +385,8 @@ Boot auto-configuration.
 
 ### Filter Builder
 
+Available in `0.9.0`.
+
 `McpGatewayWebFluxGovernanceFilter.builder(JsonMapper,
 McpGatewayWebFluxContextResolver)` provides named configuration over the same
 filter behavior as the public constructors.
