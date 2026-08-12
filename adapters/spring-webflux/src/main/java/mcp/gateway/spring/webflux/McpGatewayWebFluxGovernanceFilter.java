@@ -1,14 +1,21 @@
 package mcp.gateway.spring.webflux;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import mcp.gateway.core.authz.ToolAuthorizationDecision;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.governance.GatewayToolAuthorizationPolicy;
 import mcp.gateway.core.governance.GatewayToolGovernance;
 import mcp.gateway.core.governance.GatewayToolGovernanceDecision;
 import mcp.gateway.core.governance.GatewayToolGovernanceOutcome;
 import mcp.gateway.core.invocation.McpToolInvocation;
+import mcp.gateway.core.protection.McpAbuseProtectionDecision;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBufferLimitException;
 import org.springframework.http.server.PathContainer;
@@ -46,6 +53,225 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
     private final McpProtectionRejectionObserver rejectionObserver;
     private final McpGatewayCorrelationIdResolver correlationIdResolver;
     private final McpInvalidRequestObserver invalidRequestObserver;
+
+    /**
+     * Starts fluent configuration of a WebFlux governance filter.
+     * <p>
+     * The JSON mapper and context resolver are required because the adapter cannot
+     * safely infer request parsing, principal, or workspace semantics. All other
+     * collaborators retain the defaults documented by {@link Builder}.
+     *
+     * @param jsonMapper JSON mapper used for parsing and rejection responses
+     * @param contextResolver resolver that maps requests into core execution context
+     * @return a new filter builder
+     */
+    public static Builder builder(JsonMapper jsonMapper,
+                                  McpGatewayWebFluxContextResolver contextResolver) {
+        return new Builder(jsonMapper, contextResolver);
+    }
+
+    /**
+     * Fluent, named configuration for {@link McpGatewayWebFluxGovernanceFilter}.
+     * <p>
+     * Omitted optional collaborators use the same defaults as the public
+     * constructors: default WebFlux properties, Spring Security {@code SCOPE_}
+     * extraction, no-op observers, and the default correlation-id resolver.
+     * At least one authorization or protection evaluator must be configured so
+     * the builder catches accidental omission of both governance concerns.
+     * A configured dynamic evaluator may still disable governance at request time.
+     */
+    public static final class Builder {
+        private final JsonMapper jsonMapper;
+        private final McpGatewayWebFluxContextResolver contextResolver;
+        private McpGatewayWebFluxProperties properties = McpGatewayWebFluxProperties.defaults();
+        private McpGatewayAuthorizationEvaluator authorizationEvaluator;
+        private McpGatewayAbuseProtectionEvaluator protectionEvaluator;
+        private McpGrantedScopesExtractor grantedScopesExtractor =
+                McpGrantedScopesExtractor.springSecurityScopes();
+        private McpAuthorizationObserver authorizationObserver = McpAuthorizationObserver.noop();
+        private McpProtectionRejectionObserver rejectionObserver = McpProtectionRejectionObserver.noop();
+        private McpGatewayCorrelationIdResolver correlationIdResolver = McpGatewayCorrelationIdResolver.defaultResolver();
+        private McpInvalidRequestObserver invalidRequestObserver = McpInvalidRequestObserver.noop();
+
+        private Builder(JsonMapper jsonMapper,
+                        McpGatewayWebFluxContextResolver contextResolver) {
+            this.jsonMapper = Objects.requireNonNull(jsonMapper, "jsonMapper must not be null");
+            this.contextResolver = Objects.requireNonNull(contextResolver, "contextResolver must not be null");
+        }
+
+        /**
+         * Uses the supplied endpoint, request-body limit, and filter order.
+         *
+         * @param properties WebFlux adapter properties
+         * @return this builder
+         */
+        public Builder properties(McpGatewayWebFluxProperties properties) {
+            this.properties = Objects.requireNonNull(properties, "properties must not be null");
+            return this;
+        }
+
+        /**
+         * Uses an existing authorization evaluator.
+         *
+         * @param evaluator authorization evaluator backed by core contracts
+         * @return this builder
+         */
+        public Builder authorizationEvaluator(McpGatewayAuthorizationEvaluator evaluator) {
+            this.authorizationEvaluator = Objects.requireNonNull(evaluator, "evaluator must not be null");
+            return this;
+        }
+
+        /**
+         * Adapts dynamic authorization mode and decision callbacks without an
+         * anonymous {@link McpGatewayAuthorizationEvaluator} implementation.
+         * The mode is read at request time, and the authorization callback runs
+         * when the resulting policy enables authorization for the invocation.
+         *
+         * @param mode supplies the current authorization mode
+         * @param authorize evaluates granted scopes and resolved execution context
+         * @return this builder
+         */
+        public Builder authorization(
+                Supplier<McpGatewayAuthorizationMode> mode,
+                BiFunction<Collection<String>, GatewayToolExecutionContext, ToolAuthorizationDecision> authorize
+        ) {
+            Supplier<McpGatewayAuthorizationMode> requiredMode = Objects.requireNonNull(mode, "mode must not be null");
+            BiFunction<Collection<String>, GatewayToolExecutionContext, ToolAuthorizationDecision> requiredAuthorize =
+                    Objects.requireNonNull(authorize, "authorize must not be null");
+            return authorizationEvaluator(new McpGatewayAuthorizationEvaluator() {
+                @Override
+                public McpGatewayAuthorizationMode mode() {
+                    return requiredMode.get();
+                }
+
+                @Override
+                public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
+                                                           GatewayToolExecutionContext context) {
+                    return requiredAuthorize.apply(grantedScopes, context);
+                }
+            });
+        }
+
+        /**
+         * Uses an existing abuse-protection evaluator.
+         *
+         * @param evaluator abuse-protection, quota, or rate-limit evaluator
+         * @return this builder
+         */
+        public Builder protectionEvaluator(McpGatewayAbuseProtectionEvaluator evaluator) {
+            this.protectionEvaluator = Objects.requireNonNull(evaluator, "evaluator must not be null");
+            return this;
+        }
+
+        /**
+         * Adapts dynamic protection enablement and decision callbacks without an
+         * anonymous {@link McpGatewayAbuseProtectionEvaluator} implementation.
+         * Enablement is read at request time, and the decision callback runs only
+         * when protection is enabled.
+         *
+         * @param enabled reports whether protection is currently enabled
+         * @param evaluate evaluates the resolved execution context
+         * @return this builder
+         */
+        public Builder protection(
+                BooleanSupplier enabled,
+                Function<GatewayToolExecutionContext, McpAbuseProtectionDecision> evaluate
+        ) {
+            BooleanSupplier requiredEnabled = Objects.requireNonNull(enabled, "enabled must not be null");
+            Function<GatewayToolExecutionContext, McpAbuseProtectionDecision> requiredEvaluate =
+                    Objects.requireNonNull(evaluate, "evaluate must not be null");
+            return protectionEvaluator(new McpGatewayAbuseProtectionEvaluator() {
+                @Override
+                public boolean enabled() {
+                    return requiredEnabled.getAsBoolean();
+                }
+
+                @Override
+                public McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context) {
+                    return requiredEvaluate.apply(context);
+                }
+            });
+        }
+
+        /**
+         * Uses a custom Spring Security granted-scope extractor.
+         *
+         * @param extractor granted-scope extractor
+         * @return this builder
+         */
+        public Builder grantedScopesExtractor(McpGrantedScopesExtractor extractor) {
+            this.grantedScopesExtractor = Objects.requireNonNull(extractor, "extractor must not be null");
+            return this;
+        }
+
+        /**
+         * Uses a custom authorization observer.
+         *
+         * @param observer authorization observer
+         * @return this builder
+         */
+        public Builder authorizationObserver(McpAuthorizationObserver observer) {
+            this.authorizationObserver = Objects.requireNonNull(observer, "observer must not be null");
+            return this;
+        }
+
+        /**
+         * Uses a custom protection-rejection observer.
+         *
+         * @param observer protection-rejection observer
+         * @return this builder
+         */
+        public Builder protectionRejectionObserver(McpProtectionRejectionObserver observer) {
+            this.rejectionObserver = Objects.requireNonNull(observer, "observer must not be null");
+            return this;
+        }
+
+        /**
+         * Uses a custom fallback correlation-id resolver.
+         *
+         * @param resolver correlation-id resolver
+         * @return this builder
+         */
+        public Builder correlationIdResolver(McpGatewayCorrelationIdResolver resolver) {
+            this.correlationIdResolver = Objects.requireNonNull(resolver, "resolver must not be null");
+            return this;
+        }
+
+        /**
+         * Uses a custom invalid-request observer.
+         *
+         * @param observer invalid-request observer
+         * @return this builder
+         */
+        public Builder invalidRequestObserver(McpInvalidRequestObserver observer) {
+            this.invalidRequestObserver = Objects.requireNonNull(observer, "observer must not be null");
+            return this;
+        }
+
+        /**
+         * Builds a filter with the configured collaborators.
+         *
+         * @return configured WebFlux governance filter
+         * @throws IllegalStateException when neither authorization nor protection is configured
+         */
+        public McpGatewayWebFluxGovernanceFilter build() {
+            if (authorizationEvaluator == null && protectionEvaluator == null) {
+                throw new IllegalStateException("authorization or protection must be configured");
+            }
+            return new McpGatewayWebFluxGovernanceFilter(
+                    jsonMapper,
+                    properties,
+                    authorizationEvaluator,
+                    protectionEvaluator,
+                    contextResolver,
+                    grantedScopesExtractor,
+                    authorizationObserver,
+                    rejectionObserver,
+                    correlationIdResolver,
+                    invalidRequestObserver
+            );
+        }
+    }
 
     /**
      * Creates a filter with default scope extraction and no-op observations.

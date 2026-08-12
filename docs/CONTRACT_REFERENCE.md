@@ -383,6 +383,51 @@ The adapter parses MCP JSON-RPC messages from a WebFlux exchange and applies
 core decisions before request messages reach your MCP runtime. It is not Spring
 Boot auto-configuration.
 
+### Filter Builder
+
+`McpGatewayWebFluxGovernanceFilter.builder(JsonMapper,
+McpGatewayWebFluxContextResolver)` provides named configuration over the same
+filter behavior as the public constructors.
+
+The mapper and context resolver are required, and all builder method arguments
+must be non-null. Unspecified options use these defaults:
+
+- `McpGatewayWebFluxProperties.defaults()`;
+- `McpGrantedScopesExtractor.springSecurityScopes()`;
+- `McpAuthorizationObserver.noop()`;
+- `McpProtectionRejectionObserver.noop()`;
+- `McpGatewayCorrelationIdResolver.defaultResolver()`; and
+- `McpInvalidRequestObserver.noop()`.
+
+Authorization and protection do not have implicit evaluators. At least one must
+be supplied through `authorizationEvaluator(...)`, `authorization(...)`,
+`protectionEvaluator(...)`, or `protection(...)`; otherwise `build()` throws
+`IllegalStateException`. This catches accidental omission of both governance
+concerns. A configured dynamic mode or enablement supplier can still disable
+governance at request time, in which case the filter retains its documented
+inactive pass-through behavior.
+
+Optional builder methods are:
+
+| Method | Purpose |
+| --- | --- |
+| `properties(McpGatewayWebFluxProperties)` | Replaces the default endpoint, body limit, and filter order. |
+| `authorizationEvaluator(McpGatewayAuthorizationEvaluator)` | Supplies a complete authorization evaluator for consumers that need its full policy contract. |
+| `authorization(Supplier<McpGatewayAuthorizationMode>, BiFunction<Collection<String>, GatewayToolExecutionContext, ToolAuthorizationDecision>)` | Adapts a dynamic mode supplier and an authorization callback without requiring an anonymous evaluator class. |
+| `protectionEvaluator(McpGatewayAbuseProtectionEvaluator)` | Supplies a complete abuse-protection evaluator. |
+| `protection(BooleanSupplier, Function<GatewayToolExecutionContext, McpAbuseProtectionDecision>)` | Adapts a dynamic enabled supplier and protection callback without requiring an anonymous evaluator class. |
+| `grantedScopesExtractor(McpGrantedScopesExtractor)` | Replaces Spring Security `SCOPE_` authority extraction. |
+| `authorizationObserver(McpAuthorizationObserver)` | Receives authorization observations. |
+| `protectionRejectionObserver(McpProtectionRejectionObserver)` | Receives rejected protection decisions. |
+| `correlationIdResolver(McpGatewayCorrelationIdResolver)` | Replaces default correlation-header resolution. |
+| `invalidRequestObserver(McpInvalidRequestObserver)` | Receives invalid-request rejections without request payloads. |
+
+Choose either the complete evaluator method or the paired callback method for
+each governance concern. The supplier forms are evaluated at request time, so
+an application can retain runtime-controlled authorization modes and protection
+flags. The builder does not register the result with Spring; applications still
+expose the built filter through their own `@Bean` method or equivalent wiring.
+
 Only application-relative `POST` requests matching the configured endpoint are
 governed. Context paths are excluded before comparison, and matrix parameters do
 not change a segment's route value, so `/app/mcp;v=1` can match a configured

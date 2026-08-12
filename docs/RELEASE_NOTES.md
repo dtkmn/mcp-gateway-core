@@ -1,5 +1,16 @@
 # Release Notes
 
+## Unreleased 0.9.0 Public Preview
+
+### Spring WebFlux Adapter Configuration
+
+- Add a fluent `McpGatewayWebFluxGovernanceFilter` builder with required
+  `JsonMapper` and `McpGatewayWebFluxContextResolver` inputs, named optional
+  collaborators, and paired callbacks for dynamic authorization and protection.
+- Require at least one authorization or protection evaluator before `build()`
+  succeeds. Existing defaults and public constructors remain unchanged.
+- Keep Spring bean registration and policy decisions in the consuming runtime.
+
 ## 0.8.0 Public Preview
 
 `0.8.0` is the latest published version of both public-preview artifacts and
