@@ -39,6 +39,23 @@ public final class TokenBucketRateLimiter {
     }
 
     /**
+     * Attempts to consume one token and returns the decision with its retry delay
+     * from the same bucket state.
+     * <p>
+     * A disabled policy returns an allowed attempt with no retry delay. When a
+     * new bucket cannot be admitted because the tracked-key limit is full, the
+     * attempt fails closed with a one-second fallback delay.
+     *
+     * @param key bucket key
+     * @param policy rate-limit policy
+     * @return atomic consumption attempt
+     */
+    public Attempt attempt(String key, Policy policy) {
+        long retryAfterSeconds = attemptRetryAfterSeconds(key, policy);
+        return new Attempt(retryAfterSeconds == 0L, retryAfterSeconds);
+    }
+
+    /**
      * Attempts to consume one token from the bucket for the supplied key.
      *
      * @param key bucket key
@@ -46,9 +63,13 @@ public final class TokenBucketRateLimiter {
      * @return {@code true} when a token was consumed or rate limiting is disabled
      */
     public boolean tryConsume(String key, Policy policy) {
+        return attemptRetryAfterSeconds(key, policy) == 0L;
+    }
+
+    private long attemptRetryAfterSeconds(String key, Policy policy) {
         Objects.requireNonNull(policy, "policy must not be null");
         if (!policy.enabled()) {
-            return true;
+            return 0L;
         }
 
         String normalizedKey = normalizeKey(key);
@@ -57,7 +78,7 @@ public final class TokenBucketRateLimiter {
             if (state == null) {
                 state = createBucketIfCapacityAllows(normalizedKey, policy);
                 if (state == null) {
-                    return false;
+                    return 1L;
                 }
             }
 
@@ -69,9 +90,9 @@ public final class TokenBucketRateLimiter {
                 state.lastAccessMillis = millisClock.getAsLong();
                 if (state.tokens >= 1.0d) {
                     state.tokens -= 1.0d;
-                    return true;
+                    return 0L;
                 }
-                return false;
+                return calculateRetryAfterSeconds(state, policy);
             }
         }
     }
@@ -96,14 +117,7 @@ public final class TokenBucketRateLimiter {
 
         synchronized (state) {
             applyPolicyAndRefill(state, policy);
-            if (state.tokens >= 1.0d) {
-                return 1L;
-            }
-            double missingTokens = 1.0d - state.tokens;
-            double secondsUntilToken = missingTokens
-                    * policy.refillPeriodSeconds()
-                    / policy.refillTokens();
-            return Math.max(1L, (long) Math.ceil(secondsUntilToken));
+            return calculateRetryAfterSeconds(state, policy);
         }
     }
 
@@ -129,6 +143,17 @@ public final class TokenBucketRateLimiter {
         }
 
         refill(state, policy.capacity(), policy.refillTokens(), policy.refillPeriodSeconds(), nowNanos);
+    }
+
+    private long calculateRetryAfterSeconds(BucketState state, Policy policy) {
+        if (state.tokens >= 1.0d) {
+            return 1L;
+        }
+        double missingTokens = 1.0d - state.tokens;
+        double secondsUntilToken = missingTokens
+                * policy.refillPeriodSeconds()
+                / policy.refillTokens();
+        return Math.max(1L, (long) Math.ceil(secondsUntilToken));
     }
 
     private void refill(BucketState state,
@@ -215,6 +240,21 @@ public final class TokenBucketRateLimiter {
             return Long.MIN_VALUE;
         }
         return value - nonNegativeAmount;
+    }
+
+    /**
+     * Result of one token-consumption attempt.
+     *
+     * @param allowed whether a token was consumed or rate limiting was disabled
+     * @param retryAfterSeconds retry delay for a rejected attempt, otherwise zero
+     */
+    public record Attempt(boolean allowed, long retryAfterSeconds) {
+        /**
+         * Creates an internally consistent attempt result.
+         */
+        public Attempt {
+            retryAfterSeconds = allowed ? 0L : Math.max(1L, retryAfterSeconds);
+        }
     }
 
     /**

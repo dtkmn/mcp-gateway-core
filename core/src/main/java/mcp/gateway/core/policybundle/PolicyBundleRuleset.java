@@ -23,7 +23,7 @@ public record PolicyBundleRuleset(PolicyBundleDecision defaultDecision,
      * Creates a validated ordered ruleset.
      */
     public PolicyBundleRuleset {
-        defaultDecision = Objects.requireNonNull(defaultDecision, "defaultDecision must not be null");
+        Objects.requireNonNull(defaultDecision, "defaultDecision must not be null");
         rules = List.copyOf(rules == null ? List.of() : rules);
         if (rules.isEmpty()) {
             throw new IllegalArgumentException("policy bundle rules must not be empty");

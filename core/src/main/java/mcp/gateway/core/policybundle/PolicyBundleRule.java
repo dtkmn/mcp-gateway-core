@@ -25,8 +25,8 @@ public record PolicyBundleRule(String id,
             throw new IllegalArgumentException("rule id must not be blank");
         }
         id = id.trim();
-        decision = Objects.requireNonNull(decision, "decision must not be null");
+        Objects.requireNonNull(decision, "decision must not be null");
         reason = reason == null ? "" : reason.trim();
-        match = Objects.requireNonNull(match, "match must not be null");
+        Objects.requireNonNull(match, "match must not be null");
     }
 }
