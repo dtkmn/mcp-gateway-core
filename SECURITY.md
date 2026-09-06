@@ -71,5 +71,10 @@ manual dispatches; these runs fail if `SNYK_TOKEN` is missing. Dependabot runs
 use the separately configured Dependabot secrets.
 
 Snyk results are uploaded as SARIF for GitHub Code Scanning and as a workflow
-artifact. Snyk project import, dashboard ownership, alert triage, ignores, and
+artifact. The `Snyk vulnerabilities` commit status fails for any dependency
+findings. A completed scan and successful upload leave the workflow green;
+scanner, configuration, and upload failures leave it red. This keeps GitHub's
+tool-health status separate from the vulnerability result.
+
+Snyk project import, dashboard ownership, alert triage, ignores, and
 monitor snapshots remain manual repository or organization responsibilities.

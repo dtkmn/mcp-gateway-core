@@ -52,8 +52,9 @@ selected release version.
 The separate Snyk workflow is an external dependency scan for the Gradle
 project graph. Fork pull requests skip this secret-dependent job; CI and CodeQL
 still run. Snyk is enforced on enabled runs: missing `SNYK_TOKEN`
-fails the job, Snyk findings fail the job after SARIF upload, and results
-remain reviewable through GitHub Code Scanning or the SARIF artifact. `SNYK_ORG`
+fails the workflow, and findings fail the separate `Snyk vulnerabilities`
+commit status after SARIF upload. Scanner and upload errors fail the workflow.
+Results remain reviewable through GitHub Code Scanning or the SARIF artifact. `SNYK_ORG`
 is optional, may be supplied as a secret or variable, and only pins the scan to
 a specific Snyk organization. The workflow does not upload artifacts to Central,
 publish releases, create Snyk monitor snapshots, or replace the build and

@@ -280,9 +280,10 @@ The repository uses GitHub-native security automation first:
 - Snyk Open Source scanning for the Gradle project graph in
   `.github/workflows/snyk.yml`. The workflow requires a real `SNYK_TOKEN`
   secret, accepts optional `SNYK_ORG` as a secret or variable for explicit
-  organization routing, uploads SARIF for review, and enforces the Snyk exit
-  code. Fork pull requests skip this secret-dependent job; enabled runs fail
-  visibly when the token is absent.
+  organization routing, and uploads SARIF for review. A separate
+  `Snyk vulnerabilities` commit status fails when findings exist; the workflow fails
+  on scanner or upload errors. Fork pull requests skip this secret-dependent
+  job; enabled runs fail visibly when the token is absent.
 - The Gradle development gate for JAR class ownership, core `jdeps`, and Java
   17 compatibility checks for adapter runtime dependencies, followed by clean
   Java 17 consumer smoke tests against the staged publications.
