@@ -49,9 +49,11 @@ The repository uses GitHub-native checks first:
 - CodeQL Java analysis with an explicit Gradle test build;
 - the snapshot-safe Gradle development gate for forbidden coupling, closed-world
   JAR contents, `jdeps`, bytecode, and staged-publication checks;
-- the release-only public-preview gate for Central bundle shape, checksums, and
-  signed dry-run payload validation. Its job is bound to the protected
-  `central-validation-upload` environment. Release refs are restricted to
+- the release-only public-preview gate for unsigned Central bundle shape and
+  checksum validation;
+- the Central validation upload workflow for artifact signatures, the configured
+  signer fingerprint, and checksums from the final combined bundle. Its job is
+  bound to the protected `central-validation-upload` environment. Release refs are restricted to
   `main` only. At least one required reviewer must be distinct from the workflow
   dispatcher. Self-review is prevented. Administrator bypass is disabled.
   Release credentials exist only as environment secrets; Central Portal and GPG

@@ -57,9 +57,12 @@ That gate proves:
 - Java sources have no forbidden downstream package references (ZAP packages in
   both modules, and Spring packages in core);
 - Maven publications contain the POM, binary, sources, and Javadoc artifacts;
-- the Central Portal ZIP is closed-world;
-- checksums match the ZIP payload;
-- the signed dry-run ZIP verifies detached signatures from extracted payloads.
+- the unsigned Central Portal ZIP is closed-world;
+- checksums match the ZIP payload.
+
+This Gradle gate requires no signing credentials. The Central validation upload
+workflow described below signs release artifacts and verifies their signatures
+against the configured signer after extracting the final combined bundle.
 
 CI and release preparation must also run `bin/java17-consumer-smoke.sh` after
 the public-preview proof. That check switches to a Java 17 runtime. The

@@ -36,37 +36,11 @@ def springWebFluxPublicationRoot = {
 def springWebFluxPublicationDirectory = {
     new File(springWebFluxPublicationRoot(), publicationPath)
 }
-def springWebFluxSignedDryRunPublicationRoot = {
-    layout.buildDirectory
-            .dir('signed-central-portal-dry-run/publication')
-            .get()
-            .asFile
-}
-def springWebFluxSignedDryRunPublicationDirectory = {
-    new File(springWebFluxSignedDryRunPublicationRoot(), publicationPath)
-}
-def springWebFluxSignedDryRunBundle = {
-    layout.buildDirectory
-            .file("signed-central-portal-dry-run/${springWebFluxCentralBundleName}")
-            .get()
-            .asFile
-}
 def springWebFluxBundleExtractionDirectory = {
     layout.buildDirectory
             .dir('central-portal-bundle-verification')
             .get()
             .asFile
-}
-def springWebFluxShortTempDirectory = {
-    File tmp = new File('/tmp')
-    if (!tmp.isDirectory() || !tmp.canWrite()) {
-        tmp = new File(System.getProperty('java.io.tmpdir'))
-    }
-    tmp
-}
-def springWebFluxSignedDryRunGpgHome = {
-    String projectHash = Integer.toUnsignedString(rootProject.projectDir.absolutePath.hashCode(), 16)
-    new File(springWebFluxShortTempDirectory(), "mgw-gpg-${projectHash}")
 }
 def springWebFluxPublishedFileIn = { File publicationDir, String suffix ->
     new File(publicationDir, "${springWebFluxArtifactId}-${springWebFluxPublicationVersion}${suffix}")
@@ -307,82 +281,7 @@ def verifyChecksumFile = { File artifact, String algorithm, String extension ->
     }
 }
 
-def verifyDetachedSignature = { File artifact, File gpgHome = null ->
-    File signature = new File(artifact.parentFile, "${artifact.name}.asc")
-    if (!signature.isFile()) {
-        throw new GradleException("Central Portal release mode requires a detached signature: ${signature.name}")
-    }
-
-    List<String> command = ['gpg', '--batch']
-    if (gpgHome != null) {
-        command.addAll(['--homedir', gpgHome.absolutePath])
-    }
-    command.addAll(['--verify', signature.absolutePath, artifact.absolutePath])
-    Process process
-    try {
-        process = new ProcessBuilder(command.collect { it.toString() }).redirectErrorStream(true).start()
-    } catch (IOException e) {
-        throw new GradleException('Central Portal release mode requires gpg on PATH to verify detached signatures.', e)
-    }
-    String output = process.inputStream.text
-    int exitCode = process.waitFor()
-    if (exitCode != 0) {
-        throw new GradleException("Invalid detached signature for Central bundle artifact ${artifact.name}: ${output.trim()}")
-    }
-}
-
-def runGpgCommand = { File gpgHome, List<String> args, String failureMessage ->
-    List<String> command = ['gpg', '--batch', '--homedir', gpgHome.absolutePath] + args
-    Process process
-    try {
-        process = new ProcessBuilder(command.collect { it.toString() }).redirectErrorStream(true).start()
-    } catch (IOException e) {
-        throw new GradleException("${failureMessage}: gpg is not available on PATH.", e)
-    }
-    String output = process.inputStream.text
-    int exitCode = process.waitFor()
-    if (exitCode != 0) {
-        throw new GradleException("${failureMessage}: ${output.trim()}")
-    }
-}
-
-def secureGpgHome = { File gpgHome ->
-    gpgHome.mkdirs()
-    try {
-        java.nio.file.Files.setPosixFilePermissions(
-                gpgHome.toPath(),
-                java.util.EnumSet.of(java.nio.file.attribute.PosixFilePermission.OWNER_READ,
-                        java.nio.file.attribute.PosixFilePermission.OWNER_WRITE,
-                        java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE)
-        )
-    } catch (UnsupportedOperationException ignored) {
-        // Non-POSIX filesystems are allowed in local development; gpg rejects truly unsafe homes.
-    }
-}
-
-def generateDryRunSigningKey = { File gpgHome ->
-    secureGpgHome(gpgHome)
-    File keyBatch = new File(gpgHome.parentFile, 'mcp-gateway-spring-webflux-dry-run-signing-key.batch')
-    keyBatch.text = '''Key-Type: RSA
-Key-Length: 3072
-Name-Real: MCP Gateway Spring WebFlux Dry Run
-Name-Email: dry-run@example.invalid
-Expire-Date: 0
-%no-protection
-%commit
-'''
-    runGpgCommand(gpgHome, ['--generate-key', keyBatch.absolutePath], 'Failed to generate dry-run signing key')
-}
-
-def signDryRunArtifact = { File gpgHome, File artifact ->
-    runGpgCommand(
-            gpgHome,
-            ['--armor', '--detach-sign', '--output', "${artifact.absolutePath}.asc", artifact.absolutePath],
-            "Failed to sign dry-run artifact ${artifact.name}"
-    )
-}
-
-def verifyCentralPortalBundleShape = { File publicationDir, File bundle, boolean requireSignatures, File verificationGpgHome = null ->
+def verifyCentralPortalBundleShape = { File publicationDir, File bundle ->
     if (springWebFluxPublicationVersion.endsWith('-SNAPSHOT')) {
         throw new GradleException('Central Portal bundle proof requires a release version, not a SNAPSHOT version.')
     }
@@ -398,9 +297,6 @@ def verifyCentralPortalBundleShape = { File publicationDir, File bundle, boolean
         verifyChecksumFile(artifact, 'SHA-1', 'sha1')
         verifyChecksumFile(artifact, 'SHA-256', 'sha256')
         verifyChecksumFile(artifact, 'SHA-512', 'sha512')
-        if (requireSignatures) {
-            verifyDetachedSignature(artifact, verificationGpgHome)
-        }
     }
 
     if (!bundle.isFile()) {
@@ -413,9 +309,6 @@ def verifyCentralPortalBundleShape = { File publicationDir, File bundle, boolean
             allowedEntries.add(relativeEntry)
             checksumExtensions.each { checksumExtension ->
                 allowedEntries.add("${relativeEntry}.${checksumExtension}".toString())
-            }
-            if (requireSignatures) {
-                allowedEntries.add("${relativeEntry}.asc".toString())
             }
         }
 
@@ -439,14 +332,11 @@ def verifyCentralPortalBundleShape = { File publicationDir, File bundle, boolean
                     throw new GradleException("Central Portal bundle ZIP is missing ${checksumEntry}")
                 }
             }
-            if (requireSignatures && !entries.contains("${relativeEntry}.asc".toString())) {
-                throw new GradleException("Central Portal bundle ZIP is missing ${relativeEntry}.asc")
-            }
         }
     }
 }
 
-def verifyCentralPortalBundlePayload = { File bundle, boolean requireSignatures, File verificationGpgHome = null ->
+def verifyCentralPortalBundlePayload = { File bundle ->
     File extractionRoot = springWebFluxBundleExtractionDirectory()
     delete extractionRoot
     copy {
@@ -454,7 +344,7 @@ def verifyCentralPortalBundlePayload = { File bundle, boolean requireSignatures,
         into extractionRoot
     }
     File extractedPublicationDir = new File(extractionRoot, publicationPath)
-    verifyCentralPortalBundleShape(extractedPublicationDir, bundle, requireSignatures, verificationGpgHome)
+    verifyCentralPortalBundleShape(extractedPublicationDir, bundle)
 }
 
 publishing {
@@ -572,63 +462,10 @@ tasks.register('verifyGatewaySpringWebFluxCentralPortalBundle') {
 
     doLast {
         File bundle = tasks.named('stageGatewaySpringWebFluxCentralPortalBundle').get().archiveFile.get().asFile
-        verifyCentralPortalBundleShape(springWebFluxPublicationDirectory(), bundle, false)
-        verifyCentralPortalBundlePayload(bundle, false)
+        verifyCentralPortalBundleShape(springWebFluxPublicationDirectory(), bundle)
+        verifyCentralPortalBundlePayload(bundle)
         println 'Spring WebFlux Central Portal bundle shape verified without .asc signatures.'
     }
-}
-
-tasks.register('prepareGatewaySpringWebFluxSignedCentralPortalDryRunPublication') {
-    group = 'publishing'
-    description = 'Creates a signed dry-run publication directory for the Spring WebFlux adapter using an ephemeral local GPG key.'
-    dependsOn tasks.named('publishGatewaySpringWebFluxPublicationToGatewayCoreStagingRepository')
-
-    doLast {
-        File publicationRoot = springWebFluxSignedDryRunPublicationRoot()
-        delete publicationRoot
-        copy {
-            from(springWebFluxPublicationDirectory()) {
-                into publicationPath
-            }
-            into publicationRoot
-        }
-        File gpgHome = springWebFluxSignedDryRunGpgHome()
-        delete gpgHome
-        generateDryRunSigningKey(gpgHome)
-        springWebFluxRequiredArtifacts(springWebFluxSignedDryRunPublicationDirectory()).each { artifact ->
-            signDryRunArtifact(gpgHome, artifact)
-        }
-    }
-}
-
-tasks.register('stageGatewaySpringWebFluxSignedCentralPortalDryRunBundle', Zip) {
-    group = 'publishing'
-    description = 'Stages a signed Central Portal dry-run upload bundle for mcp-gateway-spring-webflux.'
-    dependsOn tasks.named('prepareGatewaySpringWebFluxSignedCentralPortalDryRunPublication')
-    from springWebFluxSignedDryRunPublicationRoot()
-    archiveFileName = springWebFluxCentralBundleName
-    destinationDirectory = layout.buildDirectory.dir('signed-central-portal-dry-run')
-}
-
-tasks.register('verifyGatewaySpringWebFluxSignedCentralPortalDryRun') {
-    group = 'verification'
-    description = 'Verifies signatures, checksums, and ZIP payload for the Spring WebFlux adapter signed Central Portal dry run.'
-    dependsOn tasks.named('stageGatewaySpringWebFluxSignedCentralPortalDryRunBundle')
-
-    doLast {
-        File bundle = springWebFluxSignedDryRunBundle()
-        File gpgHome = springWebFluxSignedDryRunGpgHome()
-        verifyCentralPortalBundleShape(springWebFluxSignedDryRunPublicationDirectory(), bundle, true, gpgHome)
-        verifyCentralPortalBundlePayload(bundle, true, gpgHome)
-    }
-}
-
-tasks.register('cleanGatewaySpringWebFluxSignedCentralPortalDryRunGpgHome', Delete) {
-    delete springWebFluxSignedDryRunGpgHome()
-}
-
-tasks.named('verifyGatewaySpringWebFluxSignedCentralPortalDryRun') {
-    finalizedBy tasks.named('cleanGatewaySpringWebFluxSignedCentralPortalDryRunGpgHome')
 }
 
 tasks.register('verifyGatewaySpringWebFluxPublicPreviewPublication') {
@@ -641,7 +478,6 @@ tasks.register('verifyGatewaySpringWebFluxPublicPreviewPublication') {
     dependsOn tasks.named('verifySpringWebFluxRuntimeClasspathJavaReleaseBytecode')
     dependsOn tasks.named('verifyGatewaySpringWebFluxPublication')
     dependsOn tasks.named('verifyGatewaySpringWebFluxCentralPortalBundle')
-    dependsOn tasks.named('verifyGatewaySpringWebFluxSignedCentralPortalDryRun')
 }
 
 tasks.named('test') {

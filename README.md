@@ -172,11 +172,16 @@ enforcement. It also stages both Maven artifacts for the Java 17
 downstream-consumer smoke test.
 
 Release preparation sets an unpublished, non-snapshot version and additionally
-runs the release-only Central bundle and signing proof:
+runs the release-only unsigned Central bundle verification:
 
 ```bash
 ./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
 ```
+
+This gate requires no signing key. The
+[Central validation upload workflow](docs/CENTRAL_VALIDATION_UPLOAD.md) signs
+release artifacts with the configured key and verifies their signatures and
+checksums from the final combined bundle before any upload.
 
 CI and release preparation also run the Java 17 consumer smoke test against the
 artifacts staged by the applicable gate:
@@ -265,8 +270,10 @@ The repository uses GitHub-native security automation first:
   organization routing, fails visibly when the token is absent, uploads SARIF
   for review, and then enforces the Snyk exit code.
 - The Gradle public-preview verification gate for forbidden package references,
-  closed-world JAR contents, `jdeps`, Central bundle shape, checksums, and
-  signed dry-run payload validation.
+  closed-world JAR contents, `jdeps`, and unsigned Central bundle shape and
+  checksum validation.
+- The Central upload workflow verifies artifact signatures, the configured
+  signer fingerprint, and checksums from the final combined bundle before upload.
 - The Central upload job is bound to a protected environment. Release refs are
   restricted to `main` only; at least one reviewer distinct from the run
   initiator is required; self-review is prevented; administrator bypass is
