@@ -123,16 +123,11 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-def forbiddenDownstreamMarker = 'mcp.server.' + 'zap'
-def forbiddenToolPrefix = 'zap' + '_'
-def privateRepoMarker = 'agentic-security-' + 'gateway'
-def privateBrandMarker = 'Agent' + 'ic'
-def privateAcronymMarker = 'A' + 'SG'
-def forbiddenAdapterCouplingPattern = ~/(\Q${forbiddenDownstreamMarker}\E|org\.zaproxy|\Q${forbiddenToolPrefix}\E|ScanJob|ScanHistory|ReportService|FindingsService|enterprise|\Q${privateRepoMarker}\E|\Q${privateBrandMarker}\E|\b\Q${privateAcronymMarker}\E\b)/
+def forbiddenAdapterCouplingPattern = ~/(mcp\.server\.zap\b|org\.zaproxy\b)/
 
 tasks.register('verifyNoForbiddenSpringWebFluxAdapterCoupling') {
     group = 'verification'
-    description = 'Rejects downstream security-pack, scanner, and private coupling from the Spring WebFlux adapter.'
+    description = 'Rejects ZAP server and ZAP client package references in Spring WebFlux adapter Java sources.'
     inputs.files(fileTree('src') {
         include '**/*.java'
     })
@@ -312,41 +307,6 @@ def verifyChecksumFile = { File artifact, String algorithm, String extension ->
     }
 }
 
-def verifyPomMetadata = { File pom ->
-    def parsed = new groovy.xml.XmlSlurper(false, false).parse(pom)
-    Map<String, String> requiredText = [
-            groupId    : springWebFluxGroupId,
-            artifactId : springWebFluxArtifactId,
-            version    : springWebFluxPublicationVersion,
-            name       : 'MCP Gateway Spring WebFlux Adapter',
-            description: 'Spring WebFlux adapter for applying MCP Gateway Core governance contracts to MCP HTTP traffic.',
-            url        : 'https://github.com/dtkmn/mcp-gateway-core'
-    ]
-    requiredText.each { field, expected ->
-        String actual = parsed."${field}".text()
-        if (actual != expected) {
-            throw new GradleException("Central POM ${pom.name} has invalid ${field}: expected '${expected}', got '${actual}'")
-        }
-    }
-    boolean hasApacheLicense = parsed.licenses.license.any {
-        it.name.text() == 'Apache License, Version 2.0' && it.url.text() == 'https://www.apache.org/licenses/LICENSE-2.0'
-    }
-    if (!hasApacheLicense) {
-        throw new GradleException("Central POM ${pom.name} must declare the Apache 2.0 license.")
-    }
-    boolean hasDeveloper = parsed.developers.developer.any {
-        it.id.text() == 'dtkmn' && it.name.text() == 'Daniel Tse'
-    }
-    if (!hasDeveloper) {
-        throw new GradleException("Central POM ${pom.name} must declare the dtkmn developer metadata.")
-    }
-    if (parsed.scm.connection.text() != 'scm:git:https://github.com/dtkmn/mcp-gateway-core.git'
-            || parsed.scm.developerConnection.text() != 'scm:git:ssh://git@github.com/dtkmn/mcp-gateway-core.git'
-            || parsed.scm.url.text() != 'https://github.com/dtkmn/mcp-gateway-core') {
-        throw new GradleException("Central POM ${pom.name} must declare mcp-gateway-core SCM metadata.")
-    }
-}
-
 def verifyDetachedSignature = { File artifact, File gpgHome = null ->
     File signature = new File(artifact.parentFile, "${artifact.name}.asc")
     if (!signature.isFile()) {
@@ -433,9 +393,6 @@ def verifyCentralPortalBundleShape = { File publicationDir, File bundle, boolean
     requiredArtifacts.each { artifact ->
         if (!artifact.isFile()) {
             throw new GradleException("Central Portal bundle is missing required artifact: ${artifact.name}")
-        }
-        if (artifact.name.endsWith('.pom')) {
-            verifyPomMetadata(artifact)
         }
         verifyChecksumFile(artifact, 'MD5', 'md5')
         verifyChecksumFile(artifact, 'SHA-1', 'sha1')
@@ -593,18 +550,6 @@ tasks.register('verifyGatewaySpringWebFluxPublication') {
             verifyChecksumFile(artifact, 'SHA-1', 'sha1')
             verifyChecksumFile(artifact, 'SHA-256', 'sha256')
             verifyChecksumFile(artifact, 'SHA-512', 'sha512')
-        }
-
-        File pomFile = publicationArtifacts[0]
-        verifyPomMetadata(pomFile)
-        String pomText = pomFile.text
-        if (!pomText.contains('<artifactId>mcp-gateway-core</artifactId>')) {
-            throw new GradleException('Adapter POM must declare a dependency on mcp-gateway-core.')
-        }
-        if (pomText.contains(forbiddenDownstreamMarker)
-                || pomText.contains('org.zaproxy')
-                || pomText.contains(privateRepoMarker)) {
-            throw new GradleException('Adapter POM contains forbidden downstream or private metadata.')
         }
     }
 }

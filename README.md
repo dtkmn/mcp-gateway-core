@@ -166,7 +166,7 @@ published artifact.
 ```
 
 This snapshot-safe development gate runs the core and adapter builds,
-forbidden-coupling checks, closed-world JAR checks, Java 17 bytecode checks,
+forbidden-package checks, closed-world JAR checks, Java 17 bytecode checks,
 adapter runtime-classpath bytecode checks, core `jdeps`, and Gradle deprecation
 enforcement. It also stages both Maven artifacts for the Java 17
 downstream-consumer smoke test.
@@ -264,7 +264,7 @@ The repository uses GitHub-native security automation first:
   secret, accepts optional `SNYK_ORG` as a secret or variable for explicit
   organization routing, fails visibly when the token is absent, uploads SARIF
   for review, and then enforces the Snyk exit code.
-- The Gradle public-preview verification gate for forbidden coupling,
+- The Gradle public-preview verification gate for forbidden package references,
   closed-world JAR contents, `jdeps`, Central bundle shape, checksums, and
   signed dry-run payload validation.
 - The Central upload job is bound to a protected environment. Release refs are

@@ -54,8 +54,9 @@ That gate proves:
 - `jdeps` reports only `java.base`;
 - adapter JARs contain only their adapter package classes and manifest metadata;
 - published classes and adapter runtime dependencies are Java 17-compatible;
-- forbidden downstream runtime and product-specific markers are absent;
-- Maven metadata has required POM fields;
+- Java sources have no forbidden downstream package references (ZAP packages in
+  both modules, and Spring packages in core);
+- Maven publications contain the POM, binary, sources, and Javadoc artifacts;
 - the Central Portal ZIP is closed-world;
 - checksums match the ZIP payload;
 - the signed dry-run ZIP verifies detached signatures from extracted payloads.

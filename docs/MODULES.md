@@ -80,4 +80,6 @@ Bad candidates:
 The `mcp-gateway-core` artifact must remain JDK-only. The release gate enforces
 this with `jdeps` and closed-world JAR checks. Framework dependencies belong in
 separate adapter artifacts such as `mcp-gateway-spring-webflux`, which must keep
-their own closed-world and forbidden-coupling checks.
+their own closed-world and package-reference checks. Core rejects references to
+ZAP and Spring packages; the Spring WebFlux adapter rejects ZAP package
+references. These checks do not ban generic terminology or descriptive metadata.
