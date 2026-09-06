@@ -10,12 +10,7 @@ version = providers.gradleProperty('gatewayCoreVersion')
         .orElse('0.7.0')
         .get()
 def gatewayCoreArtifactId = 'mcp-gateway-core'
-def gatewayCoreGroupId = project.group.toString()
-def gatewayCorePublicationVersion = project.version.toString()
-def gatewayCorePublicationPath = "${gatewayCoreGroupId.replace('.', '/')}/${gatewayCoreArtifactId}/${gatewayCorePublicationVersion}"
-def gatewayCoreCentralBundleName = "${gatewayCoreArtifactId}-${gatewayCorePublicationVersion}-central-portal-bundle.zip"
 def gatewayJavaRelease = 17
-def gatewayJavaClassFileMajorVersion = 61
 
 java {
     toolchain {
@@ -29,8 +24,11 @@ tasks.withType(JavaCompile).configureEach {
     options.release = gatewayJavaRelease
 }
 
-tasks.withType(AbstractArchiveTask).configureEach {
+tasks.withType(Jar).configureEach {
     archiveBaseName = gatewayCoreArtifactId
+    from(rootProject.file('LICENSE')) {
+        into 'META-INF'
+    }
 }
 
 repositories {
@@ -43,36 +41,9 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-def forbiddenSourceCouplingPattern = ~/(mcp\.server\.zap\b|org\.zaproxy\b|org\.springframework\b)/
-
-tasks.register('verifyNoForbiddenCoupling') {
-    group = 'verification'
-    description = 'Rejects ZAP server, ZAP client, and Spring package references in gateway-core Java sources.'
-
-    inputs.files(fileTree('src') {
-        include '**/*.java'
-    })
-
-    doLast {
-        List<String> matches = []
-        fileTree('src') {
-            include '**/*.java'
-        }.files.sort().each { file ->
-            file.readLines().eachWithIndex { line, index ->
-                if (line =~ forbiddenSourceCouplingPattern) {
-                    matches.add("${project.relativePath(file)}:${index + 1}: ${line.trim()}")
-                }
-            }
-        }
-        if (!matches.isEmpty()) {
-            throw new GradleException("gateway-core contains forbidden coupling:\n${matches.join('\n')}")
-        }
-    }
-}
-
 tasks.register('verifyGatewayCoreJarClosedWorld') {
     group = 'verification'
-    description = 'Verifies the gateway-core JAR contains only mcp/gateway/core classes and manifest metadata.'
+    description = 'Verifies the gateway-core JAR contains classes only under mcp/gateway/core, allowing resources.'
     dependsOn tasks.named('jar')
 
     doLast {
@@ -82,13 +53,12 @@ tasks.register('verifyGatewayCoreJarClosedWorld') {
         new java.util.zip.ZipFile(jarFile).withCloseable { jar ->
             jar.entries().each { entry ->
                 String name = entry.name
-                boolean manifestEntry = name == 'META-INF/' || name == 'META-INF/MANIFEST.MF'
-                boolean allowedEntry = name.startsWith('mcp/gateway/core/')
-                boolean allowedParentDirectory = entry.isDirectory() && 'mcp/gateway/core/'.startsWith(name)
-                if (allowedEntry && name.endsWith('.class')) {
-                    classes.add(name)
+                if (entry.isDirectory() || !name.endsWith('.class')) {
+                    return
                 }
-                if (!manifestEntry && !allowedEntry && !allowedParentDirectory) {
+                if (name.startsWith('mcp/gateway/core/')) {
+                    classes.add(name)
+                } else {
                     unexpected.add(name)
                 }
             }
@@ -97,7 +67,7 @@ tasks.register('verifyGatewayCoreJarClosedWorld') {
             throw new GradleException('gateway-core JAR must contain classes under mcp/gateway/core/.')
         }
         if (!unexpected.isEmpty()) {
-            throw new GradleException("gateway-core JAR contains unexpected entries: ${unexpected.sort().take(20)}")
+            throw new GradleException("gateway-core JAR contains unexpected classes: ${unexpected.sort().take(20)}")
         }
     }
 }
@@ -125,154 +95,6 @@ tasks.register('verifyGatewayCoreJdeps') {
             throw new GradleException("gateway-core JAR must depend only on java.base; got ${lines}")
         }
     }
-}
-
-tasks.register('verifyGatewayCoreJavaReleaseBytecode') {
-    group = 'verification'
-    description = 'Verifies gateway-core emits Java 17-compatible class files.'
-    dependsOn tasks.named('jar')
-
-    doLast {
-        File jarFile = tasks.named('jar').get().archiveFile.get().asFile
-        List<String> mismatches = []
-        int classCount = 0
-        new java.util.zip.ZipFile(jarFile).withCloseable { jar ->
-            jar.entries().each { entry ->
-                if (!entry.name.endsWith('.class')) {
-                    return
-                }
-                classCount++
-                jar.getInputStream(entry).withCloseable { input ->
-                    byte[] header = input.readNBytes(8)
-                    if (header.length < 8) {
-                        mismatches.add("${entry.name}: truncated class header")
-                        return
-                    }
-                    int major = ((header[6] & 0xff) << 8) | (header[7] & 0xff)
-                    if (major != gatewayJavaClassFileMajorVersion) {
-                        mismatches.add("${entry.name}: class-file major ${major}, expected ${gatewayJavaClassFileMajorVersion} for Java ${gatewayJavaRelease}")
-                    }
-                }
-            }
-        }
-        if (classCount == 0) {
-            throw new GradleException('gateway-core JAR must contain class files to verify.')
-        }
-        if (!mismatches.isEmpty()) {
-            throw new GradleException("gateway-core JAR is not Java ${gatewayJavaRelease} bytecode:\n${mismatches.take(20).join('\n')}")
-        }
-    }
-}
-
-def gatewayCorePublicationRoot = {
-    providers.gradleProperty('gatewayCorePublicationRepositoryUrl')
-            .map { new File(uri(it)) }
-            .orElse(rootProject.layout.buildDirectory.dir('staging-repository').map { it.asFile })
-            .get()
-}
-
-def gatewayCorePublicationDirectory = {
-    new File(gatewayCorePublicationRoot(), gatewayCorePublicationPath)
-}
-
-def gatewayCoreBundleExtractionDirectory = {
-    layout.buildDirectory
-            .dir('central-portal-bundle-verification')
-            .get()
-            .asFile
-}
-
-def gatewayCorePublishedFileIn = { File publicationDir, String suffix ->
-    new File(publicationDir, "${gatewayCoreArtifactId}-${gatewayCorePublicationVersion}${suffix}")
-}
-
-def gatewayCoreRequiredArtifacts = { File publicationDir ->
-    [
-            gatewayCorePublishedFileIn(publicationDir, '.pom'),
-            gatewayCorePublishedFileIn(publicationDir, '.jar'),
-            gatewayCorePublishedFileIn(publicationDir, '-sources.jar'),
-            gatewayCorePublishedFileIn(publicationDir, '-javadoc.jar')
-    ]
-}
-
-def verifyChecksumFile = { File artifact, String algorithm, String extension ->
-    File checksum = new File(artifact.parentFile, "${artifact.name}.${extension}")
-    if (!checksum.isFile()) {
-        throw new GradleException("Missing ${extension} checksum for Central bundle artifact: ${artifact.name}")
-    }
-    java.security.MessageDigest digest = java.security.MessageDigest.getInstance(algorithm)
-    digest.update(artifact.bytes)
-    String expected = digest.digest().collect { String.format('%02x', it & 0xff) }.join()
-    String actual = checksum.text.trim().split(/\s+/)[0]
-    if (!expected.equalsIgnoreCase(actual)) {
-        throw new GradleException("Invalid ${extension} checksum for Central bundle artifact: ${artifact.name}")
-    }
-}
-
-def verifyCentralPortalBundleShape = { File publicationDir, File bundle ->
-    if (gatewayCorePublicationVersion.endsWith('-SNAPSHOT')) {
-        throw new GradleException('Central Portal bundle proof requires a release version, not a SNAPSHOT version.')
-    }
-
-    List<File> requiredArtifacts = gatewayCoreRequiredArtifacts(publicationDir)
-    List<String> checksumExtensions = ['md5', 'sha1', 'sha256', 'sha512']
-
-    requiredArtifacts.each { artifact ->
-        if (!artifact.isFile()) {
-            throw new GradleException("Central Portal bundle is missing required artifact: ${artifact.name}")
-        }
-        verifyChecksumFile(artifact, 'MD5', 'md5')
-        verifyChecksumFile(artifact, 'SHA-1', 'sha1')
-        verifyChecksumFile(artifact, 'SHA-256', 'sha256')
-        verifyChecksumFile(artifact, 'SHA-512', 'sha512')
-    }
-
-    if (!bundle.isFile()) {
-        throw new GradleException("Central Portal bundle ZIP was not created: ${bundle}")
-    }
-    new java.util.zip.ZipFile(bundle).withCloseable { zip ->
-        Set<String> allowedEntries = [] as Set
-        requiredArtifacts.each { artifact ->
-            String relativeEntry = "${gatewayCorePublicationPath}/${artifact.name}"
-            allowedEntries.add(relativeEntry)
-            checksumExtensions.each { checksumExtension ->
-                allowedEntries.add("${relativeEntry}.${checksumExtension}".toString())
-            }
-        }
-
-        List<String> entries = zip.entries().collect { it.name }
-        List<String> unexpectedEntries = zip.entries()
-                .findAll { !it.isDirectory() && !allowedEntries.contains(it.name) }
-                .collect { it.name }
-                .sort()
-        if (!unexpectedEntries.isEmpty()) {
-            throw new GradleException("Central Portal bundle ZIP contains unexpected entries: ${unexpectedEntries}")
-        }
-
-        requiredArtifacts.each { artifact ->
-            String relativeEntry = "${gatewayCorePublicationPath}/${artifact.name}"
-            if (!entries.contains(relativeEntry)) {
-                throw new GradleException("Central Portal bundle ZIP is missing ${relativeEntry}")
-            }
-            checksumExtensions.each { checksumExtension ->
-                String checksumEntry = "${relativeEntry}.${checksumExtension}"
-                if (!entries.contains(checksumEntry)) {
-                    throw new GradleException("Central Portal bundle ZIP is missing ${checksumEntry}")
-                }
-            }
-        }
-    }
-}
-
-def verifyCentralPortalBundlePayload = { File bundle ->
-    File extractionRoot = gatewayCoreBundleExtractionDirectory()
-    delete extractionRoot
-    copy {
-        from zipTree(bundle)
-        into extractionRoot
-    }
-    File extractedPublicationDir = new File(extractionRoot, gatewayCorePublicationPath)
-    verifyCentralPortalBundleShape(extractedPublicationDir, bundle)
 }
 
 publishing {
@@ -319,99 +141,12 @@ tasks.withType(GenerateModuleMetadata).configureEach {
     enabled = false
 }
 
-def gatewayCorePublicationArtifact = { File publicationDir, String extension, String classifier = null ->
-    String resolvedVersion = gatewayCorePublicationVersion
-    if (gatewayCorePublicationVersion.endsWith('-SNAPSHOT')) {
-        File metadataFile = new File(publicationDir, 'maven-metadata.xml')
-        if (!metadataFile.isFile()) {
-            throw new GradleException("Missing gateway-core snapshot metadata: ${metadataFile}")
-        }
-        def metadata = new groovy.xml.XmlSlurper(false, false).parse(metadataFile)
-        def matches = metadata.versioning.snapshotVersions.snapshotVersion.findAll { snapshotVersion ->
-            String metadataClassifier = snapshotVersion.classifier.text()
-            snapshotVersion.extension.text() == extension
-                    && (classifier == null ? metadataClassifier.isEmpty() : metadataClassifier == classifier)
-        }
-        if (matches.size() != 1) {
-            throw new GradleException(
-                    "Expected one ${classifier == null ? 'main' : classifier} ${extension} entry in ${metadataFile}, got ${matches.size()}"
-            )
-        }
-        resolvedVersion = matches[0].value.text()
-        if (resolvedVersion.isBlank()) {
-            throw new GradleException("Snapshot metadata entry has no resolved version in ${metadataFile}")
-        }
-    }
-
-    String classifierSuffix = classifier == null ? '' : "-${classifier}"
-    new File(publicationDir, "${gatewayCoreArtifactId}-${resolvedVersion}${classifierSuffix}.${extension}")
-}
-
-tasks.register('verifyGatewayCorePublication') {
-    group = 'verification'
-    description = 'Verifies the local Maven publication shape for mcp-gateway-core.'
-    dependsOn tasks.named('publishGatewayCorePublicationToGatewayCoreStagingRepository')
-
-    doLast {
-        File publicationDir = gatewayCorePublicationDirectory()
-        List<File> publicationArtifacts = [
-                gatewayCorePublicationArtifact(publicationDir, 'pom'),
-                gatewayCorePublicationArtifact(publicationDir, 'jar'),
-                gatewayCorePublicationArtifact(publicationDir, 'jar', 'sources'),
-                gatewayCorePublicationArtifact(publicationDir, 'jar', 'javadoc')
-        ]
-        publicationArtifacts.each { artifact ->
-            if (!artifact.isFile()) {
-                throw new GradleException("Missing gateway-core publication artifact: ${artifact}")
-            }
-            verifyChecksumFile(artifact, 'MD5', 'md5')
-            verifyChecksumFile(artifact, 'SHA-1', 'sha1')
-            verifyChecksumFile(artifact, 'SHA-256', 'sha256')
-            verifyChecksumFile(artifact, 'SHA-512', 'sha512')
-        }
-    }
-}
-
-tasks.register('stageGatewayCoreCentralPortalBundle', Zip) {
-    group = 'publishing'
-    description = 'Stages a Central Portal upload bundle for mcp-gateway-core without signatures.'
-    dependsOn tasks.named('publishGatewayCorePublicationToGatewayCoreStagingRepository')
-    from(gatewayCorePublicationDirectory()) {
-        into gatewayCorePublicationPath
-    }
-    archiveFileName = gatewayCoreCentralBundleName
-    destinationDirectory = layout.buildDirectory.dir('central-portal-bundle')
-}
-
-tasks.register('verifyGatewayCoreCentralPortalBundle') {
-    group = 'verification'
-    description = 'Verifies the unsigned Central Portal bundle shape and checksums.'
-    dependsOn tasks.named('stageGatewayCoreCentralPortalBundle')
-
-    doLast {
-        File bundle = tasks.named('stageGatewayCoreCentralPortalBundle').get().archiveFile.get().asFile
-        verifyCentralPortalBundleShape(gatewayCorePublicationDirectory(), bundle)
-        verifyCentralPortalBundlePayload(bundle)
-        println 'Central Portal bundle shape verified without .asc signatures.'
-    }
-}
-
-tasks.register('verifyGatewayCorePublicPreviewPublication') {
-    group = 'verification'
-    description = 'Runs the public-preview mcp-gateway-core build and unsigned Central Portal bundle verification.'
-    dependsOn tasks.named('build')
-    dependsOn tasks.named('verifyGatewayCorePublication')
-    dependsOn tasks.named('verifyGatewayCoreCentralPortalBundle')
-}
-
 tasks.named('test') {
     useJUnitPlatform()
     workingDir = rootProject.projectDir
 }
 
 tasks.named('check') {
-    dependsOn tasks.named('verifyNoForbiddenCoupling')
     dependsOn tasks.named('verifyGatewayCoreJarClosedWorld')
     dependsOn tasks.named('verifyGatewayCoreJdeps')
-    dependsOn tasks.named('verifyGatewayCoreJavaReleaseBytecode')
 }

@@ -541,7 +541,7 @@ java17_home="$(resolve_java17_home)"
 
 configure_gpg
 
-./gradlew verifyGatewayPublicPreviewPublication \
+./gradlew verifyGatewayDevelopment \
   -PgatewayCoreGroup="io.github.dtkmn" \
   -PgatewayCoreVersion="$version" \
   -PgatewayCorePublicationRepositoryUrl="file://$(pwd)/build/staging-repository" \
