@@ -12,12 +12,26 @@ on:
 permissions:
   contents: read
   security-events: write
+  statuses: write
 
 jobs:
   gradle-open-source:
     name: Gradle Open Source scan
+    # Fork pull requests cannot access the Snyk token; CI and CodeQL still run.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
+      - name: Mark Snyk vulnerability check pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=pending \
+            -f context="Snyk vulnerabilities" \
+            -f description="Dependency scan is running" \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --silent
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Validate Gradle Wrapper
@@ -53,18 +67,24 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
           SNYK_ORG: ${{ secrets.SNYK_ORG || vars.SNYK_ORG }}
         run: |
-          set +e
+          set -euo pipefail
           snyk_args=(--all-sub-projects --policy-path=.snyk --sarif-file-output=snyk-open-source.sarif)
           if [ -n "${SNYK_ORG}" ]; then
             snyk_args+=("--org=${SNYK_ORG}")
           fi
-          snyk test "${snyk_args[@]}"
-          status=$?
+          status=0
+          snyk test "${snyk_args[@]}" || status=$?
           echo "exit_code=${status}" >> "${GITHUB_OUTPUT}"
-          exit 0
+          case "${status}" in
+            0) ;;
+            1) echo "::warning::Snyk found vulnerable dependencies. See the Snyk vulnerabilities check and Code scanning alerts." ;;
+            *)
+              echo "::error::Snyk could not complete the scan (exit code ${status})."
+              exit "${status}"
+              ;;
+          esac
 
       - name: Upload Snyk SARIF to GitHub Code Scanning
-        if: always() && hashFiles('snyk-open-source.sarif') != ''
         uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
         with:
           sarif_file: snyk-open-source.sarif
@@ -79,8 +99,32 @@ jobs:
           retention-days: 14
           path: snyk-open-source.sarif
 
-      - name: Enforce Snyk result
-        if: always() && steps.snyk.outputs.exit_code != ''
+      # Keep finding severity separate from the scan workflow's operational health.
+      - name: Publish Snyk vulnerability check
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SCAN_JOB_STATUS: ${{ job.status }}
+          SNYK_EXIT_CODE: ${{ steps.snyk.outputs.exit_code }}
         run: |
           set -euo pipefail
-          exit "${{ steps.snyk.outputs.exit_code }}"
+          state=error
+          description="Snyk scan or report upload failed; check the workflow logs"
+          if [ "${SCAN_JOB_STATUS}" = "success" ]; then
+            case "${SNYK_EXIT_CODE}" in
+              0)
+                state=success
+                description="No vulnerable dependencies found"
+                ;;
+              1)
+                state=failure
+                description="Vulnerable dependencies found; see Code scanning alerts"
+                ;;
+            esac
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="${state}" \
+            -f context="Snyk vulnerabilities" \
+            -f description="${description}" \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --silent

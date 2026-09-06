@@ -18,6 +18,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+          cache: gradle
       - run: ./gradlew verifyGatewayDevelopment --no-daemon --stacktrace --warning-mode fail
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
