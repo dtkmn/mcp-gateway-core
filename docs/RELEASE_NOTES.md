@@ -231,10 +231,11 @@ Behavior clarifications are recorded in release notes.
 <a id="0.7.0-verification"></a>
 ### Verification
 
-Publication verification passed:
+Publication verification passed for this release. The current commands for
+build, consumer, and documentation verification are:
 
 ```bash
-./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
+./gradlew verifyGatewayDevelopment --no-daemon --stacktrace --warning-mode fail
 ./bin/java17-consumer-smoke.sh
 npm --prefix docs-site run build
 ```

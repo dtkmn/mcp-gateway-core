@@ -77,9 +77,11 @@ Bad candidates:
 
 ## Dependency Boundary
 
-The `mcp-gateway-core` artifact must remain JDK-only. The release gate enforces
-this with `jdeps` and closed-world JAR checks. Framework dependencies belong in
-separate adapter artifacts such as `mcp-gateway-spring-webflux`, which must keep
-their own closed-world and package-reference checks. Core rejects references to
-ZAP and Spring packages; the Spring WebFlux adapter rejects ZAP package
-references. These checks do not ban generic terminology or descriptive metadata.
+The `mcp-gateway-core` artifact must remain JDK-only. The build checks its
+dependencies with `jdeps`, requiring only `java.base`. Framework dependencies
+belong in separate adapter artifacts such as `mcp-gateway-spring-webflux`.
+
+Each JAR must contain classes in its module's package and no classes outside
+that package; normal resources are allowed. The build also checks adapter
+runtime dependencies for Java 17 compatibility. Product-specific dependencies
+remain outside these libraries as an architectural rule reviewed with changes.

@@ -157,9 +157,9 @@ The dispatcher must not approve their own deployment. The distinct required
 reviewer must inspect the version and workflow source SHA, then approve the
 environment deployment without using administrator bypass.
 
-The dry run imports the release key, runs the unsigned Gradle public-preview
-verification, compiles and runs both clean Java 17 downstream consumers against
-the release-version staged artifacts, signs those artifacts, creates a
+The dry run imports the release key, runs `verifyGatewayDevelopment`, compiles
+and runs both clean Java 17 downstream consumers against the release-version
+staged artifacts, signs those artifacts, creates a
 closed-world Central bundle, and verifies checksums and detached signatures
 from the extracted ZIP payload.
 
