@@ -15,9 +15,9 @@
     "preview": "astro preview --host 127.0.0.1"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.41.7",
-    "astro": "^7.2.1",
-    "sharp": "^0.35.3",
+    "@astrojs/starlight": "^0.41.11",
+    "astro": "^7.2.10",
+    "sharp": "^0.35.4",
     "typescript": "^6.0.3"
   },
   "allowScripts": {

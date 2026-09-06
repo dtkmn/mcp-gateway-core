@@ -161,25 +161,31 @@ published artifact.
 
 ## Build
 
+Building from source requires JDK 25. Published libraries support Java 17 and
+later; the external consumer smoke test runs separately with JDK 17. Use the
+checked-in Gradle Wrapper; no system Gradle installation is needed.
+
 ```bash
 ./gradlew verifyGatewayDevelopment --no-daemon --stacktrace --warning-mode fail
 ```
 
-This snapshot-safe development gate runs the core and adapter builds,
-forbidden-coupling checks, closed-world JAR checks, Java 17 bytecode checks,
-adapter runtime-classpath bytecode checks, core `jdeps`, and Gradle deprecation
-enforcement. It also stages both Maven artifacts for the Java 17
-downstream-consumer smoke test.
+This gate runs tests, JAR class ownership checks, core `jdeps`, and Java 17
+compatibility checks for adapter runtime dependencies. Compilation targets Java
+17 with `--release 17`. The command also fails on Gradle deprecations and stages
+both Maven publications for the downstream-consumer smoke test.
 
-Release preparation sets an unpublished, non-snapshot version and additionally
-runs the release-only Central bundle and signing proof:
+JAR checks require classes in each module's package and reject classes outside
+that package. Normal resources, such as license files and service descriptors,
+are allowed.
 
-```bash
-./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
-```
+Development and release preparation use this same gate. Release preparation
+sets an unpublished, non-snapshot version. The
+[Central validation upload workflow](docs/CENTRAL_VALIDATION_UPLOAD.md) signs
+release artifacts with the configured key and verifies their signatures and
+checksums from the final combined bundle before any upload.
 
 CI and release preparation also run the Java 17 consumer smoke test against the
-artifacts staged by the applicable gate:
+staged artifacts:
 
 ```bash
 ./bin/java17-consumer-smoke.sh
@@ -249,6 +255,18 @@ Maven:
 - [Roadmap](docs/ROADMAP.md)
 - [Security policy](SECURITY.md)
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, tests, documentation
+changes, and pull requests. Bug reports should include the artifact version and
+a small reproduction. Report vulnerabilities through the
+[security policy](SECURITY.md).
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE). Binary, sources, and Javadoc
+JARs include the license at `META-INF/LICENSE`.
+
 ## Security Tooling
 
 The repository uses GitHub-native security automation first:
@@ -262,11 +280,15 @@ The repository uses GitHub-native security automation first:
 - Snyk Open Source scanning for the Gradle project graph in
   `.github/workflows/snyk.yml`. The workflow requires a real `SNYK_TOKEN`
   secret, accepts optional `SNYK_ORG` as a secret or variable for explicit
-  organization routing, fails visibly when the token is absent, uploads SARIF
-  for review, and then enforces the Snyk exit code.
-- The Gradle public-preview verification gate for forbidden coupling,
-  closed-world JAR contents, `jdeps`, Central bundle shape, checksums, and
-  signed dry-run payload validation.
+  organization routing, and uploads SARIF for review. A separate
+  `Snyk vulnerabilities` commit status fails when findings exist; the workflow fails
+  on scanner or upload errors. Fork pull requests skip this secret-dependent
+  job; enabled runs fail visibly when the token is absent.
+- The Gradle development gate for JAR class ownership, core `jdeps`, and Java
+  17 compatibility checks for adapter runtime dependencies, followed by clean
+  Java 17 consumer smoke tests against the staged publications.
+- The Central upload workflow verifies artifact signatures, the configured
+  signer fingerprint, and checksums from the final combined bundle before upload.
 - The Central upload job is bound to a protected environment. Release refs are
   restricted to `main` only; at least one reviewer distinct from the run
   initiator is required; self-review is prevented; administrator bypass is

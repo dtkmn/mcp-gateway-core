@@ -31,17 +31,10 @@ tasks.named('build') {
     dependsOn ':adapters:spring-webflux:build'
 }
 
-tasks.register('verifyGatewayPublicPreviewPublication') {
-    group = 'verification'
-    description = 'Runs public-preview verification for all published gateway artifacts.'
-    dependsOn ':core:verifyGatewayCorePublicPreviewPublication'
-    dependsOn ':adapters:spring-webflux:verifyGatewaySpringWebFluxPublicPreviewPublication'
-}
-
 tasks.register('verifyGatewayDevelopment') {
     group = 'verification'
     description = 'Runs snapshot-safe verification and stages artifacts for downstream consumer checks.'
     dependsOn tasks.named('check')
-    dependsOn ':core:verifyGatewayCorePublication'
-    dependsOn ':adapters:spring-webflux:verifyGatewaySpringWebFluxPublication'
+    dependsOn ':core:publishGatewayCorePublicationToGatewayCoreStagingRepository'
+    dependsOn ':adapters:spring-webflux:publishGatewaySpringWebFluxPublicationToGatewayCoreStagingRepository'
 }

@@ -2,6 +2,7 @@ package mcp.gateway.core.rate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -42,6 +43,28 @@ class TokenBucketRateLimiterTest {
     }
 
     @Test
+    void returnsConsumptionAndRetryDelayFromOneAttempt() {
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true,
+                1,
+                1,
+                10,
+                100,
+                30
+        );
+
+        TokenBucketRateLimiter.Attempt allowed = limiter.attempt("client-a", policy);
+        nowNanos.addAndGet(2_500_000_000L);
+        nowMillis.addAndGet(2_500L);
+        TokenBucketRateLimiter.Attempt rejected = limiter.attempt("client-a", policy);
+
+        assertTrue(allowed.allowed());
+        assertEquals(0L, allowed.retryAfterSeconds());
+        assertFalse(rejected.allowed());
+        assertEquals(8L, rejected.retryAfterSeconds());
+    }
+
+    @Test
     void refillsTokensOverTime() {
         TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
                 true,
@@ -73,8 +96,20 @@ class TokenBucketRateLimiterTest {
         );
 
         assertTrue(limiter.tryConsume("client-a", policy));
+        assertEquals(new TokenBucketRateLimiter.Attempt(true, 0L), limiter.attempt("client-a", policy));
         assertEquals(42L, limiter.retryAfterSeconds("client-a", policy));
         assertEquals(0, limiter.trackedKeyCount());
+    }
+
+    @Test
+    void attemptResultNormalizesRetryDelay() {
+        assertEquals(0L, new TokenBucketRateLimiter.Attempt(true, 30L).retryAfterSeconds());
+        assertEquals(1L, new TokenBucketRateLimiter.Attempt(false, 0L).retryAfterSeconds());
+    }
+
+    @Test
+    void attemptRejectsNullPolicy() {
+        assertThrows(NullPointerException.class, () -> limiter.attempt("client-a", null));
     }
 
     @Test
@@ -124,7 +159,7 @@ class TokenBucketRateLimiterTest {
 
         assertTrue(limiter.tryConsume("client-a", policy));
         assertTrue(limiter.tryConsume("client-b", policy));
-        assertFalse(limiter.tryConsume("client-c", policy));
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 1L), limiter.attempt("client-c", policy));
         assertEquals(2, limiter.trackedKeyCount());
     }
 
@@ -194,6 +229,59 @@ class TokenBucketRateLimiterTest {
             assertEquals(100, limiter.trackedKeyCount());
             assertEquals(100, allowed);
             assertTrue(denied >= attemptCount - 100);
+        } finally {
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+        }
+    }
+
+    @Test
+    void concurrentSameKeyAttemptsReturnConsistentResults() throws Exception {
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true,
+                25,
+                1,
+                60,
+                100,
+                30
+        );
+        int attemptCount = 100;
+        int workerCount = 32;
+        ExecutorService executor = Executors.newFixedThreadPool(workerCount);
+        CountDownLatch ready = new CountDownLatch(workerCount);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Callable<TokenBucketRateLimiter.Attempt>> attempts = new ArrayList<>();
+
+        for (int i = 0; i < attemptCount; i++) {
+            attempts.add(() -> {
+                ready.countDown();
+                assertTrue(start.await(5, TimeUnit.SECONDS));
+                return limiter.attempt("shared-client", policy);
+            });
+        }
+
+        List<Future<TokenBucketRateLimiter.Attempt>> futures = attempts.stream()
+                .map(executor::submit)
+                .toList();
+        try {
+            assertTrue(ready.await(5, TimeUnit.SECONDS));
+            start.countDown();
+
+            int allowed = 0;
+            int rejected = 0;
+            for (Future<TokenBucketRateLimiter.Attempt> future : futures) {
+                TokenBucketRateLimiter.Attempt attempt = future.get(5, TimeUnit.SECONDS);
+                if (attempt.allowed()) {
+                    allowed++;
+                    assertEquals(0L, attempt.retryAfterSeconds());
+                } else {
+                    rejected++;
+                    assertEquals(60L, attempt.retryAfterSeconds());
+                }
+            }
+
+            assertEquals(25, allowed);
+            assertEquals(75, rejected);
         } finally {
             executor.shutdownNow();
             assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));

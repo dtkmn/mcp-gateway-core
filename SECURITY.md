@@ -11,13 +11,10 @@ fix requires changing a contract.
 
 ## Reporting A Vulnerability
 
-Use GitHub private vulnerability reporting or a draft GitHub Security Advisory
-for this repository when available. Do not open a public issue with exploit
-details, proof-of-concept payloads, private keys, tokens, or customer data.
-
-If private reporting is not available in the GitHub UI, open a minimal public
-issue asking for a private disclosure channel. Include only the affected
-package name and a short impact category.
+Use [GitHub private vulnerability reporting](https://github.com/dtkmn/mcp-gateway-core/security/advisories/new)
+to contact the maintainers. Include the affected version, impact, and a minimal
+reproduction. Do not open a public issue with exploit details, proof-of-concept
+payloads, private keys, tokens, or customer data.
 
 ## Scope
 
@@ -47,11 +44,12 @@ The repository uses GitHub-native checks first:
 - Gradle distribution checksum pinning and Wrapper JAR validation before CI
   workflows execute the build;
 - CodeQL Java analysis with an explicit Gradle test build;
-- the snapshot-safe Gradle development gate for forbidden coupling, closed-world
-  JAR contents, `jdeps`, bytecode, and staged-publication checks;
-- the release-only public-preview gate for Central bundle shape, checksums, and
-  signed dry-run payload validation. Its job is bound to the protected
-  `central-validation-upload` environment. Release refs are restricted to
+- the Gradle development gate for JAR class ownership, core `jdeps`, and Java
+  17 compatibility checks for adapter runtime dependencies, followed by clean
+  Java 17 consumer smoke tests against the staged publications;
+- the Central validation upload workflow for artifact signatures, the configured
+  signer fingerprint, and checksums from the final combined bundle. Its job is
+  bound to the protected `central-validation-upload` environment. Release refs are restricted to
   `main` only. At least one required reviewer must be distinct from the workflow
   dispatcher. Self-review is prevented. Administrator bypass is disabled.
   Release credentials exist only as environment secrets; Central Portal and GPG
@@ -66,11 +64,17 @@ project graph. That workflow requires:
 when the scan must be tied to a specific Snyk organization. If it is absent,
 Snyk uses the default organization associated with `SNYK_TOKEN`.
 
-If `SNYK_TOKEN` is missing, the workflow fails. That is intentional: a skipped
-external scanner is not a passing security signal. GitHub does not pass
-repository secrets to pull requests from forks, so those Snyk runs fail until a
-maintainer reruns the scan from a trusted branch or another trusted review path.
+Fork pull requests skip the Snyk job because GitHub does not provide repository
+secrets to those runs. CI and CodeQL still run on pull requests to `main`.
+Snyk runs on same-repository pull requests, pushes to `main`, its schedule, and
+manual dispatches; these runs fail if `SNYK_TOKEN` is missing. Dependabot runs
+use the separately configured Dependabot secrets.
 
 Snyk results are uploaded as SARIF for GitHub Code Scanning and as a workflow
-artifact. Snyk project import, dashboard ownership, alert triage, ignores, and
+artifact. The `Snyk vulnerabilities` commit status fails for any dependency
+findings. A completed scan and successful upload leave the workflow green;
+scanner, configuration, and upload failures leave it red. This keeps GitHub's
+tool-health status separate from the vulnerability result.
+
+Snyk project import, dashboard ownership, alert triage, ignores, and
 monitor snapshots remain manual repository or organization responsibilities.

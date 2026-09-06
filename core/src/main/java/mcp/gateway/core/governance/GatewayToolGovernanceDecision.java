@@ -1,8 +1,9 @@
 package mcp.gateway.core.governance;
 
-import java.util.Objects;
 import mcp.gateway.core.authz.ToolAuthorizationDecision;
 import mcp.gateway.core.protection.McpAbuseProtectionDecision;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * Result of a framework-neutral MCP tool governance pass.
@@ -31,8 +32,8 @@ public record GatewayToolGovernanceDecision(
      * Creates a normalized decision.
      */
     public GatewayToolGovernanceDecision {
-        outcome = Objects.requireNonNull(outcome, "outcome must not be null");
-        reason = Objects.requireNonNull(reason, "reason must not be null");
+        outcome = requireNonNull(outcome, "outcome must not be null");
+        reason = requireNonNull(reason, "reason must not be null");
     }
 
     /**

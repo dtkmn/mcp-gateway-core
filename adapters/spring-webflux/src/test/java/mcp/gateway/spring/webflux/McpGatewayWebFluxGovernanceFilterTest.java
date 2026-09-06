@@ -1,11 +1,5 @@
 package mcp.gateway.spring.webflux;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.time.Instant;
@@ -40,6 +34,13 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class McpGatewayWebFluxGovernanceFilterTest {
     private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
@@ -1130,7 +1131,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         assertInvalidRequestResponse(exchange, McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
         JsonNode body = JSON_MAPPER.readTree(responseBody(exchange));
         assertEquals(exchange.getRequest().getId(), body.get("requestId").asString());
-        assertFalse("99".equals(body.get("requestId").asString()));
+        assertNotEquals("99", body.get("requestId").asString());
     }
 
     @Test
@@ -1487,7 +1488,7 @@ class McpGatewayWebFluxGovernanceFilterTest {
         JsonNode body = assertInvalidRequestResponse(exchange, testCase.reason(), exchange.getRequest().getId());
         assertFalse(body.has("id"), testCase.name());
         if (testCase.jsonRpcId() != null) {
-            assertFalse(testCase.jsonRpcId().equals(body.get("requestId").asString()), testCase.name());
+            assertNotEquals(testCase.jsonRpcId(), body.get("requestId").asString(), testCase.name());
         }
     }
 

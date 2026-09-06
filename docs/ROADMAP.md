@@ -19,7 +19,8 @@ Current focus:
 - keep WebFlux request-shape, activation, pass-through, and invalid-request
   observer behavior pinned by tests;
 - reject scanner, runtime, private, and data-plane coupling;
-- publish only artifacts that pass the public-preview verification gate.
+- publish only artifacts that pass the build, consumer, and signed release
+  bundle checks.
 
 ## Near-Term Work
 
@@ -68,7 +69,7 @@ Do not call this stable until all of these are true:
 - release notes clearly distinguish compatible additions from breaking changes;
 - Javadocs are clean enough for public API users;
 - security scanning and release-signing gates are required in CI;
-- adapter artifacts have their own closed-world and forbidden-coupling gates;
+- adapter artifacts pass class ownership and Java 17 dependency checks;
 - the compatibility policy defines what SemVer means for this library.
 
 ## Non-Goals

@@ -32,8 +32,8 @@ public record PolicyBundleTimeWindow(Set<DayOfWeek> days,
             copy.add(Objects.requireNonNull(day, "day must not be null"));
         }
         days = Set.copyOf(copy);
-        start = Objects.requireNonNull(start, "start must not be null");
-        end = Objects.requireNonNull(end, "end must not be null");
+        Objects.requireNonNull(start, "start must not be null");
+        Objects.requireNonNull(end, "end must not be null");
         if (start.equals(end)) {
             throw new IllegalArgumentException("time window start and end must differ");
         }

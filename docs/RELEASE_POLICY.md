@@ -25,57 +25,40 @@ behavior. The framework-neutral core API is unchanged.
 
 ## Release Gates
 
-Normal development CI runs the snapshot-safe gate:
+Development CI and release preparation use the same Gradle gate:
 
 ```bash
 ./gradlew verifyGatewayDevelopment --no-daemon --stacktrace --warning-mode fail
 ```
 
-That gate runs tests and artifact-boundary checks, and stages both Maven
-publications for the downstream Java 17 consumer smoke test. It always omits
-Central Portal bundles and release signing; this matches the normal snapshot
-state and prevents routine development from entering the release path during a
-short non-snapshot release cut.
+This runs tests, checks JAR class ownership, requires core `jdeps` to report
+only `java.base`, and checks adapter runtime dependencies for Java 17
+compatibility. Compilation targets Java 17 with `--release 17`. Each JAR must
+contain classes in its module's package and no classes outside that package;
+normal resources, including license files and service descriptors, are allowed.
 
-Before publishing any public-preview artifact, a release candidate with an
-unpublished, non-snapshot version must additionally pass:
+The gate stages both Maven publications, including POMs, binaries, sources, and
+Javadocs. The command fails on Gradle deprecations. The Gradle distribution
+checksum is pinned, and CI separately validates the checked-in Wrapper JAR
+before executing it.
 
-```bash
-./gradlew verifyGatewayPublicPreviewPublication --no-daemon --stacktrace --warning-mode fail
-```
-
-That gate proves:
-
-- unit tests pass;
-- the Gradle distribution checksum is pinned, while CI separately validates the
-  checked-in Gradle Wrapper JAR before executing it;
-- Gradle deprecations fail the build instead of becoming release-prep noise;
-- the core JAR contains only `mcp/gateway/core/**` classes and manifest metadata;
-- `jdeps` reports only `java.base`;
-- adapter JARs contain only their adapter package classes and manifest metadata;
-- published classes and adapter runtime dependencies are Java 17-compatible;
-- forbidden downstream runtime and product-specific markers are absent;
-- Maven metadata has required POM fields;
-- the Central Portal ZIP is closed-world;
-- checksums match the ZIP payload;
-- the signed dry-run ZIP verifies detached signatures from extracted payloads.
-
-CI and release preparation must also run `bin/java17-consumer-smoke.sh` after
-the public-preview proof. That check switches to a Java 17 runtime. The
-development gate stages snapshot artifacts; the release gate stages the
-selected release version. The smoke test compiles and runs separate clean
-downstream consumers: one that depends only on staged `mcp-gateway-core`, and
-one that depends on staged `mcp-gateway-spring-webflux` and its published
-transitive API dependencies.
+CI and release preparation must then run `bin/java17-consumer-smoke.sh` with
+Java 17. It compiles and runs separate clean downstream consumers: one that
+depends only on staged `mcp-gateway-core`, and one that depends on staged
+`mcp-gateway-spring-webflux` and its published transitive API dependencies.
+The gate and smoke test work with either the development snapshot or the
+selected release version.
 
 The separate Snyk workflow is an external dependency scan for the Gradle
-project graph. It is enforced when the workflow runs: missing `SNYK_TOKEN`
-fails the job, Snyk findings fail the job after SARIF upload, and results
-remain reviewable through GitHub Code Scanning or the SARIF artifact. `SNYK_ORG`
+project graph. Fork pull requests skip this secret-dependent job; CI and CodeQL
+still run. Snyk is enforced on enabled runs: missing `SNYK_TOKEN`
+fails the workflow, and findings fail the separate `Snyk vulnerabilities`
+commit status after SARIF upload. Scanner and upload errors fail the workflow.
+Results remain reviewable through GitHub Code Scanning or the SARIF artifact. `SNYK_ORG`
 is optional, may be supplied as a secret or variable, and only pins the scan to
 a specific Snyk organization. The workflow does not upload artifacts to Central,
-publish releases, create Snyk monitor snapshots, or replace the public-preview
-publication proof above.
+publish releases, create Snyk monitor snapshots, or replace the build and
+consumer checks above.
 
 Before uploading public-preview artifacts to Central for validation, the guarded
 upload path must pass:
@@ -84,10 +67,12 @@ upload path must pass:
 ./bin/gateway-public-preview-central-validation-upload.sh
 ```
 
-That command uses the configured release GPG key, creates a release-signed
-bundle containing `mcp-gateway-core` and `mcp-gateway-spring-webflux`, verifies
-the extracted ZIP payload, and prints the exact confirmation token required for
-an optional `USER_MANAGED` validation upload. Before signing or uploading, it
+That command requires a non-snapshot version and uses the configured release
+GPG key to create a signed bundle containing `mcp-gateway-core` and
+`mcp-gateway-spring-webflux`. It checks the expected artifacts and checksums
+from the extracted ZIP payload, verifies each signature against the configured
+signer, and prints the exact confirmation token required for an optional
+`USER_MANAGED` validation upload. Before signing or uploading, it
 also requires a JDK 17 (through `GATEWAY_CORE_JAVA17_HOME` when necessary) and
 runs the downstream consumer smoke test against the exact release-version
 staging repository.
