@@ -12,8 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class McpJsonRpcToolInvocationParserTest {
+    private final JsonMapper jsonMapper = JsonMapper.builder().build();
     private final McpJsonRpcToolInvocationParser parser =
-            new McpJsonRpcToolInvocationParser(JsonMapper.builder().build());
+            new McpJsonRpcToolInvocationParser(jsonMapper);
 
     @Test
     void parsesToolCall() {
@@ -25,6 +26,76 @@ class McpJsonRpcToolInvocationParserTest {
         assertEquals("tools/call", invocation.method());
         assertEquals("demo_tool", invocation.toolName());
         assertEquals("demo_tool", invocation.actionName());
+    }
+
+    @Test
+    void retainsExactStringAndIntegerRequestIdsWithoutNormalizingThem() {
+        for (String idJson : new String[]{
+                "\"request-1\"",
+                "\"\"",
+                "\"quote\\\" slash\\\\ newline\\n unicode☃漢字\"",
+                "0",
+                "-42",
+                "9007199254740993",
+                "1234567890123456789012345678901234567890",
+                "-1234567890123456789012345678901234567890"
+        }) {
+            String body = toolCallWithId(idJson);
+
+            McpJsonRpcMessageClassification classification = parser.classify(bytes(body));
+
+            assertTrue(classification.valid(), body);
+            assertFalse(classification.invalidRequestId(), body);
+            assertFalse(classification.notification(), body);
+            assertEquals(jsonMapper.readTree(idJson), classification.requestId(), body);
+            assertEquals(McpToolInvocationKind.TOOL_CALL, parser.parse(bytes(body)).kind(), body);
+        }
+    }
+
+    @Test
+    void recordsInvalidRequestIdsWithoutChangingLegacyInvocationParsing() {
+        for (String idJson : new String[]{"null", "true", "false", "[]", "{}", "1.5", "1.0", "1e3"}) {
+            String body = toolCallWithId(idJson);
+
+            McpJsonRpcMessageClassification classification = parser.classify(bytes(body));
+
+            assertTrue(classification.valid(), body);
+            assertTrue(classification.invalidRequestId(), body);
+            assertFalse(classification.notification(), body);
+            assertEquals(jsonMapper.readTree(idJson), classification.requestId(), body);
+            assertEquals(McpToolInvocationKind.TOOL_CALL, parser.parse(bytes(body)).kind(), body);
+            assertEquals("demo_tool", classification.invocation().toolName(), body);
+        }
+    }
+
+    @Test
+    void treatsOnlyAnAbsentExactIdAsANotification() {
+        String body = "{\"method\":\"tools/call\",\"params\":{\"name\":\"demo_tool\"}}";
+
+        McpJsonRpcMessageClassification classification = parser.classify(bytes(body));
+
+        assertTrue(classification.valid());
+        assertTrue(classification.notification());
+        assertFalse(classification.invalidRequestId());
+        assertNull(classification.requestId());
+        assertEquals(McpToolInvocationKind.TOOL_CALL, parser.parse(bytes(body)).kind());
+    }
+
+    @Test
+    void recordsCaseVariantIdsAsInvalidWithoutChangingLegacyInvocationParsing() {
+        for (String idFields : new String[]{
+                "\"ID\":1", "\"Id\":1", "\"iD\":1", "\"id\":1,\"ID\":2", "\"ID\":null"
+        }) {
+            String body = "{" + idFields + ",\"method\":\"tools/call\",\"params\":{\"name\":\"demo_tool\"}}";
+
+            McpJsonRpcMessageClassification classification = parser.classify(bytes(body));
+
+            assertTrue(classification.valid(), body);
+            assertTrue(classification.invalidRequestId(), body);
+            assertFalse(classification.notification(), body);
+            assertEquals(jsonMapper.readTree(body).get("id"), classification.requestId(), body);
+            assertEquals(McpToolInvocationKind.TOOL_CALL, parser.parse(bytes(body)).kind(), body);
+        }
     }
 
     @Test
@@ -64,10 +135,24 @@ class McpJsonRpcToolInvocationParserTest {
 
             assertTrue(classification.valid(), body);
             assertTrue(classification.response(), body);
+            assertFalse(classification.notification(), body);
+            assertEquals(jsonMapper.readTree(body).get("id"), classification.requestId(), body);
             assertNull(classification.rejectionReason(), body);
             assertEquals(McpToolInvocationKind.UNKNOWN, classification.invocation().kind(), body);
             assertEquals(McpToolInvocationKind.UNKNOWN, parser.parse(bytes(body)).kind(), body);
         }
+    }
+
+    @Test
+    void preservesLegacyResponseEnvelopeRecognitionForFractionalIds() {
+        McpJsonRpcMessageClassification classification = parser.classify(bytes(
+                "{\"id\":1.5,\"result\":{}}"));
+
+        assertTrue(classification.valid());
+        assertTrue(classification.response());
+        assertTrue(classification.invalidRequestId());
+        assertFalse(classification.notification());
+        assertEquals(jsonMapper.readTree("1.5"), classification.requestId());
     }
 
     @Test
@@ -162,6 +247,8 @@ class McpJsonRpcToolInvocationParserTest {
                 McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
         assertReason("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{},\"result\":null}",
                 McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
+        assertReason("{\"id\":1,\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"demo_tool\"}}",
+                McpJsonRpcRequestRejectionReason.MALFORMED_JSON);
     }
 
     @Test
@@ -188,10 +275,16 @@ class McpJsonRpcToolInvocationParserTest {
 
         assertEquals(expected, classification.rejectionReason());
         assertFalse(classification.response());
+        assertFalse(classification.notification());
         assertEquals(McpToolInvocationKind.UNKNOWN, classification.invocation().kind());
     }
 
     private byte[] bytes(String body) {
         return body.getBytes(StandardCharsets.UTF_8);
+    }
+
+    private String toolCallWithId(String idJson) {
+        return "{\"jsonrpc\":\"2.0\",\"id\":" + idJson
+                + ",\"method\":\"tools/call\",\"params\":{\"name\":\"demo_tool\"}}";
     }
 }

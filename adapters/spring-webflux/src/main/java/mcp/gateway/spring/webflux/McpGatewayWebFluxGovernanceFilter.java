@@ -14,8 +14,11 @@ import mcp.gateway.core.governance.GatewayToolAuthorizationPolicy;
 import mcp.gateway.core.governance.GatewayToolGovernance;
 import mcp.gateway.core.governance.GatewayToolGovernanceDecision;
 import mcp.gateway.core.governance.GatewayToolGovernanceOutcome;
+import mcp.gateway.core.governance.GatewayToolGovernanceReason;
 import mcp.gateway.core.invocation.McpToolInvocation;
+import mcp.gateway.core.invocation.McpToolInvocationKind;
 import mcp.gateway.core.protection.McpAbuseProtectionDecision;
+import mcp.gateway.core.tool.McpToolRegistry;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBufferLimitException;
 import org.springframework.http.server.PathContainer;
@@ -30,8 +33,9 @@ import tools.jackson.databind.json.JsonMapper;
  * WebFlux filter that runs the shared MCP gateway governance pass once per MCP
  * JSON-RPC request message.
  * <p>
- * The filter is active only for the configured MCP endpoint when authorization
- * or abuse protection governance is enabled. With governance inactive, matching
+ * The filter is active only for the configured MCP endpoint when a tool registry
+ * is configured or authorization or abuse protection is enabled.
+ * With all three inactive, matching
  * requests pass downstream without body buffering or validation. With governance
  * active, recognized JSON-RPC response envelopes pass downstream without request
  * governance, while invalid MCP JSON-RPC message shapes are rejected before
@@ -39,6 +43,11 @@ import tools.jackson.databind.json.JsonMapper;
  * handling. Invalid or oversized bodies are reported through
  * {@link McpInvalidRequestObserver}; authorization and protection observers
  * are used only after a request has a valid governance shape.
+ * <p>
+ * An optional core tool registry rejects unavailable tool calls before scope
+ * extraction or governance. It must describe exactly the tools registered and
+ * enabled by the hosting application. The application must authenticate requests
+ * before this filter; registry membership is not an authentication mechanism.
  */
 public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Ordered {
     private final JsonMapper jsonMapper;
@@ -53,6 +62,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
     private final McpProtectionRejectionObserver rejectionObserver;
     private final McpGatewayCorrelationIdResolver correlationIdResolver;
     private final McpInvalidRequestObserver invalidRequestObserver;
+    private final McpToolRegistry toolRegistry;
 
     /**
      * Starts fluent configuration of a WebFlux governance filter.
@@ -76,9 +86,11 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
      * Omitted optional collaborators use the same defaults as the public
      * constructors: default WebFlux properties, Spring Security {@code SCOPE_}
      * extraction, no-op observers, and the default correlation-id resolver.
-     * At least one authorization or protection evaluator must be configured so
-     * the builder catches accidental omission of both governance concerns.
-     * A configured dynamic evaluator may still disable governance at request time.
+     * At least one authorization evaluator, protection evaluator, or tool
+     * registry must be configured so the builder catches accidental omission of
+     * all governance concerns.
+     * Dynamic evaluators may disable governance at request time only when no
+     * tool registry is configured.
      */
     public static final class Builder {
         private final JsonMapper jsonMapper;
@@ -92,6 +104,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
         private McpProtectionRejectionObserver rejectionObserver = McpProtectionRejectionObserver.noop();
         private McpGatewayCorrelationIdResolver correlationIdResolver = McpGatewayCorrelationIdResolver.defaultResolver();
         private McpInvalidRequestObserver invalidRequestObserver = McpInvalidRequestObserver.noop();
+        private McpToolRegistry toolRegistry;
 
         private Builder(JsonMapper jsonMapper,
                         McpGatewayWebFluxContextResolver contextResolver) {
@@ -107,6 +120,28 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
          */
         public Builder properties(McpGatewayWebFluxProperties properties) {
             this.properties = Objects.requireNonNull(properties, "properties must not be null");
+            return this;
+        }
+
+        /**
+         * Enables existence-first tool-call validation using the existing core
+         * registry. Its entries must match the runtime's actual registered,
+         * enabled tools, not a broader inventory of tool definitions or policies.
+         * The registry is immutable; the hosting application must keep this
+         * configured snapshot consistent with discovery and dispatch.
+         * <p>
+         * An access registry's {@code toolRegistry()} can be reused when its
+         * rules cover exactly those active tools. The host must validate that
+         * every exposed tool has a permission rule before publishing that view.
+         * An empty registry rejects all tool calls. This check stays active when
+         * permission checks and protection are disabled. Omitting the registry
+         * preserves legacy behavior.
+         *
+         * @param toolRegistry core registry of the runtime's enabled tools
+         * @return this builder
+         */
+        public Builder toolRegistry(McpToolRegistry toolRegistry) {
+            this.toolRegistry = Objects.requireNonNull(toolRegistry, "toolRegistry must not be null");
             return this;
         }
 
@@ -252,11 +287,11 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
          * Builds a filter with the configured collaborators.
          *
          * @return configured WebFlux governance filter
-         * @throws IllegalStateException when neither authorization nor protection is configured
+         * @throws IllegalStateException when no evaluator or tool registry is configured
          */
         public McpGatewayWebFluxGovernanceFilter build() {
-            if (authorizationEvaluator == null && protectionEvaluator == null) {
-                throw new IllegalStateException("authorization or protection must be configured");
+            if (authorizationEvaluator == null && protectionEvaluator == null && toolRegistry == null) {
+                throw new IllegalStateException("authorization, protection, or a tool registry must be configured");
             }
             return new McpGatewayWebFluxGovernanceFilter(
                     jsonMapper,
@@ -268,7 +303,8 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                     authorizationObserver,
                     rejectionObserver,
                     correlationIdResolver,
-                    invalidRequestObserver
+                    invalidRequestObserver,
+                    toolRegistry
             );
         }
     }
@@ -374,6 +410,22 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                                              McpProtectionRejectionObserver rejectionObserver,
                                              McpGatewayCorrelationIdResolver correlationIdResolver,
                                              McpInvalidRequestObserver invalidRequestObserver) {
+        this(jsonMapper, properties, authorizationEvaluator, protectionEvaluator, contextResolver,
+                grantedScopesExtractor, authorizationObserver, rejectionObserver, correlationIdResolver,
+                invalidRequestObserver, null);
+    }
+
+    private McpGatewayWebFluxGovernanceFilter(JsonMapper jsonMapper,
+                                             McpGatewayWebFluxProperties properties,
+                                             McpGatewayAuthorizationEvaluator authorizationEvaluator,
+                                             McpGatewayAbuseProtectionEvaluator protectionEvaluator,
+                                             McpGatewayWebFluxContextResolver contextResolver,
+                                             McpGrantedScopesExtractor grantedScopesExtractor,
+                                             McpAuthorizationObserver authorizationObserver,
+                                             McpProtectionRejectionObserver rejectionObserver,
+                                             McpGatewayCorrelationIdResolver correlationIdResolver,
+                                             McpInvalidRequestObserver invalidRequestObserver,
+                                             McpToolRegistry toolRegistry) {
         this.jsonMapper = Objects.requireNonNull(jsonMapper, "jsonMapper must not be null");
         this.parser = new McpJsonRpcToolInvocationParser(jsonMapper);
         this.properties = properties == null ? McpGatewayWebFluxProperties.defaults() : properties;
@@ -390,6 +442,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                 ? McpGatewayCorrelationIdResolver.defaultResolver()
                 : correlationIdResolver;
         this.invalidRequestObserver = invalidRequestObserver == null ? McpInvalidRequestObserver.noop() : invalidRequestObserver;
+        this.toolRegistry = toolRegistry;
     }
 
     @Override
@@ -426,6 +479,19 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                         return chain.filter(McpGatewayWebFluxRequestBodies.decorate(exchange, bodyBytes));
                     }
                     McpToolInvocation invocation = classification.invocation();
+                    if (toolRegistry != null && invocation.kind() == McpToolInvocationKind.TOOL_CALL) {
+                        if (classification.invalidRequestId()) {
+                            return McpGatewayWebFluxResponses.invalidToolCallId(exchange, jsonMapper);
+                        }
+                        if (classification.notification()) {
+                            // tools/call requires a request ID. Do not execute an
+                            // ID-less call or fabricate a reply to a notification.
+                            return McpGatewayWebFluxResponses.notificationAccepted(exchange);
+                        }
+                        if (!toolRegistry.contains(invocation.toolName())) {
+                            return McpGatewayWebFluxResponses.unknownTool(exchange, jsonMapper, classification.requestId());
+                        }
+                    }
                     return exchange.getPrincipal()
                             .cast(Authentication.class)
                             .map(Optional::of)
@@ -435,7 +501,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                                     chain,
                                     authentication.orElse(null),
                                     bodyBytes,
-                                    invocation
+                                    classification
                             ));
                 });
     }
@@ -444,7 +510,8 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                                 WebFilterChain chain,
                                 Authentication authentication,
                                 byte[] bodyBytes,
-                                McpToolInvocation invocation) {
+                                McpJsonRpcMessageClassification classification) {
+        McpToolInvocation invocation = classification.invocation();
         GatewayToolExecutionContext context = contextResolver.resolve(authentication, exchange, invocation);
         List<String> extractedScopes = grantedScopesExtractor.extract(authentication);
         List<String> grantedScopes = extractedScopes == null ? List.of() : extractedScopes;
@@ -454,6 +521,13 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                 authorizationEvaluator,
                 protectionEvaluator
         );
+
+        if (toolRegistry != null && invocation.kind() == McpToolInvocationKind.TOOL_CALL
+                && !decision.allowed() && decision.reason() == GatewayToolGovernanceReason.UNMAPPED_TOOL) {
+            // Existence was established independently: this is a server-side
+            // policy configuration defect, not a missing tool or missing scope.
+            return McpGatewayWebFluxResponses.internalToolError(exchange, jsonMapper, classification.requestId());
+        }
 
         recordAuthorization(decision, context);
 
@@ -485,7 +559,7 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
     }
 
     private boolean governanceEnabled() {
-        return authorizationGovernanceEnabled()
+        return toolRegistry != null || authorizationGovernanceEnabled()
                 || (protectionEvaluator != null && protectionEvaluator.enabled());
     }
 

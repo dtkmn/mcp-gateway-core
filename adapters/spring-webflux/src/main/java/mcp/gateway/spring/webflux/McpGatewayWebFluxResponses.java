@@ -11,10 +11,61 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 final class McpGatewayWebFluxResponses {
     private McpGatewayWebFluxResponses() {
+    }
+
+    static Mono<Void> unknownTool(ServerWebExchange exchange, JsonMapper jsonMapper, JsonNode requestId) {
+        return jsonRpcError(exchange, jsonMapper, HttpStatus.OK, requestId, -32602, "Unknown tool");
+    }
+
+    static Mono<Void> internalToolError(ServerWebExchange exchange, JsonMapper jsonMapper, JsonNode requestId) {
+        return jsonRpcError(exchange, jsonMapper, HttpStatus.OK, requestId, -32603, "Internal error");
+    }
+
+    static Mono<Void> invalidToolCallId(ServerWebExchange exchange, JsonMapper jsonMapper) {
+        return jsonRpcError(exchange, jsonMapper, HttpStatus.BAD_REQUEST, null, -32600, "Invalid Request");
+    }
+
+    static Mono<Void> notificationAccepted(ServerWebExchange exchange) {
+        return Mono.defer(() -> {
+            exchange.getResponse().setStatusCode(HttpStatus.ACCEPTED);
+            exchange.getResponse().getHeaders().remove(HttpHeaders.WWW_AUTHENTICATE);
+            return exchange.getResponse().setComplete();
+        });
+    }
+
+    private static Mono<Void> jsonRpcError(ServerWebExchange exchange,
+                                           JsonMapper jsonMapper,
+                                           HttpStatus status,
+                                           JsonNode requestId,
+                                           int code,
+                                           String message) {
+        return Mono.defer(() -> {
+            byte[] bytes;
+            try {
+                ObjectNode body = jsonMapper.createObjectNode();
+                body.put("jsonrpc", "2.0");
+                body.set("id", requestId);
+                ObjectNode error = body.putObject("error");
+                error.put("code", code);
+                error.put("message", message);
+                bytes = jsonMapper.writeValueAsBytes(body);
+            } catch (Exception exception) {
+                // A generic fallback could lose or corrupt the request ID. Leave the
+                // response uncommitted and propagate a non-sensitive failure instead.
+                return Mono.error(new IllegalStateException("Unable to serialize MCP error response"));
+            }
+            exchange.getResponse().setStatusCode(status);
+            exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+            exchange.getResponse().getHeaders().remove(HttpHeaders.WWW_AUTHENTICATE);
+            return exchange.getResponse().writeWith(
+                    Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
+        });
     }
 
     static Mono<Void> forbidden(ServerWebExchange exchange,
