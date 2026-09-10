@@ -53,6 +53,14 @@ A downstream MCP gateway or security pack should:
 5. Keep domain objects, scanner adapters, Spring configuration, and persistence
    out of this library.
 
+For the WebFlux adapter's optional `toolRegistry(McpToolRegistry)` input, the
+host supplies the existing core registry containing exactly the tools registered
+and enabled in its MCP runtime. Derive that registry from actual registrations
+and validate each active tool's permission mapping before accepting traffic.
+An active-only `McpToolAccessRegistry` already owns a suitable `toolRegistry()`;
+the adapter does not require a third registry or a separate hand-maintained
+tool list. This input adds no discovery, Spring AI wiring, or core API changes.
+
 ## What Belongs Here
 
 Good candidates:

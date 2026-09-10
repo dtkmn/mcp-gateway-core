@@ -100,10 +100,18 @@ Included:
 - optional Spring WebFlux governance filter and JSON-RPC parsing adapters
 
 The Spring WebFlux adapter fails closed on invalid MCP JSON-RPC message shapes
-only when governance is active. It recognizes response-shaped envelopes used by
-clients to answer server-initiated requests and passes them downstream without
-request governance. When both authorization and abuse protection are inactive,
-it preserves exact downstream pass-through, including JSON-RPC batch bodies.
+when authorization, abuse protection, or an optional tool registry keeps
+filtering active. The unreleased `toolRegistry(McpToolRegistry)` builder option
+checks the runtime's registered, enabled tools before permissions: unknown and disabled
+tools receive the same MCP error without exposing permission details. Hosting
+runtimes supply the existing core registry populated with exactly their active
+tools, including through an active-only `McpToolAccessRegistry.toolRegistry()`;
+no separate tool list is required. Upgrading the adapter alone does not enable
+this behavior. The adapter recognizes response-shaped envelopes used by clients
+to answer server-initiated requests and passes them downstream without request
+governance. When both authorization and abuse protection are inactive and no
+registry is configured, it preserves exact downstream pass-through, including
+JSON-RPC batch bodies.
 See the [contract reference](docs/CONTRACT_REFERENCE.md) for the full wire
 contract.
 
