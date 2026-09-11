@@ -10,8 +10,8 @@ promise yet.
 
 Current focus:
 
-- operate and consume the published `0.9.0` public-preview release and gather
-  evidence from its fluent WebFlux adapter configuration;
+- operate and consume the published `0.10.0` public-preview release and gather
+  evidence from its optional active-tool registry and atomic rate-limiter API;
 - keep the core artifact JDK-only and framework support in separate adapter
   artifacts;
 - prove published and staged artifacts with current Java 17 core-only and
@@ -24,13 +24,17 @@ Current focus:
 
 ## Near-Term Work
 
-1. **0.9.0 consumer adoption**
+1. **0.10.0 consumer adoption**
 
-   `0.9.0` is the latest published version. Keep public dependency landing-page
-   examples on `0.9.0`, gather evidence from real consumers, and require
+   `0.10.0` is the latest published version. Keep public dependency landing-page
+   examples on `0.10.0`, gather evidence from real consumers, and require
    downstream adapter consumers to keep identity, policy, and observability
-   decisions explicit when using the fluent builder. Treat any disagreement
-   between public docs and Central as a release-blocking documentation defect.
+   decisions explicit when using the fluent builder. Hosts must opt into
+   existence-first tool-call handling with a registry of exactly their active
+   tools; upgrading alone retains legacy behavior. Gather consumer evidence for
+   the core's combined rate-limit decision and retry-delay result as well.
+   Treat any disagreement between public docs and Central as a release-blocking
+   documentation defect.
 
 2. **Consumer proof**
 

@@ -27,9 +27,11 @@ scanner integration, UI, or service mesh.
 contracts for Java MCP tool runtimes. It is not an MCP server SDK, Spring Boot
 starter, OAuth provider, policy language, plugin system, proxy, or data plane.
 
-The latest published preview release is `0.9.0`. It adds fluent, named
-construction for the optional WebFlux governance filter while keeping existing
-constructors and behavior unchanged. The core artifact remains JDK-only.
+The latest published preview release is `0.10.0`. The WebFlux adapter can check
+tool availability before permissions using the existing core registry. Hosts
+must explicitly supply their active-tool registry; upgrading alone retains the
+previous behavior. The core adds a combined rate-limit decision and retry-delay
+result through `TokenBucketRateLimiter.attempt` and remains JDK-only.
 
 ## Choose Your Path
 
@@ -44,11 +46,11 @@ constructors and behavior unchanged. The core artifact remains JDK-only.
 
 ## Coordinates
 
-These are the current `0.9.0` public-preview coordinates.
+These are the current `0.10.0` public-preview coordinates.
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.9.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.9.0" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.10.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.10.0" // optional
 ```
 
 ## Boundary

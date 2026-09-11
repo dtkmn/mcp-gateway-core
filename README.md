@@ -16,7 +16,7 @@ contracts.
 It is not a gateway runtime, router, scanner integration, UI, service mesh, or
 traffic-management data plane.
 
-Current status: public preview. The latest published version is `0.9.0`. The
+Current status: public preview. The latest published version is `0.10.0`. The
 package and coordinates are intended for early integration proof, not a stable
 compatibility promise.
 
@@ -101,9 +101,10 @@ Included:
 
 The Spring WebFlux adapter fails closed on invalid MCP JSON-RPC message shapes
 when authorization, abuse protection, or an optional tool registry keeps
-filtering active. The unreleased `toolRegistry(McpToolRegistry)` builder option
-checks the runtime's registered, enabled tools before permissions: unknown and disabled
-tools receive the same MCP error without exposing permission details. Hosting
+filtering active. The `toolRegistry(McpToolRegistry)` builder option, available
+since `0.10.0`, checks the runtime's registered, enabled tools before permissions:
+unknown and disabled tools receive the same MCP error without exposing permission
+details. Hosting
 runtimes supply the existing core registry populated with exactly their active
 tools, including through an active-only `McpToolAccessRegistry.toolRegistry()`;
 no separate tool list is required. Upgrading the adapter alone does not enable
@@ -205,25 +206,25 @@ staged repository, and exercises the current WebFlux filter path.
 
 ## Coordinates
 
-These are the current published `0.9.0` public-preview coordinates.
+These are the current published `0.10.0` public-preview coordinates.
 
 Core coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.9.0
+io.github.dtkmn:mcp-gateway-core:0.10.0
 ```
 
 Optional Spring WebFlux adapter coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-spring-webflux:0.9.0
+io.github.dtkmn:mcp-gateway-spring-webflux:0.10.0
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.9.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.9.0" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.10.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.10.0" // optional
 ```
 
 Maven:
@@ -232,12 +233,12 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.9.0</version>
+  <version>0.10.0</version>
 </dependency>
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-spring-webflux</artifactId>
-  <version>0.9.0</version>
+  <version>0.10.0</version>
 </dependency>
 ```
 

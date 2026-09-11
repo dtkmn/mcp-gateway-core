@@ -9,7 +9,9 @@ artifacts to Sonatype Central as one `USER_MANAGED` deployment:
 It does not publish the deployment. Publishing must remain a deliberate manual
 Portal action until the release policy says otherwise.
 
-`0.9.0` is the latest published version, and public dependency examples use it.
+`0.10.0` is the latest published version, and public dependency examples use it.
+It adds opt-in active-tool registry handling in the WebFlux adapter and the
+core's combined rate-limit decision and retry-delay API.
 For future releases, update those examples only after both new coordinates have
 propagated through Maven Central and passed the post-publication checks below.
 
@@ -141,10 +143,10 @@ arguments, shell history, clipboard managers, CI output, tickets, or chat.
 4. Confirm the candidate is now on `main` and record its exact commit SHA. This
    is the source commit that must be dry-run, uploaded, and eventually tagged.
 
-The normal development version is a `-SNAPSHOT`; this script deliberately
-rejects snapshots. A workflow may still be dispatched from another ref, but the
-protected environment blocks its release job and secret access unless the ref
-is `main`.
+The normal version on the repository's development branch, `dev`, is a
+`-SNAPSHOT`; this script deliberately rejects snapshots. A workflow may still
+be dispatched from another ref, but the protected environment blocks its
+release job and secret access unless the ref is `main`.
 
 ## Approval-Gated Dry Run
 
@@ -243,8 +245,8 @@ complete:
    public documentation to the newly published version, and merge those changes.
 4. Create the GitHub Release from the verified tag and use the finalized release
    notes. Check that the release links to the exact tagged source commit.
-5. Synchronize `develop` with the finalized release state, then advance
-   `gatewayCoreVersion` on `develop` to the next `-SNAPSHOT` version. Do not make
+5. Synchronize `dev` with the finalized release state, then advance
+   `gatewayCoreVersion` on `dev` to the next `-SNAPSHOT` version. Do not make
    that snapshot bump part of the published release tag.
 
 The immutable tag prioritizes source provenance: it must identify the exact

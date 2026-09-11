@@ -11,6 +11,9 @@ const homeUrl = `${site}${base}/`;
 
 const indexHtml = await readDist('index.html');
 const gettingStartedHtml = await readDist('guides/getting-started/index.html');
+const compatibilityHtml = await readDist('reference/compatibility/index.html');
+const releaseNotesHtml = await readDist('maintainers/release-notes/index.html');
+const contractReferenceHtml = await readDist('reference/contract-reference/index.html');
 const sitemapIndexXml = await readDist('sitemap-index.xml');
 const sitemapXml = await readDist('sitemap-0.xml');
 const faviconSvg = await readDist('favicon.svg');
@@ -44,6 +47,21 @@ const coordinateVersions = [
   ),
 ];
 assertEqual(coordinateVersions.join(', '), latestPublishedVersion);
+
+for (const [page, html] of [
+  ['compatibility', compatibilityHtml],
+  ['release notes', releaseNotesHtml],
+]) {
+  assertContains(
+    html,
+    `href="${homeUrl}reference/contract-reference/#active-tool-registry"`,
+    `${page} should link to the deployed active-tool registry contract`,
+  );
+}
+
+for (const anchor of ['active-tool-registry', 'active-tool-registry-unreleased']) {
+  assertContains(contractReferenceHtml, `id="${anchor}"`, `contract reference should retain the ${anchor} anchor`);
+}
 
 for (const artifact of ['mcp-gateway-core', 'mcp-gateway-spring-webflux']) {
   assertContains(

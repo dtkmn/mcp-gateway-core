@@ -433,7 +433,11 @@ an application can retain runtime-controlled authorization modes and protection
 flags. The builder does not register the result with Spring; applications still
 expose the built filter through their own `@Bean` method or equivalent wiring.
 
-### Active-Tool Registry (Unreleased)
+<a id="active-tool-registry-unreleased"></a>
+
+### Active-Tool Registry
+
+Available in `0.10.0`.
 
 The optional `toolRegistry(McpToolRegistry)` builder input reuses the existing
 core registry directly. It must contain exactly the tools registered and enabled
@@ -498,9 +502,10 @@ notifications retain their existing downstream behavior. These additional
 tool-call rules apply only when the tool registry is configured; existing
 constructors and configurations without a registry retain their legacy behavior.
 
-The framework-neutral core API and its authorization engine do not change. The
-adapter has no Spring AI dependency. Consumers such as ZAP Server must separately
-assemble and supply their active registry through this option; an adapter
+This option does not change core tool-registry or authorization contracts, or
+the framework-neutral authorization engine. The adapter has no Spring AI
+dependency. Consumers such as ZAP Server must separately assemble and supply
+their active registry through this option; an adapter
 version upgrade alone does not enable the registry-aware behavior. This adapter
 change does not perform that runtime integration.
 

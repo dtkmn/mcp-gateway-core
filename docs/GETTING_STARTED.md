@@ -11,7 +11,7 @@ own transport adapter.
 
 ## Choose The Artifact
 
-The examples below target the published `0.9.0` public-preview release.
+The examples below target the published `0.10.0` public-preview release.
 Consumers that remain on `0.7.2` must also keep its Jackson 2 `ObjectMapper`
 wiring.
 
@@ -19,14 +19,14 @@ Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.9.0"
+implementation "io.github.dtkmn:mcp-gateway-core:0.10.0"
 ```
 
 Use both artifacts when your MCP endpoint is a Spring WebFlux route:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.9.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.9.0"
+implementation "io.github.dtkmn:mcp-gateway-core:0.10.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.10.0"
 ```
 
 The adapter currently targets Spring Framework 7, Spring Security 7, and
