@@ -1,5 +1,87 @@
 # Release Notes
 
+## 0.10.0 Public Preview Release Candidate
+
+`0.10.0` is an unpublished release candidate for both
+`io.github.dtkmn:mcp-gateway-core` and
+`io.github.dtkmn:mcp-gateway-spring-webflux`. The modules remain versioned
+together. `0.9.0` remains the latest published release; public dependency
+examples stay on that version until both new coordinates are published and
+verified from Maven Central. Release validation, independent approval, and
+manual publication are still required.
+
+### Spring WebFlux Tool-Call Handling
+
+- Add the optional `toolRegistry(McpToolRegistry)` filter-builder setting. The
+  host supplies the existing core registry containing exactly its registered,
+  enabled tools. No additional catalog or product-specific tool mode is added.
+- With that registry configured, check availability for well-formed tool calls
+  before permissions or abuse protection. Unknown and disabled tools receive
+  the same HTTP `200`
+  JSON-RPC `-32602` response with the generic `Unknown tool` message and the
+  original request id; neither request reaches tool execution.
+- Preserve HTTP `403` for enforced scope denials on active tools. An active
+  tool rejected by enforced authorization because its permission mapping is
+  missing receives a generic JSON-RPC `-32603` internal error without exposing
+  registry or policy details.
+- Reject explicit invalid tool-call ids with HTTP `400` and JSON-RPC `-32600`.
+  Accept id-less tool-call notifications with HTTP `202` without executing a
+  tool. Ordinary notifications and recognized JSON-RPC response envelopes keep
+  their existing downstream handling.
+- Keep registry-aware filtering active even when authorization and protection
+  are disabled. Existing constructors and builder configurations without a
+  registry retain their previous behavior.
+
+This handling is opt-in: upgrading the library alone does not wire a host's
+active tools into the filter. Hosts must keep discovery, dispatch, and complete
+permission mappings consistent, and run authentication before the governance
+filter. An existing `McpToolAccessRegistry.toolRegistry()` can be reused when
+its access rules were validated against the active tool set. The adapter does
+not discover tools or configure ZAP or Spring AI runtimes. See the
+[active-tool registry contract](CONTRACT_REFERENCE.md#active-tool-registry-unreleased)
+for the response and integration details.
+
+### Core Rate-Limiter API
+
+- Add `TokenBucketRateLimiter.attempt(String, Policy)` and its public `Attempt`
+  result, returning the allow/deny decision and retry delay from the same
+  consumption attempt instead of requiring a separate retry-delay lookup.
+- Allowed attempts report zero retry delay. Rejected attempts report at least
+  one second, including the fallback when a new key cannot be admitted because
+  the tracked-key limit is full.
+- Retain the existing `tryConsume` and `retryAfterSeconds` APIs. The core remains
+  framework-neutral with no runtime dependencies. The tool-availability fix
+  does not change the core authorization engine.
+
+Callers opt into the combined result by using `attempt`; existing governance
+flows are not automatically switched to the new API.
+
+### Dependency Updates
+
+- Update the adapter's published dependencies to Spring Framework `7.0.9`,
+  Spring Security `7.1.1`, and Jackson `3.1.6`; the Spring Framework update also
+  brings Reactor Core `3.8.7`.
+- Align the integration-test stack with Spring Boot `4.1.1`, Spring AI `2.0.1`,
+  Reactor test support `3.8.7`, Reactor Netty `1.3.7`, and Netty `4.2.17.Final`.
+  MCP Java SDK remains `2.0.0`. Spring Boot, Spring AI, MCP SDK, and Netty are
+  test dependencies here, not new published adapter dependencies.
+- These patch updates address the dependency versions flagged during this
+  release's Snyk review. Consuming applications must also update and verify
+  their own runtime dependency management; this repository's test-dependency
+  updates do not upgrade a consuming server's runtime or configure its wiring.
+
+### Build And Release Verification
+
+- Update the Gradle Wrapper to `9.7.1` and consolidate development and release
+  preparation around `verifyGatewayDevelopment`, followed by clean Java 17
+  consumer checks against the staged publications.
+- Retain Java 17 compilation targets, module-owned JAR class checks, the core
+  `java.base`-only dependency check, and adapter runtime bytecode checks.
+  Signing and Central bundle validation remain in the guarded release script.
+- Separate successful Snyk scanning/uploading from the vulnerability result:
+  the `Snyk vulnerabilities` commit status fails when findings remain even if
+  the scan workflow itself completed successfully.
+
 ## 0.9.0 Public Preview
 
 `0.9.0` is the latest published version of both public-preview artifacts and
