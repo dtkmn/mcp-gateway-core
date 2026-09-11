@@ -35,7 +35,7 @@ permission mappings consistent, and run authentication before the governance
 filter. An existing `McpToolAccessRegistry.toolRegistry()` can be reused when
 its access rules were validated against the active tool set. The adapter does
 not discover tools or configure ZAP or Spring AI runtimes. See the
-[active-tool registry contract](CONTRACT_REFERENCE.md#active-tool-registry)
+[active-tool registry contract](https://danieltse.org/mcp-gateway-core/reference/contract-reference/#active-tool-registry)
 for the response and integration details.
 
 ### Core Rate-Limiter API

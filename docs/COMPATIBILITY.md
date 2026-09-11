@@ -87,7 +87,7 @@ error, enforced unmapped-tool failures return a generic internal error,
 and tool-call request identifiers and notifications receive the documented
 handling. Filtering and request-body validation remain active with a registry
 even when authorization and protection are disabled. See the
-[active-tool registry contract](CONTRACT_REFERENCE.md#active-tool-registry)
+[active-tool registry contract](https://danieltse.org/mcp-gateway-core/reference/contract-reference/#active-tool-registry)
 for the wire responses and migration details.
 
 This option does not discover tools automatically. Each hosting runtime must
