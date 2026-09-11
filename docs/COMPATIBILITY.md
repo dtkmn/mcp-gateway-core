@@ -67,12 +67,19 @@ During public preview, changes should stay source-compatible when reasonable,
 but correctness and clean boundaries win over compatibility. Any breaking change
 must be deliberate, reviewed, and described in release notes.
 
-The unreleased `toolRegistry(McpToolRegistry)` builder option is an opt-in,
+The `0.10.0` release candidate is not yet published. It adds the public core
+`TokenBucketRateLimiter.attempt(String, Policy)` method and `Attempt` result
+while retaining `tryConsume` and `retryAfterSeconds`. The new method returns a
+consumption decision and its retry delay from the same attempt. The core stays
+framework-neutral with no runtime dependencies.
+
+The candidate's `toolRegistry(McpToolRegistry)` builder option is an opt-in,
 additive change to `mcp-gateway-spring-webflux`. It accepts the existing core
 registry directly; no additional catalog or observer contract is introduced.
 Explicit null is rejected. Existing public constructors and registry-omitted
-builder configurations preserve their behavior. Core public contracts and the
-framework-neutral authorization engine are unchanged.
+builder configurations preserve their behavior. This adapter option does not
+change core tool-registry or authorization contracts, or the framework-neutral
+authorization engine; the rate-limiter API addition above is separate.
 
 Supplying a registry explicitly changes tool-call handling: existence is checked
 before permissions, unknown and disabled tools receive the same generic MCP
