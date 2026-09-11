@@ -19,9 +19,13 @@ Public preview means:
 Do not describe these artifacts as stable until this policy is updated and a
 stable release gate exists.
 
-`0.9.0` is the latest published public-preview version. It adds a compatible
-fluent builder to the WebFlux adapter while retaining existing constructors and
-behavior. The framework-neutral core API is unchanged.
+`0.10.0` is the latest published public-preview version. It adds optional
+active-tool registry configuration to the WebFlux adapter for existence-first
+tool-call handling. Existing constructors and registry-omitted configurations
+retain their behavior. The core adds `TokenBucketRateLimiter.attempt` and its
+`Attempt` result, returning a consumption decision and retry delay from the
+same attempt; existing rate-limiter APIs remain available. The core stays
+framework-neutral with no runtime dependencies.
 
 ## Release Gates
 
@@ -100,11 +104,12 @@ Publishing is manual until this policy says otherwise. A validation bundle is
 not a release. A Central Portal deployment is not public until it is explicitly
 published in the Portal.
 
-Outside the short release-cut window, `develop` uses the next `-SNAPSHOT`
-version. It may temporarily carry the reviewed non-snapshot candidate while
-that candidate is promoted to `main`; the post-publication sequence below must
-restore the snapshot state immediately. Release preparation must deliberately
-select an unpublished, non-snapshot version; the guarded upload path rejects
+Outside the short release-cut window, the repository's development branch,
+`dev`, uses the next `-SNAPSHOT` version. It may temporarily carry the reviewed
+non-snapshot candidate while that candidate is promoted to `main`; the
+post-publication sequence below must restore the snapshot state immediately.
+Release preparation must deliberately select an unpublished, non-snapshot
+version; the guarded upload path rejects
 snapshots and refuses to upload a coordinate that already exists on Maven
 Central.
 
@@ -125,7 +130,7 @@ The required release sequence is:
    artifacts from a clean consumer;
 6. tag the exact uploaded source commit, create the GitHub Release, and finalize
    public release notes and dependency examples;
-7. synchronize `develop` and advance it to the next `-SNAPSHOT` version.
+7. synchronize `dev` and advance it to the next `-SNAPSHOT` version.
 
 The detailed operator checklist is in
 [`CENTRAL_VALIDATION_UPLOAD.md`](CENTRAL_VALIDATION_UPLOAD.md). No step may infer

@@ -1,14 +1,12 @@
 # Release Notes
 
-## 0.10.0 Public Preview Release Candidate
+## 0.10.0 Public Preview
 
-`0.10.0` is an unpublished release candidate for both
-`io.github.dtkmn:mcp-gateway-core` and
-`io.github.dtkmn:mcp-gateway-spring-webflux`. The modules remain versioned
-together. `0.9.0` remains the latest published release; public dependency
-examples stay on that version until both new coordinates are published and
-verified from Maven Central. Release validation, independent approval, and
-manual publication are still required.
+`0.10.0` is the latest published version of both public-preview artifacts and
+supersedes `0.9.0`. The core library and optional Spring WebFlux adapter are
+available from Maven Central at `io.github.dtkmn:mcp-gateway-core:0.10.0` and
+`io.github.dtkmn:mcp-gateway-spring-webflux:0.10.0`. The published source commit
+is `aae895e626151b555745d888c7b283851cfce44c`.
 
 ### Spring WebFlux Tool-Call Handling
 
@@ -17,9 +15,8 @@ manual publication are still required.
   enabled tools. No additional catalog or product-specific tool mode is added.
 - With that registry configured, check availability for well-formed tool calls
   before permissions or abuse protection. Unknown and disabled tools receive
-  the same HTTP `200`
-  JSON-RPC `-32602` response with the generic `Unknown tool` message and the
-  original request id; neither request reaches tool execution.
+  the same HTTP `200`, JSON-RPC `-32602` response with the generic `Unknown tool`
+  message and the original request id; neither request reaches tool execution.
 - Preserve HTTP `403` for enforced scope denials on active tools. An active
   tool rejected by enforced authorization because its permission mapping is
   missing receives a generic JSON-RPC `-32603` internal error without exposing
@@ -38,7 +35,7 @@ permission mappings consistent, and run authentication before the governance
 filter. An existing `McpToolAccessRegistry.toolRegistry()` can be reused when
 its access rules were validated against the active tool set. The adapter does
 not discover tools or configure ZAP or Spring AI runtimes. See the
-[active-tool registry contract](CONTRACT_REFERENCE.md#active-tool-registry-unreleased)
+[active-tool registry contract](CONTRACT_REFERENCE.md#active-tool-registry)
 for the response and integration details.
 
 ### Core Rate-Limiter API
@@ -84,8 +81,8 @@ flows are not automatically switched to the new API.
 
 ## 0.9.0 Public Preview
 
-`0.9.0` is the latest published version of both public-preview artifacts and
-supersedes `0.8.0`. The core library and optional Spring WebFlux adapter are
+`0.9.0` was the preceding published version of both public-preview artifacts and
+superseded `0.8.0`. The core library and optional Spring WebFlux adapter are
 available from Maven Central at `io.github.dtkmn:mcp-gateway-core:0.9.0` and
 `io.github.dtkmn:mcp-gateway-spring-webflux:0.9.0`. The published source commit
 is `46b0ec29e43466c9aea5251c53bcc2f0f6a96f58`.
