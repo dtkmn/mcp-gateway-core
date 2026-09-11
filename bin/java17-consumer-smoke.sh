@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(awk -F= '/^gatewayCoreVersion=/ { print $2; exit }' "${ROOT_DIR}/gradle.properties")"
 SPRING_FRAMEWORK_VERSION="$(awk -F= '/^springFrameworkVersion=/ { print $2; exit }' "${ROOT_DIR}/gradle.properties")"
-SPRING_FRAMEWORK_VERSION="${SPRING_FRAMEWORK_VERSION:-7.0.8}"
+SPRING_FRAMEWORK_VERSION="${SPRING_FRAMEWORK_VERSION:-7.0.9}"
 STAGING_REPOSITORY="${GATEWAY_CORE_STAGING_REPOSITORY:-${ROOT_DIR}/build/staging-repository}"
 
 fail() {
