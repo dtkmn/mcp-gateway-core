@@ -67,6 +67,32 @@ During public preview, changes should stay source-compatible when reasonable,
 but correctness and clean boundaries win over compatibility. Any breaking change
 must be deliberate, reviewed, and described in release notes.
 
+The unreleased `toolRegistry(McpToolRegistry)` builder option is an opt-in,
+additive change to `mcp-gateway-spring-webflux`. It accepts the existing core
+registry directly; no additional catalog or observer contract is introduced.
+Explicit null is rejected. Existing public constructors and registry-omitted
+builder configurations preserve their behavior. Core public contracts and the
+framework-neutral authorization engine are unchanged.
+
+Supplying a registry explicitly changes tool-call handling: existence is checked
+before permissions, unknown and disabled tools receive the same generic MCP
+error, enforced unmapped-tool failures return a generic internal error,
+and tool-call request identifiers and notifications receive the documented
+handling. Filtering and request-body validation remain active with a registry
+even when authorization and protection are disabled. See the
+[active-tool registry contract](CONTRACT_REFERENCE.md#active-tool-registry-unreleased)
+for the wire responses and migration details.
+
+This option does not discover tools automatically. Each hosting runtime must
+supply an immutable registry of exactly its registered, enabled tools, validate
+complete permission mappings, and keep discovery and dispatch consistent. An
+existing `McpToolAccessRegistry.toolRegistry()` can be reused when that access
+registry was built from validated active-only rules. No third tool list needs
+to be maintained. A library upgrade without that integration retains legacy
+behavior.
+The generic adapter does not gain a Spring AI dependency or perform ZAP Server
+wiring.
+
 For `0.9.0`, the WebFlux adapter adds the fluent
 `McpGatewayWebFluxGovernanceFilter` builder. Existing public constructors,
 defaults, and governance behavior remain unchanged. The framework-neutral core
@@ -85,10 +111,11 @@ overload that accepts the observer. Existing public constructors remain
 available.
 
 The WebFlux adapter documents fail-closed invalid request-shape handling when
-governance is active, exact pass-through when governance is inactive, and the
+filtering is active, exact pass-through when filtering is inactive, and the
 batch distinction: JSON-RPC batch arrays are unsupported by the governance
-adapter while governance is active, but pass downstream unchanged when both
-authorization and protection governance are inactive.
+adapter while authorization, protection, or a configured tool registry
+keeps filtering active. They pass downstream unchanged only when authorization
+and protection are inactive and no tool registry is configured.
 
 Stable compatibility can be declared only after downstream consumers prove the
 API shape in real integration workflows.

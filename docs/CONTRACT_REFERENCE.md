@@ -389,7 +389,8 @@ Available in `0.9.0`.
 
 `McpGatewayWebFluxGovernanceFilter.builder(JsonMapper,
 McpGatewayWebFluxContextResolver)` provides named configuration over the same
-filter behavior as the public constructors.
+filter behavior as the public constructors unless an optional tool registry is
+configured as described below.
 
 The mapper and context resolver are required, and all builder method arguments
 must be non-null. Unspecified options use these defaults:
@@ -398,16 +399,17 @@ must be non-null. Unspecified options use these defaults:
 - `McpGrantedScopesExtractor.springSecurityScopes()`;
 - `McpAuthorizationObserver.noop()`;
 - `McpProtectionRejectionObserver.noop()`;
-- `McpGatewayCorrelationIdResolver.defaultResolver()`; and
-- `McpInvalidRequestObserver.noop()`.
+- `McpGatewayCorrelationIdResolver.defaultResolver()`;
+- `McpInvalidRequestObserver.noop()`; and
+- no tool registry.
 
-Authorization and protection do not have implicit evaluators. At least one must
-be supplied through `authorizationEvaluator(...)`, `authorization(...)`,
-`protectionEvaluator(...)`, or `protection(...)`; otherwise `build()` throws
-`IllegalStateException`. This catches accidental omission of both governance
-concerns. A configured dynamic mode or enablement supplier can still disable
-governance at request time, in which case the filter retains its documented
-inactive pass-through behavior.
+Authorization and protection do not have implicit evaluators. At least one
+authorization evaluator, protection evaluator, or tool registry must be
+supplied; otherwise `build()` throws `IllegalStateException`. This catches
+accidental omission of every filtering concern. A configured dynamic mode or
+enablement supplier can still disable authorization and protection at request
+time. Exact inactive pass-through then applies only when no tool registry
+is configured.
 
 Optional builder methods are:
 
@@ -423,6 +425,7 @@ Optional builder methods are:
 | `protectionRejectionObserver(McpProtectionRejectionObserver)` | Receives rejected protection decisions. |
 | `correlationIdResolver(McpGatewayCorrelationIdResolver)` | Replaces default correlation-header resolution. |
 | `invalidRequestObserver(McpInvalidRequestObserver)` | Receives invalid-request rejections without request payloads. |
+| `toolRegistry(McpToolRegistry)` | Uses the existing core registry of exactly the runtime's registered, enabled tools to check availability before tool-call authorization. |
 
 Choose either the complete evaluator method or the paired callback method for
 each governance concern. The supplier forms are evaluated at request time, so
@@ -430,14 +433,88 @@ an application can retain runtime-controlled authorization modes and protection
 flags. The builder does not register the result with Spring; applications still
 expose the built filter through their own `@Bean` method or equivalent wiring.
 
+### Active-Tool Registry (Unreleased)
+
+The optional `toolRegistry(McpToolRegistry)` builder input reuses the existing
+core registry directly. It must contain exactly the tools registered and enabled
+in the hosting MCP runtime, not every tool the product might support. Membership
+is an availability check, independent of the current caller's permissions.
+Explicit null is rejected; an empty registry means no tool calls are available,
+not that the availability check is disabled.
+
+Build this immutable snapshot from actual registrations, and validate that every
+active tool has a permission rule before accepting traffic. When an existing
+`McpToolAccessRegistry` is assembled from those validated active-only rules, its
+`toolRegistry()` can be reused without creating or maintaining a third tool list:
+
+```java
+McpToolAccessRegistry activeAccessRegistry =
+        McpToolAccessRegistry.of(validatedActiveToolRules);
+
+McpGatewayWebFluxGovernanceFilter filter =
+        McpGatewayWebFluxGovernanceFilter.builder(jsonMapper, contextResolver)
+                .authorization(modeSupplier, authorizationCallback)
+                .toolRegistry(activeAccessRegistry.toolRegistry())
+                .build();
+```
+
+The authorization callback can use the same access registry. The core registries
+do not themselves discover registrations or enforce active-only membership; the
+host owns that validation and assembly. A full product permission registry can
+include disabled tools, and a registry assembled only from available permission
+rules can silently omit an exposed tool whose rule is missing. Neither is a
+substitute for validating against actual registrations.
+
+`McpToolRegistry` is an immutable descriptor snapshot. The adapter checks its
+case-sensitive membership using the already validated tool name; modifying the
+source collection does not update it. Keep the supplied registry consistent
+with runtime dispatch and discovery. The adapter does not refresh the registry,
+register tools, or rewrite `tools/list` responses. Disabled tools must also be
+absent from the runtime's discovery results.
+
+The hosting application's security chain must authenticate requests before this
+filter runs. For a valid tool-call request, the adapter then checks availability
+before resolving tool execution context, extracting scopes, evaluating
+permissions, applying abuse protection, or reaching downstream execution.
+Unknown and disabled tools have the same public response: HTTP `200`, JSON-RPC
+error `-32602` with message `Unknown tool`, and no `WWW-Authenticate` challenge.
+The response does not disclose tool names, disabled status, or suggested tools.
+
+The registry check remains active in authorization `DISABLED` and `WARN` modes,
+including when abuse protection is disabled. An available tool with an unmapped
+authorization decision is a generic JSON-RPC internal error when authorization
+is enforced. This is a server configuration problem, not proof that the tool is
+unknown and not a request for additional permissions. In `WARN` and `DISABLED`,
+the existing authorization-mode semantics remain unchanged.
+
+Registry-aware `tools/call` requests preserve their string or integer JSON-RPC
+`id` in error responses. An explicit null, fractional number, any other value
+type, or case-variant `id` field is rejected with HTTP `400`, JSON-RPC
+error `-32600` (`Invalid Request`), and `id: null`. An otherwise well-shaped
+`tools/call` message without an `id` is treated as a notification for transport
+purposes: it receives HTTP `202` with an empty body and is not evaluated or
+executed, because tool calls require a request identifier. Other valid
+notifications retain their existing downstream behavior. These additional
+tool-call rules apply only when the tool registry is configured; existing
+constructors and configurations without a registry retain their legacy behavior.
+
+The framework-neutral core API and its authorization engine do not change. The
+adapter has no Spring AI dependency. Consumers such as ZAP Server must separately
+assemble and supply their active registry through this option; an adapter
+version upgrade alone does not enable the registry-aware behavior. This adapter
+change does not perform that runtime integration.
+
+### Request Handling
+
 Only application-relative `POST` requests matching the configured endpoint are
 governed. Context paths are excluded before comparison, and matrix parameters do
 not change a segment's route value, so `/app/mcp;v=1` can match a configured
 `/mcp` endpoint under context path `/app`. Extra path segments do not match.
 
-Governance is active when authorization policy is enabled or abuse protection is
-enabled. When governance is active, the adapter rejects invalid MCP JSON-RPC
-message shapes before principal lookup, context resolution, scope extraction,
+Filtering is active when authorization policy is enabled, abuse protection is
+enabled, or a tool registry is configured. When filtering is active, the
+adapter rejects invalid MCP JSON-RPC message shapes before principal lookup,
+context resolution, scope extraction,
 authorization, protection, or downstream body replay. Rejected invalid shapes
 return adapter JSON with HTTP `400`, `Content-Type: application/json`, `error`
 set to `invalid_json_rpc_request`, a low-cardinality `reason`, ISO-8601
@@ -462,19 +539,21 @@ still apply. The downstream MCP runtime owns response correlation and the final
 HTTP status.
 
 The adapter does not require or validate the JSON-RPC `jsonrpc` version field
-for requests or recognized responses. That protocol validation remains the
-downstream runtime's responsibility.
+for requests or recognized responses and is not a complete protocol validator.
+For messages that reach the downstream runtime, that runtime remains
+responsible for protocol validation.
 
-Batch arrays are unsupported by the governance adapter only while governance is
+Batch arrays are unsupported by the governance adapter only while filtering is
 active. They return `400` with reason `batch_not_supported` in that mode. This
-is not a global transport validator rule: when governance is inactive, batches
+is not a global transport validator rule: when filtering is inactive, batches
 pass downstream exactly like any other body.
 
-When neither authorization nor protection governance is active, the adapter does
-not validate, buffer, or replay MCP message bodies. Invalid JSON-RPC bodies,
-batch bodies, and bodies larger than `maxBodyBytes` pass downstream unchanged.
+When neither authorization nor protection is active and no tool registry
+is configured, the adapter does not validate, buffer, or replay MCP message
+bodies. Invalid JSON-RPC bodies, batch bodies, and bodies larger than
+`maxBodyBytes` pass downstream unchanged.
 
-When governance is active, only a body-size failure raised while the adapter is
+When filtering is active, only a body-size failure raised while the adapter is
 reading the message becomes its `413` response. A `DataBufferLimitException`
 raised later by downstream handling propagates unchanged. Replayed messages have
 conflicting transfer framing removed and an exact `Content-Length` set.
@@ -515,8 +594,9 @@ authorities with the `SCOPE_` prefix only for authenticated, non-anonymous
 principals. It trims names, drops blanks, lower-cases, and de-duplicates them.
 Null results from a custom extractor normalize to an empty scope list.
 
-`McpAuthorizationObservation` is emitted by the WebFlux governance filter when
-authorization runs:
+`McpAuthorizationObservation` is emitted by the WebFlux governance filter for
+authorization decisions, except for registry-aware enforced unmapped-tool
+configuration failures, which are not reported as permission denials:
 
 | Field | Meaning |
 | --- | --- |
@@ -527,15 +607,43 @@ authorization runs:
 | `grantedScopes` | Caller scopes considered. |
 | `context` | Core execution context. |
 
-The adapter returns MCP-style JSON-RPC errors for authorization and protection
-rejections, but your runtime still owns the policy that decides what should be
-allowed.
+### Rejection Responses and Observability
 
-Rejection correlation uses the context correlation id when present and otherwise
-falls back through the configured `McpGatewayCorrelationIdResolver`. The default
-header resolver applies the core log-safe correlation-id rules and falls back to
-the server request id. An `insufficient_scope` challenge includes its `scope`
-parameter only when every required scope is an RFC 6749 scope token.
+The runtime owns the policy that decides what should be allowed. The adapter's
+response formats are deliberately distinct:
+
+| Condition | HTTP status | Response body | Authentication challenge |
+| --- | --- | --- | --- |
+| Registry configured: unknown or disabled tool | `200` | JSON-RPC `-32602`, `Unknown tool`, original `id` | None |
+| Registry configured: available tool with enforced unmapped authorization | `200` | JSON-RPC `-32603`, `Internal error`, original `id` | None |
+| Registry configured: invalid tool-call `id` | `400` | JSON-RPC `-32600`, `Invalid Request`, `id: null` | None |
+| Registry configured: otherwise well-shaped tool call without an `id` | `202` | Empty; no execution | None |
+| Enforced mapped permission denial | `403` | Existing adapter JSON diagnostics, not a JSON-RPC envelope | `Bearer error="insufficient_scope"` |
+| No registry: enforced unmapped authorization | `403` | Existing adapter JSON diagnostics (`unmapped_tool`) | Existing insufficient-scope challenge |
+| Abuse-protection rejection | `429` | Existing adapter JSON diagnostics, not a JSON-RPC envelope | None |
+| Invalid message shape | `400` | Adapter JSON diagnostics (`invalid_json_rpc_request`) | None |
+| Adapter request-body limit exceeded | `413` | Existing adapter JSON diagnostics | None |
+
+Non-empty responses in this table use `Content-Type: application/json`.
+Registry-aware protocol errors expose only their generic code/message and
+JSON-RPC request identifier, not exception details, permission requirements, or
+the active tool registry.
+
+Unknown-tool, tool-call identifier, and enforced unmapped-tool configuration
+rejections do not emit authorization observations, so they are not mislabeled
+as permission denials. This option adds no automatic diagnostic events or new
+observer API for these protocol responses. Ordinary mapped permission decisions
+retain their existing authorization observations. Runtimes remain responsible
+for operational diagnostics, including startup validation of permission mappings.
+
+Existing authorization and protection rejection responses use the execution
+context's correlation id when present, otherwise the configured
+`McpGatewayCorrelationIdResolver`. Existing invalid-request observations use
+the configured resolver. The default resolver applies the core log-safe
+correlation-id rules to the request header
+and falls back to the server request id. An `insufficient_scope` challenge
+includes its `scope` parameter only when every required scope is an RFC 6749
+scope token.
 
 ## What Not To Encode In Core Values
 

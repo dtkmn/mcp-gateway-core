@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(awk -F= '/^gatewayCoreVersion=/ { print $2; exit }' "${ROOT_DIR}/gradle.properties")"
 SPRING_FRAMEWORK_VERSION="$(awk -F= '/^springFrameworkVersion=/ { print $2; exit }' "${ROOT_DIR}/gradle.properties")"
-SPRING_FRAMEWORK_VERSION="${SPRING_FRAMEWORK_VERSION:-7.0.8}"
+SPRING_FRAMEWORK_VERSION="${SPRING_FRAMEWORK_VERSION:-7.0.9}"
 STAGING_REPOSITORY="${GATEWAY_CORE_STAGING_REPOSITORY:-${ROOT_DIR}/build/staging-repository}"
 
 fail() {
@@ -107,7 +107,7 @@ import mcp.gateway.core.tool.McpToolSurface;
 public final class CoreSmoke {
     public static void main(String[] args) {
         McpToolAuthorizer authorizer = McpToolAuthorizer.of(McpToolAccessRegistry.of(List.of(
-                McpToolAccessRule.of("demo_tool", McpToolSurface.GUIDED, List.of("demo:run"))
+                McpToolAccessRule.of("demo_tool", McpToolSurface.of("default"), List.of("demo:run"))
         )), List.of("mcp:tools:list"));
 
         if (!authorizer.authorizeToolCall("demo_tool", List.of("demo:run"), false, true).allowed()) {
@@ -133,6 +133,7 @@ import mcp.gateway.core.tool.McpToolSurface;
 import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
 import mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -143,6 +144,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 public final class WebFluxSmoke {
@@ -151,9 +153,10 @@ public final class WebFluxSmoke {
             """;
 
     public static void main(String[] args) {
-        McpToolAuthorizer authorizer = McpToolAuthorizer.of(McpToolAccessRegistry.of(List.of(
-                McpToolAccessRule.of("demo_tool", McpToolSurface.GUIDED, List.of("demo:run"))
-        )), List.of("mcp:tools:list"));
+        McpToolAccessRegistry activeAccessRegistry = McpToolAccessRegistry.of(List.of(
+                McpToolAccessRule.of("demo_tool", McpToolSurface.of("default"), List.of("demo:run"))
+        ));
+        McpToolAuthorizer authorizer = McpToolAuthorizer.of(activeAccessRegistry, List.of("mcp:tools:list"));
         McpGatewayWebFluxGovernanceFilter filter = McpGatewayWebFluxGovernanceFilter
                 .builder(JsonMapper.builder().build(), (authentication, exchange, invocation) ->
                         GatewayToolExecutionContext.of(
@@ -161,6 +164,7 @@ public final class WebFluxSmoke {
                         ))
                 .authorization(() -> McpGatewayAuthorizationMode.ENFORCE,
                         (scopes, context) -> authorizer.authorize(context, scopes, false, true))
+                .toolRegistry(activeAccessRegistry.toolRegistry())
                 .build();
 
         AtomicReference<String> downstreamBody = new AtomicReference<>();
@@ -175,12 +179,32 @@ public final class WebFluxSmoke {
         String response = ((MockServerHttpResponse) denied.getResponse()).getBodyAsString().block();
         require(response != null && response.contains("insufficient_scope"),
                 "Denied request must produce an authorization error response");
+
+        ServerWebExchange unavailable = exchange("demo:run", """
+                {"jsonrpc":"2.0","id":9007199254740993,"method":"tools/call","params":{"name":"unavailable"}}
+                """);
+        filter.filter(unavailable, ignored -> Mono.error(new IllegalStateException("Unavailable tool reached downstream")))
+                .block();
+        require(HttpStatus.OK.equals(unavailable.getResponse().getStatusCode()),
+                "Unavailable tool must return an MCP error over HTTP 200");
+        require(!unavailable.getResponse().getHeaders().containsHeader(HttpHeaders.WWW_AUTHENTICATE),
+                "Unavailable tool must not request additional permissions");
+        JsonNode error = JsonMapper.builder().build().readTree(
+                ((MockServerHttpResponse) unavailable.getResponse()).getBodyAsString().block());
+        require(error.path("id").asLong() == 9007199254740993L, "Request ID must be preserved exactly");
+        require(error.path("error").path("code").asInt() == -32602, "Unavailable tool must use code -32602");
+        require("Unknown tool".equals(error.path("error").path("message").asString()),
+                "Unavailable tool must not expose its configuration");
     }
 
     private static ServerWebExchange exchange(String scope) {
+        return exchange(scope, BODY);
+    }
+
+    private static ServerWebExchange exchange(String scope, String body) {
         return MockServerWebExchange.from(MockServerHttpRequest.post("/mcp")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .body(BODY))
+                        .body(body))
                 .mutate()
                 .principal(Mono.just(new UsernamePasswordAuthenticationToken(
                         "demo-client", "n/a", List.of(new SimpleGrantedAuthority("SCOPE_" + scope))

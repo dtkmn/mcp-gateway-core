@@ -75,13 +75,19 @@ public final class McpJsonRpcToolInvocationParser {
             return McpJsonRpcMessageClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_REQUEST_SHAPE);
         }
 
+        // Retain transport metadata without changing the public invocation parser's
+        // existing shape validation. Registry-aware governance opts into ID checks.
+        JsonNode requestId = root.get("id");
+        boolean invalidRequestId = hasCaseVariantField(root, "id")
+                || (requestId != null && !requestId.isString() && !requestId.isIntegralNumber());
+
         if (hasCaseVariantField(root, "method")) {
             return McpJsonRpcMessageClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_METHOD);
         }
         JsonNode methodNode = root.get("method");
         if (methodNode == null) {
             return isResponseEnvelope(root)
-                    ? McpJsonRpcMessageClassification.responseMessage()
+                    ? McpJsonRpcMessageClassification.responseMessage(requestId, invalidRequestId)
                     : McpJsonRpcMessageClassification.rejected(McpJsonRpcRequestRejectionReason.MISSING_METHOD);
         }
         if (methodNode.isNull()) {
@@ -95,7 +101,8 @@ public final class McpJsonRpcToolInvocationParser {
 
         String method = methodNode.stringValue();
         if (!McpToolInvocation.METHOD_TOOLS_CALL.equals(method)) {
-            return McpJsonRpcMessageClassification.request(McpToolInvocation.fromJsonRpc(method, null));
+            return McpJsonRpcMessageClassification.request(
+                    McpToolInvocation.fromJsonRpc(method, null), requestId, invalidRequestId);
         }
 
         if (hasCaseVariantField(root, "params")) {
@@ -117,7 +124,8 @@ public final class McpJsonRpcToolInvocationParser {
                 || hasBoundaryWhitespace(toolNameNode.stringValue())) {
             return McpJsonRpcMessageClassification.rejected(McpJsonRpcRequestRejectionReason.INVALID_TOOL_NAME);
         }
-        return McpJsonRpcMessageClassification.request(McpToolInvocation.fromJsonRpc(method, toolNameNode.stringValue()));
+        return McpJsonRpcMessageClassification.request(
+                McpToolInvocation.fromJsonRpc(method, toolNameNode.stringValue()), requestId, invalidRequestId);
     }
 
     private boolean isResponseEnvelope(JsonNode root) {
