@@ -17,10 +17,10 @@ def jacksonDatabindVersion = providers.gradleProperty('jacksonDatabindVersion').
 def reactorVersion = providers.gradleProperty('reactorVersion').orElse('3.8.7').get()
 def springBootVersion = providers.gradleProperty('springBootVersion').orElse('4.1.1').get()
 def springAiVersion = providers.gradleProperty('springAiVersion').orElse('2.0.1').get()
-def mcpJavaSdkVersion = providers.gradleProperty('mcpJavaSdkVersion').orElse('2.0.0').get()
-def nettyVersion = providers.gradleProperty('nettyVersion').orElse('4.2.17.Final').get()
-def logbackVersion = providers.gradleProperty('logbackVersion').orElse('1.5.36').get()
-def log4jVersion = providers.gradleProperty('log4jVersion').orElse('2.25.5').get()
+def mcpJavaSdkVersion = providers.gradleProperty('mcpJavaSdkVersion').orElse('2.0.1').get()
+def nettyVersion = providers.gradleProperty('nettyVersion').orElse('4.2.18.Final').get()
+def logbackVersion = providers.gradleProperty('logbackVersion').orElse('1.6.4').get()
+def log4jVersion = providers.gradleProperty('log4jVersion').orElse('2.26.1').get()
 def gatewayJavaRelease = 17
 def gatewayJavaClassFileMajorVersion = 61
 
