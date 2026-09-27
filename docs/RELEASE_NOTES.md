@@ -1,5 +1,16 @@
 # Release Notes
 
+## Unreleased
+
+- Update the Spring WebFlux adapter's Jackson Databind dependency from `3.1.6`
+  to `3.2.3`, with Jackson Core `3.2.3` and Jackson Annotations `2.22`.
+  The adapter continues to use Jackson 3 `JsonMapper`; the core artifact remains
+  JDK-only. Published `0.10.0` artifacts are unchanged.
+- Update the adapter's integration-test dependencies to MCP Java SDK `2.0.1`,
+  Netty `4.2.18.Final`, Logback `1.6.4`, and Log4j-to-SLF4J `2.26.1`.
+  These remain test dependencies and are not added to the adapter's published
+  dependencies. Consuming applications manage their own runtime versions.
+
 ## 0.10.0 Public Preview
 
 `0.10.0` is the latest published version of both public-preview artifacts and
