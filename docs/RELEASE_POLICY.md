@@ -133,6 +133,6 @@ The required release sequence is:
 7. synchronize `dev` and advance it to the next `-SNAPSHOT` version.
 
 The detailed operator checklist is in
-[`CENTRAL_VALIDATION_UPLOAD.md`](CENTRAL_VALIDATION_UPLOAD.md). No step may infer
+the [Central validation upload guide](https://danieltse.org/mcp-gateway-core/maintainers/central-validation-upload/). No step may infer
 publication from a successful dry run, validation upload, deployment id, or
 `VALIDATED` state.

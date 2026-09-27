@@ -63,6 +63,11 @@ npm --prefix docs-site run build
 The site build syncs source pages from `docs/` and `SECURITY.md`; edit those
 source files rather than their generated copies.
 
+Treat tracked files, drafts, committed metadata, and Git history as public.
+Keep private advisor conversations, personal review notes, and credentials
+outside this repository. A file or folder named `internal` or `private` does
+not restrict access, and deleting a file does not remove its earlier revisions.
+
 ## Working together
 
 Keep discussions respectful, specific, and constructive.

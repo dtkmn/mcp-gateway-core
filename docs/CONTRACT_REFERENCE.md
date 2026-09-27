@@ -371,9 +371,13 @@ Package: `mcp.gateway.core.logging`
 | `X-Correlation-Id` | Preferred request correlation header. |
 | `X-Request-Id` | Legacy/fallback request id header. |
 
-Caller-supplied correlation values are trimmed, capped at 128 characters, and
-accepted only when they contain log-safe ASCII letters, digits, `.`, `_`, `:`,
-`/`, or `-`. Unsafe values fall through to the next resolver source.
+The `CorrelationIds` helpers trim caller-supplied values and accept them only
+when they are at most 128 characters and contain log-safe ASCII letters,
+digits, `.`, `_`, `:`, `/`, or `-`. Unsafe values fall through to the next
+resolver source. `GatewayExecutionContext` only trims its correlation value;
+runtimes must resolve or sanitize untrusted values before putting them into the
+context. The WebFlux adapter's default correlation resolver applies these safe
+rules, but a non-null context value takes precedence over that resolver.
 
 ## Spring WebFlux Adapter
 
