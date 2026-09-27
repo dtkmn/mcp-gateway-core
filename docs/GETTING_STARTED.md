@@ -147,6 +147,7 @@ import mcp.gateway.core.protection.McpAbuseProtectionDecision;
 import mcp.gateway.core.rate.TokenBucketRateLimiter;
 import mcp.gateway.core.tool.McpToolSurface;
 import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
+import mcp.gateway.spring.webflux.McpGatewayCorrelationIdResolver;
 import mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -183,8 +184,8 @@ class McpGatewayConfiguration {
                                     : authentication.getName();
                             String workspaceId = exchange.getRequest().getHeaders()
                                     .getFirst("X-Workspace-Id");
-                            String correlationId = exchange.getRequest().getHeaders()
-                                    .getFirst("X-Correlation-Id");
+                            String correlationId = McpGatewayCorrelationIdResolver.defaultResolver()
+                                    .resolve(exchange);
                             return GatewayToolExecutionContext.of(
                                     principalId,
                                     workspaceId,

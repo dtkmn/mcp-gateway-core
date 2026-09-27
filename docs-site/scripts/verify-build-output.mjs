@@ -13,6 +13,7 @@ const indexHtml = await readDist('index.html');
 const gettingStartedHtml = await readDist('guides/getting-started/index.html');
 const compatibilityHtml = await readDist('reference/compatibility/index.html');
 const releaseNotesHtml = await readDist('maintainers/release-notes/index.html');
+const releasePolicyHtml = await readDist('maintainers/release-policy/index.html');
 const contractReferenceHtml = await readDist('reference/contract-reference/index.html');
 const sitemapIndexXml = await readDist('sitemap-index.xml');
 const sitemapXml = await readDist('sitemap-0.xml');
@@ -63,6 +64,12 @@ for (const anchor of ['active-tool-registry', 'active-tool-registry-unreleased']
   assertContains(contractReferenceHtml, `id="${anchor}"`, `contract reference should retain the ${anchor} anchor`);
 }
 
+assertContains(
+  releasePolicyHtml,
+  `href="${homeUrl}maintainers/central-validation-upload/"`,
+  'release policy should link to the deployed Central validation upload guide',
+);
+
 for (const artifact of ['mcp-gateway-core', 'mcp-gateway-spring-webflux']) {
   assertContains(
     indexHtml,
@@ -101,6 +108,7 @@ for (const url of [
   `${homeUrl}reference/compatibility/`,
   `${homeUrl}project/roadmap/`,
   `${homeUrl}maintainers/release-notes/`,
+  `${homeUrl}maintainers/central-validation-upload/`,
 ]) {
   assertContains(sitemapLocs, url, `sitemap should include ${url}`);
 }
