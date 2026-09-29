@@ -19,7 +19,7 @@ jobs:
     name: Gradle Open Source scan
     # Fork pull requests cannot access the Snyk token; CI and CodeQL still run.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Mark Snyk vulnerability check pending
         env:

@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   validation-upload:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: central-validation-upload
     permissions:
       contents: read
