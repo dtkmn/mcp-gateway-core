@@ -21,20 +21,20 @@ concurrency:
 jobs:
   build:
     name: Build documentation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install, build, and upload Astro site
-        uses: withastro/action@e84f40bd8d2caa9e768ec82ad30dd81f0b280853 # v6
+        uses: withastro/action@3eafd002e65cc31b4f0eae0bb05450d521562247 # v6
         with:
           path: docs-site
           node-version: 24
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       pages: write
       id-token: write
