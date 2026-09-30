@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.function.BiFunction;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.invocation.McpToolInvocation;
 import mcp.gateway.core.tool.McpToolSurface;
@@ -93,6 +95,74 @@ class McpToolAuthorizerTest {
 
         assertTrue(authorizer.authorize(toolCall, List.of("demo:execute"), true, true).allowed());
         assertTrue(authorizer.authorize(toolsList, List.of("mcp:tools:list"), true, true).allowed());
+    }
+
+    @Test
+    void strictAuthorizationOverloadChecksScopesWithoutUniversalWildcardAccess() {
+        McpToolAuthorizer authorizer = authorizer();
+        GatewayToolExecutionContext mappedTool = GatewayToolExecutionContext.of(
+                "client",
+                "workspace",
+                "corr",
+                McpToolInvocation.fromJsonRpc(McpToolInvocation.METHOD_TOOLS_CALL, "demo_tool"),
+                null
+        );
+        GatewayToolExecutionContext unmappedTool = GatewayToolExecutionContext.of(
+                "client",
+                "workspace",
+                "corr",
+                McpToolInvocation.fromJsonRpc(McpToolInvocation.METHOD_TOOLS_CALL, "missing_tool"),
+                null
+        );
+        BiFunction<Collection<String>, GatewayToolExecutionContext, ToolAuthorizationDecision> evaluator =
+                authorizer::authorize;
+
+        assertTrue(evaluator.apply(List.of("demo:execute"), mappedTool).allowed());
+        assertTrue(evaluator.apply(List.of("*", "demo:execute"), mappedTool).allowed());
+        ToolAuthorizationDecision denied = evaluator.apply(List.of(), mappedTool);
+        assertFalse(denied.allowed());
+        assertTrue(denied.mapped());
+        assertEquals(List.of("demo:execute"), denied.missingScopes());
+        assertFalse(evaluator.apply(List.of("*"), mappedTool).allowed());
+        ToolAuthorizationDecision unmapped = evaluator.apply(List.of("*"), unmappedTool);
+        assertFalse(unmapped.allowed());
+        assertFalse(unmapped.mapped());
+        assertEquals("missing_tool", unmapped.actionName());
+    }
+
+    @Test
+    void strictAuthorizationOverloadUsesSeparateToolsListRequirement() {
+        McpToolAuthorizer authorizer = authorizer();
+        GatewayToolExecutionContext toolsList = GatewayToolExecutionContext.of(
+                "client", "workspace", "corr",
+                McpToolInvocation.fromJsonRpc(McpToolInvocation.METHOD_TOOLS_LIST, null), null
+        );
+
+        assertTrue(authorizer.authorize(List.of("mcp:tools:list"), toolsList).allowed());
+        ToolAuthorizationDecision denied = authorizer.authorize(List.of("demo:execute"), toolsList);
+        assertFalse(denied.allowed());
+        assertTrue(denied.mapped());
+        assertEquals(McpToolAuthorizer.TOOLS_LIST_ACTION, denied.actionName());
+        assertEquals(List.of("mcp:tools:list"), denied.missingScopes());
+        assertFalse(authorizer.authorize(List.of("*"), toolsList).allowed());
+    }
+
+    @Test
+    void strictAuthorizationOverloadTreatsNullInputsAsMissingGrantsOrUnmappedContext() {
+        McpToolAuthorizer authorizer = authorizer();
+        GatewayToolExecutionContext mappedTool = GatewayToolExecutionContext.of(
+                "client", "workspace", "corr",
+                McpToolInvocation.fromJsonRpc(McpToolInvocation.METHOD_TOOLS_CALL, "demo_tool"), null
+        );
+
+        ToolAuthorizationDecision missingGrants = authorizer.authorize(null, mappedTool);
+        assertFalse(missingGrants.allowed());
+        assertTrue(missingGrants.mapped());
+        assertEquals(List.of("demo:execute"), missingGrants.missingScopes());
+        ToolAuthorizationDecision unmapped = authorizer.authorize(List.of("demo:execute"), null);
+        assertFalse(unmapped.allowed());
+        assertFalse(unmapped.mapped());
+        assertEquals(McpToolAuthorizer.UNKNOWN_ACTION, unmapped.actionName());
     }
 
     @Test

@@ -48,12 +48,39 @@ public final class McpToolAuthorizer {
     }
 
     /**
+     * Evaluates permissions for a normalized gateway tool context using strict defaults.
+     * <p>
+     * Permission checks are enabled and {@code *} is not treated as a universal
+     * grant. Every mapped required scope must be present in the caller's scopes.
+     * Null or non-authorizable contexts produce an unmapped, denied decision.
+     * <p>
+     * This method returns a permission decision; it does not stop execution.
+     * When composed with governance, the governance policy owns whether checks
+     * run and whether denied or unmapped decisions reject or warn. The argument
+     * order also supports the WebFlux builder's authorization callback directly.
+     * Use the four-argument overload for an explicit dynamic or wildcard policy.
+     *
+     * @param grantedScopes scopes granted to the caller
+     * @param context tool context, or null for an unmapped decision
+     * @return decision
+     */
+    public ToolAuthorizationDecision authorize(Collection<String> grantedScopes,
+                                               GatewayToolExecutionContext context) {
+        return authorize(context, grantedScopes, false, true);
+    }
+
+    /**
      * Authorizes a normalized gateway tool context.
      * <p>
      * Unknown or non-authorizable contexts are returned as unmapped decisions.
      * {@code tools/list} is evaluated against the list requirement configured on
      * this authorizer; {@code tools/call} is evaluated against the named tool's
      * registry entry.
+     * <p>
+     * These flags control the low-level permission decision independently of
+     * any enclosing governance policy. Prefer the two-argument overload when
+     * the governance policy owns activation and enforcement and universal
+     * wildcard grants are not required.
      *
      * @param context tool context
      * @param grantedScopes scopes granted to the caller
