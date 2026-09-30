@@ -145,9 +145,15 @@ TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
 );
 
 String key = context.principalId() + ":" + context.actionName();
-boolean allowed = limiter.tryConsume(key, policy);
-long retryAfterSeconds = limiter.retryAfterSeconds(key, policy);
+TokenBucketRateLimiter.Attempt attempt = limiter.attempt(key, policy);
+boolean allowed = attempt.allowed();
+long retryAfterSeconds = attempt.retryAfterSeconds();
 ```
+
+The `attempt` API is available in published `0.10.0`. Its decision and retry
+delay come from the same consumption attempt: allowed requests report zero,
+and rejected requests report at least one second. Use that result's retry delay
+when constructing a rejection response.
 
 ## Spring WebFlux Governance Filter
 
@@ -221,7 +227,8 @@ class McpGatewayConfiguration {
                         () -> true,
                         context -> {
                             String key = context.principalId() + ":" + context.actionName();
-                            if (limiter.tryConsume(key, policy)) {
+                            TokenBucketRateLimiter.Attempt attempt = limiter.attempt(key, policy);
+                            if (attempt.allowed()) {
                                 return McpAbuseProtectionDecision.allow(
                                         context.toolName(),
                                         context.principalId(),
@@ -234,7 +241,7 @@ class McpGatewayConfiguration {
                                     context.toolName(),
                                     context.principalId(),
                                     context.workspaceId(),
-                                    limiter.retryAfterSeconds(key, policy)
+                                    attempt.retryAfterSeconds()
                             );
                         }
                 )

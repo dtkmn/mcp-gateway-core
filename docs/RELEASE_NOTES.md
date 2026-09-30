@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Update the core-only and WebFlux getting-started rate examples to use one
+  `TokenBucketRateLimiter.Attempt` for both the consumption decision and its
+  retry delay. This is a documentation-only adoption of the API already
+  published in `0.10.0`; it adds no helper, public API, or core behavior change.
 - Add `McpToolAuthorizer.authorize(Collection<String>, GatewayToolExecutionContext)`
   as a strict decision-calculation shortcut equivalent to the existing
   `authorize(context, grantedScopes, false, true)` overload. It checks mapped
