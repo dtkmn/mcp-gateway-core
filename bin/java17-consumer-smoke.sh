@@ -102,6 +102,8 @@ import java.util.List;
 import mcp.gateway.core.authz.McpToolAccessRegistry;
 import mcp.gateway.core.authz.McpToolAccessRule;
 import mcp.gateway.core.authz.McpToolAuthorizer;
+import mcp.gateway.core.context.GatewayToolExecutionContext;
+import mcp.gateway.core.invocation.McpToolInvocation;
 import mcp.gateway.core.tool.McpToolSurface;
 
 public final class CoreSmoke {
@@ -115,6 +117,16 @@ public final class CoreSmoke {
         }
         if (authorizer.authorizeToolCall("demo_tool", List.of(), false, true).allowed()) {
             throw new IllegalStateException("Core consumer call without scope was allowed");
+        }
+        GatewayToolExecutionContext context = GatewayToolExecutionContext.of(
+                "demo-client", "demo-workspace", null,
+                McpToolInvocation.fromJsonRpc("tools/call", "demo_tool"), null
+        );
+        if (!authorizer.authorize(List.of("demo:run"), context).allowed()) {
+            throw new IllegalStateException("Strict core consumer call was denied");
+        }
+        if (authorizer.authorize(List.of("*"), context).allowed()) {
+            throw new IllegalStateException("Strict core consumer accepted a universal wildcard grant");
         }
     }
 }
@@ -163,7 +175,7 @@ public final class WebFluxSmoke {
                                 authentication.getName(), "demo-workspace", null, invocation, null
                         ))
                 .authorization(() -> McpGatewayAuthorizationMode.ENFORCE,
-                        (scopes, context) -> authorizer.authorize(context, scopes, false, true))
+                        authorizer::authorize)
                 .toolRegistry(activeAccessRegistry.toolRegistry())
                 .build();
 

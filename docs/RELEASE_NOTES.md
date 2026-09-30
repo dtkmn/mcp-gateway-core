@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- Update the core-only and WebFlux getting-started rate examples to use one
+  `TokenBucketRateLimiter.Attempt` for both the consumption decision and its
+  retry delay. This is a documentation-only adoption of the API already
+  published in `0.10.0`; it adds no helper, public API, or core behavior change.
+- Add `McpToolAuthorizer.authorize(Collection<String>, GatewayToolExecutionContext)`
+  as a strict decision-calculation shortcut equivalent to the existing
+  `authorize(context, grantedScopes, false, true)` overload. It checks mapped
+  requirements without wildcard bypass and supports `authorizer::authorize`
+  in the WebFlux authorization builder callback. Governance still owns
+  `ENFORCE`, `WARN`, and `DISABLED` behavior; the shortcut does not enforce a
+  response or execute a tool by itself. This is an additive, binary-compatible
+  core API change; existing explicit calls, overloads, and consumer
+  policies are unchanged. It is available only in the unreleased
+  `0.11.0-SNAPSHOT` development version, not published `0.10.0` artifacts.
+- Retire idle rate-limit buckets only after they fully replenish under their
+  own stored token policy. Bucket admission no longer discards outstanding
+  refill state based on another key's policy or wall-clock age alone. New keys
+  continue to be rejected when the tracked-key limit is full and no bucket can
+  be safely retired. Public rate-limiter signatures are unchanged.
 - Update the Spring WebFlux adapter's Jackson Databind dependency from `3.1.6`
   to `3.2.3`, with Jackson Core `3.2.3` and Jackson Annotations `2.22`.
   The adapter continues to use Jackson 3 `JsonMapper`; the core artifact remains

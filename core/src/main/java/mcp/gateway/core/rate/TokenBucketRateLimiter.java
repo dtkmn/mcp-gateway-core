@@ -10,6 +10,9 @@ import java.util.function.LongSupplier;
  * Thread-safe token-bucket rate limiter keyed by caller, tool, workspace, or another runtime key.
  * Token-policy changes for an existing key take effect from the change onward;
  * elapsed time is never retroactively credited at a newly configured refill rate.
+ * Idle buckets are retired only when fully replenished under their stored token policy.
+ * A retired key is newly admitted under the policy supplied when it returns;
+ * policy history is retained only while the bucket remains tracked.
  */
 public final class TokenBucketRateLimiter {
     /** Default key used when callers provide a blank or null key. */
@@ -183,18 +186,23 @@ public final class TokenBucketRateLimiter {
             return;
         }
 
-        long staleAgeMillis = saturatedMultiply(
-                saturatedMultiply(policy.refillPeriodSeconds(), 1_000L),
-                5L
-        );
-        long staleBefore = saturatedSubtract(millisClock.getAsLong(), staleAgeMillis);
+        long nowMillis = millisClock.getAsLong();
         Iterator<Map.Entry<String, BucketState>> iterator = buckets.entrySet().iterator();
         while (iterator.hasNext() && buckets.size() >= policy.maxTrackedKeys()) {
             Map.Entry<String, BucketState> entry = iterator.next();
             BucketState state = entry.getValue();
             synchronized (state) {
+                long staleAgeMillis = saturatedMultiply(
+                        saturatedMultiply(state.refillPeriodSeconds, 1_000L),
+                        5L
+                );
+                long staleBefore = saturatedSubtract(nowMillis, staleAgeMillis);
                 if (state.lastAccessMillis < staleBefore) {
-                    buckets.remove(entry.getKey(), state);
+                    refill(state, state.capacity, state.refillTokens,
+                            state.refillPeriodSeconds, nanoClock.getAsLong());
+                    if (state.tokens >= state.capacity) {
+                        buckets.remove(entry.getKey(), state);
+                    }
                 }
             }
         }
@@ -264,7 +272,7 @@ public final class TokenBucketRateLimiter {
      * @param capacity maximum number of stored tokens
      * @param refillTokens tokens added during each refill period
      * @param refillPeriodSeconds refill period in seconds
-     * @param maxTrackedKeys maximum tracked bucket keys, normalized to at least one
+     * @param maxTrackedKeys tracked-key admission limit, normalized to at least one
      * @param disabledRetryAfterSeconds retry delay returned when the policy is disabled
      */
     public record Policy(
@@ -282,7 +290,7 @@ public final class TokenBucketRateLimiter {
          * @param capacity maximum number of stored tokens
          * @param refillTokens tokens added during each refill period
          * @param refillPeriodSeconds refill period in seconds
-         * @param maxTrackedKeys maximum tracked bucket keys
+         * @param maxTrackedKeys tracked-key admission limit
          * @param disabledRetryAfterSeconds retry delay returned when the policy is disabled
          */
         public Policy {

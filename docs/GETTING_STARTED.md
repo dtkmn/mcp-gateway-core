@@ -11,7 +11,9 @@ own transport adapter.
 
 ## Choose The Artifact
 
-The examples below target the published `0.10.0` public-preview release.
+The main examples below target the published `0.10.0` public-preview release.
+The separately marked strict-authorization shortcuts require the unreleased
+`0.11.0-SNAPSHOT` development version and are not available in `0.10.0`.
 Consumers that remain on `0.7.2` must also keep its Jackson 2 `ObjectMapper`
 wiring.
 
@@ -108,6 +110,22 @@ McpToolInvocation invocation = McpToolInvocation.fromJsonRpc("tools/list", null)
 Unmapped authorizable actions fail closed. Wildcard scope behavior is explicit
 through the `wildcardAllowed` argument.
 
+### Unreleased Strict Authorization Shortcut
+
+In the unreleased `0.11.0-SNAPSHOT` development version, the same decision can
+be calculated with a two-argument overload:
+
+```java
+ToolAuthorizationDecision decision = authorizer.authorize(List.of("files:read"), context);
+```
+
+This is equivalent to `authorize(context, grantedScopes, false, true)`:
+mapped scope requirements are checked, a granted `*` does not bypass them, and
+unmapped actions return a denied, unmapped decision. The method returns a
+decision; your runtime or governance layer still decides whether to execute the
+tool. Existing explicit overloads remain available for applications that
+deliberately configure wildcard grants or dynamic decision-calculation policy.
+
 ## Core-Only Rate Limiting
 
 Core includes a small token-bucket limiter. Your runtime chooses the key shape
@@ -127,9 +145,15 @@ TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
 );
 
 String key = context.principalId() + ":" + context.actionName();
-boolean allowed = limiter.tryConsume(key, policy);
-long retryAfterSeconds = limiter.retryAfterSeconds(key, policy);
+TokenBucketRateLimiter.Attempt attempt = limiter.attempt(key, policy);
+boolean allowed = attempt.allowed();
+long retryAfterSeconds = attempt.retryAfterSeconds();
 ```
+
+The `attempt` API is available in published `0.10.0`. Its decision and retry
+delay come from the same consumption attempt: allowed requests report zero,
+and rejected requests report at least one second. Use that result's retry delay
+when constructing a rejection response.
 
 ## Spring WebFlux Governance Filter
 
@@ -203,7 +227,8 @@ class McpGatewayConfiguration {
                         () -> true,
                         context -> {
                             String key = context.principalId() + ":" + context.actionName();
-                            if (limiter.tryConsume(key, policy)) {
+                            TokenBucketRateLimiter.Attempt attempt = limiter.attempt(key, policy);
+                            if (attempt.allowed()) {
                                 return McpAbuseProtectionDecision.allow(
                                         context.toolName(),
                                         context.principalId(),
@@ -216,7 +241,7 @@ class McpGatewayConfiguration {
                                     context.toolName(),
                                     context.principalId(),
                                     context.workspaceId(),
-                                    limiter.retryAfterSeconds(key, policy)
+                                    attempt.retryAfterSeconds()
                             );
                         }
                 )
@@ -232,6 +257,31 @@ and preserves the request body for the downstream MCP runtime. Recognized
 response envelopes used to answer server-initiated JSON-RPC requests pass
 through to that runtime without request authorization or action-based
 abuse-protection evaluation.
+
+### Unreleased Strict Shortcut In The Builder
+
+With the unreleased `0.11.0-SNAPSHOT` core API, replace only the authorization
+builder call above with:
+
+```java
+.authorization(
+        () -> McpGatewayAuthorizationMode.ENFORCE,
+        authorizer::authorize
+)
+```
+
+Keep the explicit lambda in the published `0.10.0` example when using that
+release. The shortcut calculates the strict decision; the mode supplier still
+controls what governance does with it. `ENFORCE` rejects denied or unmapped
+authorizable requests, `WARN` emits a warning observation and continues to
+protection, and `DISABLED` skips authorization evaluation. Protection and an
+active-tool registry can still reject requests independently.
+
+Use `WARN` to observe missing scopes without rejecting on authorization; do not
+set the authorizer's `authorizationEnabled` flag to `false` for that purpose,
+because that makes mapped decisions allowed instead of retaining the denial.
+Applications with an intentional wildcard policy can keep the explicit
+overload and lambda. Switching to the shortcut would change that policy.
 
 ## Adoption Checklist
 

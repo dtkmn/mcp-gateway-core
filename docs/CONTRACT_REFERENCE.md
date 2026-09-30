@@ -150,6 +150,42 @@ invalid. Use a missing requirement to represent an unmapped action.
 | `mcp:tools:list` | Synthetic action used to authorize `tools/list`. |
 | `unknown` | Synthetic action used for missing, malformed, or unauthorizable context. |
 
+### Strict Authorization Shortcut (Unreleased)
+
+The two-argument `McpToolAuthorizer.authorize(Collection<String> grantedScopes,
+GatewayToolExecutionContext context)` is available in the unreleased
+`0.11.0-SNAPSHOT` development version only. Published `0.10.0` consumers must
+continue to use the explicit overload:
+
+```java
+// Published 0.10.0: strict decision calculation.
+authorizer.authorize(context, grantedScopes, false, true);
+
+// Unreleased 0.11.0-SNAPSHOT: equivalent shortcut, with scopes first.
+authorizer.authorize(grantedScopes, context);
+```
+
+The shortcut fixes `wildcardAllowed=false` and `authorizationEnabled=true`.
+It checks mapped scope requirements without treating a granted `*` as a bypass.
+Null, non-authorizable, and unmapped contexts retain the explicit overload's
+denied, unmapped decision behavior; `tools/list` uses the configured discovery
+requirement. Existing explicit overloads and their semantics remain available
+for applications with deliberate dynamic or wildcard policies.
+
+Decision calculation and request enforcement have separate owners. The
+authorizer returns a `ToolAuthorizationDecision`; a caller using it directly
+must apply that decision before execution. `GatewayToolGovernance` instead
+uses `GatewayToolAuthorizationPolicy` to decide whether authorization runs and
+whether denied or unmapped results reject or warn. It skips authorization for
+non-authorizable invocations. The WebFlux builder's `ENFORCE`, `WARN`, and
+`DISABLED` modes map to those governance policies.
+
+In warning mode, calculate the negative decision normally so it can be
+observed. Setting the explicit overload's `authorizationEnabled=false` makes
+mapped requirements return allowed decisions; it is not equivalent to
+governance warning mode. Adopting the strict shortcut is optional and does not
+migrate a consumer's existing wildcard or enforcement configuration.
+
 ## Policy Decisions
 
 Package: `mcp.gateway.core.policy`
@@ -335,14 +371,28 @@ IP, API key, or another shape.
 | `maxTrackedKeys` | Maximum bucket keys retained in memory. Minimum normalized value is `1`. |
 | `disabledRetryAfterSeconds` | Retry delay returned when the policy is disabled. |
 
-When the limiter is at `maxTrackedKeys` and no stale key can be evicted, new
-fresh keys fail closed instead of growing memory.
+When the limiter is at `maxTrackedKeys` and no bucket can be safely retired,
+new keys fail closed instead of growing memory. A bucket is eligible for
+retirement only after more than five of its own refill periods without a
+consumption attempt and after its tokens fully replenish under its stored
+capacity and refill settings. Wall-clock age alone does not establish that the
+bucket has replenished; token refill uses the monotonic clock. Checking a
+candidate for retirement does not refresh its access time.
 
 Key creation and stale eviction are coordinated so concurrent callers cannot
 temporarily exceed the configured cap. Stale-age arithmetic saturates instead of
 overflowing for extreme refill periods. If an existing key's capacity or refill
-settings change, the new policy applies from that point forward; elapsed time is
-not retroactively credited at the new rate.
+settings change while its bucket remains tracked, the new policy applies from
+that point forward; elapsed time is not retroactively credited at the new rate.
+After a fully replenished bucket is retired, a returning key is newly admitted
+with the supplied policy and starts at that policy's capacity. The limiter does
+not retain policy history for retired keys.
+
+`maxTrackedKeys` controls admission to the shared bucket map. Callers should use
+a consistent limit for a limiter instance. If a request supplies a smaller limit,
+existing buckets with refill debt are retained rather than discarded to shrink
+the map immediately; new-key admission remains rejected until safe retirement
+can make room.
 
 ## URL Scope And Correlation IDs
 
@@ -436,6 +486,29 @@ each governance concern. The supplier forms are evaluated at request time, so
 an application can retain runtime-controlled authorization modes and protection
 flags. The builder does not register the result with Spring; applications still
 expose the built filter through their own `@Bean` method or equivalent wiring.
+
+The unreleased `0.11.0-SNAPSHOT` strict authorizer overload matches the
+authorization callback's argument order and supports a method reference:
+
+```java
+.authorization(() -> McpGatewayAuthorizationMode.ENFORCE, authorizer::authorize)
+```
+
+For published `0.10.0`, keep the equivalent explicit callback:
+
+```java
+.authorization(
+        () -> McpGatewayAuthorizationMode.ENFORCE,
+        (grantedScopes, context) -> authorizer.authorize(context, grantedScopes, false, true)
+)
+```
+
+Changing the mode supplier to `WARN` preserves strict decision calculation but
+continues after negative authorization decisions; protection may still reject.
+`DISABLED` skips the authorization callback. An optional active-tool registry
+continues its availability checks in all three modes. Keep an explicit callback
+when the host intentionally supplies a different wildcard or authorization
+calculation policy.
 
 <a id="active-tool-registry-unreleased"></a>
 
