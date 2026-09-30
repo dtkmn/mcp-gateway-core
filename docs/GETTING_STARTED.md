@@ -12,8 +12,8 @@ own transport adapter.
 ## Choose The Artifact
 
 The main examples below target the published `0.10.0` public-preview release.
-The separately marked strict-authorization shortcuts require the unreleased
-`0.11.0-SNAPSHOT` development version and are not available in `0.10.0`.
+The separately marked unreleased sections describe `0.11.0-SNAPSHOT`
+development APIs and behavior that are not part of published `0.10.0`.
 Consumers that remain on `0.7.2` must also keep its Jackson 2 `ObjectMapper`
 wiring.
 
@@ -214,6 +214,7 @@ class McpGatewayConfiguration {
                                     principalId,
                                     workspaceId,
                                     correlationId,
+                                    // Preserve the invocation supplied by the adapter.
                                     invocation,
                                     null
                             );
@@ -257,6 +258,18 @@ and preserves the request body for the downstream MCP runtime. Recognized
 response envelopes used to answer server-initiated JSON-RPC requests pass
 through to that runtime without request authorization or action-based
 abuse-protection evaluation.
+
+### Unreleased Resolver Validation
+
+Unreleased `0.11.0-SNAPSHOT` validates trusted resolver wiring using the existing
+interface; published `0.10.0` does not perform this check. Return a non-null
+context preserving the supplied invocation, as the example does. Custom resolvers
+that substitute another invocation must change to preserve it. Equal copied
+records are accepted, and host-owned identity/workspace/correlation/target
+enrichment remains supported. This checks action identity, not tool arguments.
+Null or mismatched results receive a fixed HTTP `500` response before governance
+decisions or execution; see the [context-resolution contract](CONTRACT_REFERENCE.md#context-resolution-unreleased)
+for the response and validation boundary.
 
 ### Unreleased Strict Shortcut In The Builder
 

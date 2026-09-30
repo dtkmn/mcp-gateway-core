@@ -510,6 +510,29 @@ continues its availability checks in all three modes. Keep an explicit callback
 when the host intentionally supplies a different wildcard or authorization
 calculation policy.
 
+### Context Resolution (Unreleased)
+
+Unreleased `0.11.0-SNAPSHOT` validates trusted resolver wiring through the existing
+`McpGatewayWebFluxContextResolver` interface; published `0.10.0` is unchanged.
+Return a non-null context preserving the adapter-supplied invocation. Equality
+compares `kind`, `method`, and `toolName`; an equal copied record is accepted.
+Custom resolvers that substitute an invocation must preserve the supplied value
+instead. Trusted identity/workspace/correlation/target enrichment remains allowed.
+`McpToolInvocation` contains no arguments, so this does not validate tool arguments.
+
+A null context or invocation mismatch returns HTTP `500`,
+`Content-Type: application/json`, and exactly `{"error":"invalid_execution_context"}`.
+There is no JSON-RPC id, authentication challenge, or request/context detail.
+Validation precedes scope extraction and governance decisions; scope extraction,
+authorization/protection decision callbacks, governance observers, and downstream
+execution are skipped on failure.
+
+Validation applies whenever active filtering reaches resolution, including `WARN`,
+protection-only, registry-only, and valid non-authorizable requests. Non-matching
+routes and fully inactive filtering still bypass unchanged. Earlier body/parser
+rejections, recognized response envelopes, and registry-controlled invalid
+tool-call ids, notifications, and unavailable tools retain their existing paths.
+
 <a id="active-tool-registry-unreleased"></a>
 
 ### Active-Tool Registry
@@ -669,7 +692,9 @@ Invalid message reasons are:
 
 `McpGatewayWebFluxContextResolver` maps Spring `Authentication`, the
 `ServerWebExchange`, and the parsed `McpToolInvocation` into
-`GatewayToolExecutionContext`.
+`GatewayToolExecutionContext`. Preserve the supplied invocation while enriching
+the context; see [unreleased context-resolution validation](#context-resolution-unreleased)
+for the adapter's result checks and failure response.
 
 `McpGrantedScopesExtractor.springSecurityScopes()` reads Spring Security
 authorities with the `SCOPE_` prefix only for authenticated, non-anonymous
@@ -696,6 +721,7 @@ response formats are deliberately distinct:
 
 | Condition | HTTP status | Response body | Authentication challenge |
 | --- | --- | --- | --- |
+| Unreleased `0.11.0-SNAPSHOT`: null resolved context or invocation mismatch | `500` | `{"error":"invalid_execution_context"}`; no JSON-RPC id | None |
 | Registry configured: unknown or disabled tool | `200` | JSON-RPC `-32602`, `Unknown tool`, original `id` | None |
 | Registry configured: available tool with enforced unmapped authorization | `200` | JSON-RPC `-32603`, `Internal error`, original `id` | None |
 | Registry configured: invalid tool-call `id` | `400` | JSON-RPC `-32600`, `Invalid Request`, `id: null` | None |

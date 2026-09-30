@@ -48,6 +48,13 @@ import tools.jackson.databind.json.JsonMapper;
  * extraction or governance. It must describe exactly the tools registered and
  * enabled by the hosting application. The application must authenticate requests
  * before this filter; registry membership is not an authentication mechanism.
+ * <p>
+ * Context resolution may enrich execution metadata but must preserve the parsed
+ * invocation's kind, method, and tool name. A null context or unequal invocation
+ * is rejected with HTTP 500 and the fixed JSON error
+ * {@code invalid_execution_context}, before scope extraction,
+ * authorization/protection decision callbacks, observers, or downstream handling.
+ * See {@link McpGatewayWebFluxContextResolver}.
  */
 public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Ordered {
     private final JsonMapper jsonMapper;
@@ -91,6 +98,8 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
      * all governance concerns.
      * Dynamic evaluators may disable governance at request time only when no
      * tool registry is configured.
+     * The required context resolver must preserve the parsed invocation as
+     * documented by {@link McpGatewayWebFluxContextResolver}.
      */
     public static final class Builder {
         private final JsonMapper jsonMapper;
@@ -513,6 +522,9 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
                                 McpJsonRpcMessageClassification classification) {
         McpToolInvocation invocation = classification.invocation();
         GatewayToolExecutionContext context = contextResolver.resolve(authentication, exchange, invocation);
+        if (context == null || !invocation.equals(context.invocation())) {
+            return McpGatewayWebFluxResponses.invalidExecutionContext(exchange);
+        }
         List<String> extractedScopes = grantedScopesExtractor.extract(authentication);
         List<String> grantedScopes = extractedScopes == null ? List.of() : extractedScopes;
         GatewayToolGovernanceDecision decision = GatewayToolGovernance.evaluate(

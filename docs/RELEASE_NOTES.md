@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Validate trusted WebFlux resolver wiring in `0.11.0-SNAPSHOT` through the existing
+  interface. Custom resolvers must return a non-null context preserving the supplied
+  invocation's `kind`/`method`/`toolName`; equal copies and context enrichment remain
+  supported. Null or mismatched results return HTTP `500` with
+  `{"error":"invalid_execution_context"}` before scope extraction, governance
+  decisions, observers, or execution. This tightens behavior without a new API or
+  tool-argument validation; published `0.10.0` and existing bypass paths are unchanged.
 - Update the core-only and WebFlux getting-started rate examples to use one
   `TokenBucketRateLimiter.Attempt` for both the consumption decision and its
   retry delay. This is a documentation-only adoption of the API already

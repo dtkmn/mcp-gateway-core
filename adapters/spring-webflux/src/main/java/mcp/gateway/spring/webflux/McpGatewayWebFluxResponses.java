@@ -27,6 +27,15 @@ final class McpGatewayWebFluxResponses {
         return jsonRpcError(exchange, jsonMapper, HttpStatus.OK, requestId, -32603, "Internal error");
     }
 
+    static Mono<Void> invalidExecutionContext(ServerWebExchange exchange) {
+        exchange.getResponse().setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
+        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        exchange.getResponse().getHeaders().remove(HttpHeaders.WWW_AUTHENTICATE);
+        byte[] body = "{\"error\":\"invalid_execution_context\"}".getBytes(StandardCharsets.UTF_8);
+        return exchange.getResponse().writeWith(
+                Mono.just(exchange.getResponse().bufferFactory().wrap(body)));
+    }
+
     static Mono<Void> invalidToolCallId(ServerWebExchange exchange, JsonMapper jsonMapper) {
         return jsonRpcError(exchange, jsonMapper, HttpStatus.BAD_REQUEST, null, -32600, "Invalid Request");
     }
