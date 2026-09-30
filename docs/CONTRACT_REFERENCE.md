@@ -335,14 +335,28 @@ IP, API key, or another shape.
 | `maxTrackedKeys` | Maximum bucket keys retained in memory. Minimum normalized value is `1`. |
 | `disabledRetryAfterSeconds` | Retry delay returned when the policy is disabled. |
 
-When the limiter is at `maxTrackedKeys` and no stale key can be evicted, new
-fresh keys fail closed instead of growing memory.
+When the limiter is at `maxTrackedKeys` and no bucket can be safely retired,
+new keys fail closed instead of growing memory. A bucket is eligible for
+retirement only after more than five of its own refill periods without a
+consumption attempt and after its tokens fully replenish under its stored
+capacity and refill settings. Wall-clock age alone does not establish that the
+bucket has replenished; token refill uses the monotonic clock. Checking a
+candidate for retirement does not refresh its access time.
 
 Key creation and stale eviction are coordinated so concurrent callers cannot
 temporarily exceed the configured cap. Stale-age arithmetic saturates instead of
 overflowing for extreme refill periods. If an existing key's capacity or refill
-settings change, the new policy applies from that point forward; elapsed time is
-not retroactively credited at the new rate.
+settings change while its bucket remains tracked, the new policy applies from
+that point forward; elapsed time is not retroactively credited at the new rate.
+After a fully replenished bucket is retired, a returning key is newly admitted
+with the supplied policy and starts at that policy's capacity. The limiter does
+not retain policy history for retired keys.
+
+`maxTrackedKeys` controls admission to the shared bucket map. Callers should use
+a consistent limit for a limiter instance. If a request supplies a smaller limit,
+existing buckets with refill debt are retained rather than discarded to shrink
+the map immediately; new-key admission remains rejected until safe retirement
+can make room.
 
 ## URL Scope And Correlation IDs
 
