@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Add `McpToolAuthorizer.authorize(Collection<String>, GatewayToolExecutionContext)`
+  as a strict decision-calculation shortcut equivalent to the existing
+  `authorize(context, grantedScopes, false, true)` overload. It checks mapped
+  requirements without wildcard bypass and supports `authorizer::authorize`
+  in the WebFlux authorization builder callback. Governance still owns
+  `ENFORCE`, `WARN`, and `DISABLED` behavior; the shortcut does not enforce a
+  response or execute a tool by itself. This is an additive, binary-compatible
+  core API change; existing explicit calls, overloads, and consumer
+  policies are unchanged. It is available only in the unreleased
+  `0.11.0-SNAPSHOT` development version, not published `0.10.0` artifacts.
 - Retire idle rate-limit buckets only after they fully replenish under their
   own stored token policy. Bucket admission no longer discards outstanding
   refill state based on another key's policy or wall-clock age alone. New keys
