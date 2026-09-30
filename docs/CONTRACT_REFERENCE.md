@@ -212,7 +212,10 @@ Package: `mcp.gateway.core.policy`
 | --- | --- |
 | `outcome` | Allow, deny, or abstain. Null normalizes to deny. |
 | `reason` | Human-readable reason. |
-| `details` | Machine-readable details supplied by the provider. Null keys/values are dropped. |
+| `details` | Shallow, unmodifiable outer copy of provider metadata. Top-level null keys/values are dropped; nested values remain caller-owned. |
+
+See [metadata details](#metadata-details) for the shared copy contract and the
+unreleased opt-in snapshot utility.
 
 The consuming runtime decides how multiple policy providers combine. A common
 safe model is deny-wins, all-abstain-fails-closed.
@@ -287,13 +290,49 @@ Package: `mcp.gateway.core.audit`
 | `type` | Event type, chosen by the runtime. |
 | `principal` | Actor or client id. |
 | `outcome` | Runtime-normalized outcome such as allowed, denied, rejected, or failed. |
-| `details` | Machine-readable event data. Null keys/values are dropped. |
+| `details` | Shallow, unmodifiable outer copy of event metadata. Top-level null keys/values are dropped; nested values remain caller-owned. |
 
 `GatewayAuditSink` receives non-null events. `GatewayAuditEmitter` owns fallback
 normalization if callers emit null.
 
 Core does not persist audit events. Your runtime decides whether events go to
 logs, storage, metrics, traces, SIEM, or all of those.
+
+## Metadata Details
+
+Existing `GatewayAuditEvent` and `ToolPolicyDecision` constructors and factories
+copy only the outer details map, preserving encounter order and dropping entries
+with null keys or values. The outer copy is unmodifiable, but nested containers
+and custom objects remain shared references: later caller mutations can change
+the visible details. These APIs do not promise a recursive immutable snapshot.
+
+### Explicit Snapshots (Unreleased)
+
+Unreleased `0.11.0-SNAPSHOT` adds
+`mcp.gateway.core.metadata.GatewayMetadataSnapshot.copyOf(Map<String, ?>)`,
+returning a `Map<String, Object>` for use with the existing event and decision
+factories. This is opt-in; published `0.10.0` and existing shallow-copy paths are
+unchanged.
+
+- Maps with string keys, lists, and sets are copied recursively into unmodifiable
+  containers, preserving encounter order and map-key spelling.
+- Supported scalars are `String`, `Boolean`, `Character`, `Byte`, `Short`,
+  `Integer`, `Long`, `Float`, `Double`, and exact `BigInteger`/`BigDecimal` classes.
+  Other values, including arrays, custom numbers, and other collection types,
+  are rejected with `IllegalArgumentException`; nothing is stringified or serialized.
+- A null root becomes an empty map. Root entries with null keys or values are
+  skipped without visiting their values. Nested map keys must be non-null strings;
+  nested null values and list/set null elements are retained.
+- Identity cycles are rejected; repeated references without a cycle are accepted
+  and visited again. Limits are 32 container levels including the root and 10,000
+  visited retained values, counting containers, the root, and nested nulls.
+  Map keys and skipped root entries do not count.
+- Invalid input or exceeded limits throws `IllegalArgumentException` with fixed
+  diagnostics. The caller must not mutate the input graph during copying.
+
+Snapshotting does not provide redaction, storage, retention, or sink-failure
+handling; those remain runtime responsibilities. Concrete collection classes,
+JSON validity, and byte-size limits are not part of the snapshot guarantee.
 
 ## Abuse Protection And Quotas
 

@@ -296,6 +296,30 @@ because that makes mapped decisions allowed instead of retaining the denial.
 Applications with an intentional wildcard policy can keep the explicit
 overload and lambda. Switching to the shortcut would change that policy.
 
+## Unreleased Metadata Snapshots
+
+Existing audit events and policy decisions freeze only the outer details map;
+nested values remain shared. In unreleased `0.11.0-SNAPSHOT`, opt into a recursive
+snapshot before calling the existing factories (not available in published `0.10.0`):
+
+```java
+import java.util.Map;
+import mcp.gateway.core.audit.GatewayAuditEvent;
+import mcp.gateway.core.metadata.GatewayMetadataSnapshot;
+import mcp.gateway.core.policy.ToolPolicyDecision;
+
+Map<String, Object> snapshot = GatewayMetadataSnapshot.copyOf(details);
+GatewayAuditEvent event = GatewayAuditEvent.of(
+        "authorization", "user-123", "allowed", snapshot);
+ToolPolicyDecision decision = ToolPolicyDecision.allow("scope_granted", snapshot);
+```
+
+Here `details` is the application's `Map<String, ?>`. Keep it unchanged during
+copying and use the supported containers/scalars described in the
+[metadata contract](CONTRACT_REFERENCE.md#metadata-details). Unsupported values,
+cycles, or value-count/depth limits are rejected. Persistence and redaction remain
+application concerns; existing callers are not automatically migrated.
+
 ## Adoption Checklist
 
 1. Map every exposed MCP tool into `McpToolAccessRegistry`.

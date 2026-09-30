@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add the opt-in `GatewayMetadataSnapshot.copyOf(Map<String, ?>)` utility in
+  `0.11.0-SNAPSHOT` for recursive snapshots of supported metadata maps, lists,
+  sets, and immutable scalars, with cycle, depth, and value-count limits.
+  Unsupported values fail explicitly. Existing `GatewayAuditEvent` and
+  `ToolPolicyDecision` constructors/factories retain their shallow outer-map copy
+  and custom-object compatibility; clarify that their nested values are shared.
+  This is an additive API, not an automatic consumer migration. Published
+  `0.10.0` artifacts are unchanged.
 - Validate trusted WebFlux resolver wiring in `0.11.0-SNAPSHOT` through the existing
   interface. Custom resolvers must return a non-null context preserving the supplied
   invocation's `kind`/`method`/`toolName`; equal copies and context enrichment remain

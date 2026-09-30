@@ -98,12 +98,17 @@ GRADLE
 # Exercise the published API on Java 17; detailed behavior stays in the unit tests.
 mkdir -p "${WORK_DIR}/core-consumer/src/main/java"
 cat > "${WORK_DIR}/core-consumer/src/main/java/CoreSmoke.java" <<'JAVA'
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import mcp.gateway.core.audit.GatewayAuditEvent;
 import mcp.gateway.core.authz.McpToolAccessRegistry;
 import mcp.gateway.core.authz.McpToolAccessRule;
 import mcp.gateway.core.authz.McpToolAuthorizer;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.invocation.McpToolInvocation;
+import mcp.gateway.core.metadata.GatewayMetadataSnapshot;
+import mcp.gateway.core.policy.ToolPolicyDecision;
 import mcp.gateway.core.tool.McpToolSurface;
 
 public final class CoreSmoke {
@@ -127,6 +132,15 @@ public final class CoreSmoke {
         }
         if (authorizer.authorize(List.of("*"), context).allowed()) {
             throw new IllegalStateException("Strict core consumer accepted a universal wildcard grant");
+        }
+        List<String> sourceTags = new ArrayList<>(List.of("original"));
+        Map<String, Object> snapshot = GatewayMetadataSnapshot.copyOf(Map.of("tags", sourceTags));
+        GatewayAuditEvent event = GatewayAuditEvent.of("policy", "demo-client", "allow", snapshot);
+        ToolPolicyDecision policy = ToolPolicyDecision.allow("approved", snapshot);
+        sourceTags.clear();
+        if (!List.of("original").equals(event.details().get("tags"))
+                || !List.of("original").equals(policy.details().get("tags"))) {
+            throw new IllegalStateException("Core consumer metadata snapshot changed with its source");
         }
     }
 }
