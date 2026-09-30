@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Retire idle rate-limit buckets only after they fully replenish under their
+  own stored token policy. Bucket admission no longer discards outstanding
+  refill state based on another key's policy or wall-clock age alone. New keys
+  continue to be rejected when the tracked-key limit is full and no bucket can
+  be safely retired. Public rate-limiter signatures are unchanged.
 - Update the Spring WebFlux adapter's Jackson Databind dependency from `3.1.6`
   to `3.2.3`, with Jackson Core `3.2.3` and Jackson Annotations `2.22`.
   The adapter continues to use Jackson 3 `JsonMapper`; the core artifact remains

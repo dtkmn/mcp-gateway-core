@@ -164,7 +164,7 @@ class TokenBucketRateLimiterTest {
     }
 
     @Test
-    void staleBucketsCanBeEvictedToAdmitNewKeysWithoutGrowingPastCapacity() {
+    void fullyReplenishedIdleBucketsCanBeEvictedWithoutGrowingPastCapacity() {
         TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
                 true,
                 1,
@@ -178,9 +178,136 @@ class TokenBucketRateLimiterTest {
             assertTrue(limiter.tryConsume("client-" + i, policy));
         }
 
+        nowNanos.addAndGet(5_001_000_000L);
         nowMillis.addAndGet(5_001L);
         assertTrue(limiter.tryConsume("client-new", policy));
-        assertTrue(limiter.trackedKeyCount() <= 100);
+        assertEquals(100, limiter.trackedKeyCount());
+    }
+
+    @Test
+    void retainsPartiallyReplenishedBucketsAfterFiveRefillPeriods() {
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true, 10, 1, 10, 1, 30
+        );
+        for (int i = 0; i < 10; i++) {
+            assertTrue(limiter.tryConsume("client-a", policy));
+        }
+
+        nowNanos.addAndGet(50_001_000_000L);
+        nowMillis.addAndGet(50_001L);
+
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 1L), limiter.attempt("client-new", policy));
+        assertEquals(1, limiter.trackedKeyCount());
+        for (int i = 0; i < 5; i++) {
+            assertTrue(limiter.tryConsume("client-a", policy));
+        }
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 10L), limiter.attempt("client-a", policy));
+    }
+
+    @Test
+    void wallClockAdvanceAloneDoesNotEraseBucketDebt() {
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true, 1, 1, 10, 1, 30
+        );
+        assertTrue(limiter.tryConsume("client-a", policy));
+
+        nowMillis.addAndGet(50_001L);
+
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 1L), limiter.attempt("client-new", policy));
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 10L), limiter.attempt("client-a", policy));
+        assertEquals(1, limiter.trackedKeyCount());
+    }
+
+    @Test
+    void incomingFasterPolicyDoesNotShortenExistingBucketsIdlePeriod() {
+        TokenBucketRateLimiter.Policy slowPolicy = new TokenBucketRateLimiter.Policy(
+                true, 1, 1, 10, 1, 30
+        );
+        TokenBucketRateLimiter.Policy fastPolicy = new TokenBucketRateLimiter.Policy(
+                true, 1, 1, 1, 1, 30
+        );
+        assertTrue(limiter.tryConsume("client-a", slowPolicy));
+
+        nowNanos.addAndGet(10_001_000_000L);
+        nowMillis.addAndGet(10_001L);
+
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 1L), limiter.attempt("client-new", fastPolicy));
+        assertTrue(limiter.tryConsume("client-a", slowPolicy));
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 10L), limiter.attempt("client-a", slowPolicy));
+        assertEquals(1, limiter.trackedKeyCount());
+    }
+
+    @Test
+    void retirementUsesUpdatedBucketPolicyWithoutRetroactiveRefillCredit() {
+        TokenBucketRateLimiter.Policy slowPolicy = new TokenBucketRateLimiter.Policy(
+                true, 2, 1, 100, 1, 30
+        );
+        TokenBucketRateLimiter.Policy fastPolicy = new TokenBucketRateLimiter.Policy(
+                true, 2, 1, 10, 1, 30
+        );
+        TokenBucketRateLimiter.Policy incomingPolicy = new TokenBucketRateLimiter.Policy(
+                true, 1, 1, 1_000, 1, 30
+        );
+        assertTrue(limiter.tryConsume("client-a", slowPolicy));
+        assertTrue(limiter.tryConsume("client-a", slowPolicy));
+
+        nowNanos.addAndGet(50_000_000_000L);
+        nowMillis.addAndGet(50_000L);
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 5L), limiter.attempt("client-a", fastPolicy));
+
+        nowNanos.addAndGet(51_000_000_000L);
+        nowMillis.addAndGet(51_000L);
+
+        assertEquals(new TokenBucketRateLimiter.Attempt(true, 0L), limiter.attempt("client-new", incomingPolicy));
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 1_000L), limiter.attempt("client-new", incomingPolicy));
+        assertEquals(1, limiter.trackedKeyCount());
+    }
+
+    @Test
+    void concurrentAdmissionAndConsumptionPreserveAvailableTokensAndTrackedKeyBound() throws Exception {
+        int maxTrackedKeys = 8;
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true, 1, 1, 1, maxTrackedKeys, 30
+        );
+        for (int i = 0; i < maxTrackedKeys; i++) {
+            assertTrue(limiter.tryConsume("client-" + i, policy));
+        }
+        nowNanos.addAndGet(5_001_000_000L);
+        nowMillis.addAndGet(5_001L);
+
+        int attemptCount = 32;
+        ExecutorService executor = Executors.newFixedThreadPool(attemptCount);
+        CountDownLatch ready = new CountDownLatch(attemptCount);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<TokenBucketRateLimiter.Attempt>> futures = new ArrayList<>();
+        try {
+            for (int i = 0; i < attemptCount; i++) {
+                String key = "client-" + i;
+                futures.add(executor.submit(() -> {
+                    ready.countDown();
+                    assertTrue(start.await(5, TimeUnit.SECONDS));
+                    return limiter.attempt(key, policy);
+                }));
+            }
+            assertTrue(ready.await(5, TimeUnit.SECONDS));
+            start.countDown();
+
+            int allowed = 0;
+            for (Future<TokenBucketRateLimiter.Attempt> future : futures) {
+                TokenBucketRateLimiter.Attempt attempt = future.get(5, TimeUnit.SECONDS);
+                assertEquals(attempt.allowed() ? 0L : 1L, attempt.retryAfterSeconds());
+                if (attempt.allowed()) {
+                    allowed++;
+                }
+            }
+
+            assertEquals(maxTrackedKeys, allowed);
+            assertEquals(maxTrackedKeys, limiter.trackedKeyCount());
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+        }
     }
 
     @Test
