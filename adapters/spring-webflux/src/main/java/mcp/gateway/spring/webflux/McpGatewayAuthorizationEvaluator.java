@@ -28,6 +28,7 @@ public interface McpGatewayAuthorizationEvaluator extends GatewayToolAuthorizati
      * @param context tool execution context
      * @return authorization decision
      */
+    @Override
     ToolAuthorizationDecision authorize(Collection<String> grantedScopes, GatewayToolExecutionContext context);
 
     @Override
