@@ -12,6 +12,12 @@ import static java.util.Objects.requireNonNull;
  * reject. The authorization observation fields are separate because warn-mode
  * authorization can be observable while the final decision still allows the
  * request, or protection can reject after authorization allowed or warned.
+ * <p>
+ * Prefer {@link GatewayToolGovernance} to compose the aggregate from the
+ * configured evaluators. It preserves authorization observations independently
+ * of the final outcome, but trusts the decisions returned by custom evaluators.
+ * Direct construction checks only that outcome and reason are non-null; callers
+ * are responsible for cross-field consistency and complete observation fields.
  *
  * @param outcome final outcome
  * @param reason low-cardinality reason
@@ -29,7 +35,9 @@ public record GatewayToolGovernanceDecision(
         McpAbuseProtectionDecision protectionDecision
 ) {
     /**
-     * Creates a normalized decision.
+     * Requires a non-null outcome and reason without deriving or validating the
+     * relationships between the remaining fields. Partial observation fields or
+     * conflicting nested decisions are not rejected by this constructor.
      */
     public GatewayToolGovernanceDecision {
         outcome = requireNonNull(outcome, "outcome must not be null");
@@ -41,6 +49,7 @@ public record GatewayToolGovernanceDecision(
      * <p>
      * Both allow and warn outcomes proceed. Only
      * {@link GatewayToolGovernanceOutcome#REJECT} stops the request.
+     * This method reads the final outcome, not the nested decisions.
      *
      * @return true when not rejected
      */
@@ -51,10 +60,13 @@ public record GatewayToolGovernanceDecision(
     /**
      * Returns whether authorization produced an observable decision.
      * <p>
-     * This is false when authorization was disabled, absent, or skipped because
-     * the invocation is not authorizable.
+     * For results from {@link GatewayToolGovernance}, this is false when
+     * authorization was disabled, absent, or skipped because the invocation is
+     * not authorizable. It is independent of the final {@link #allowed()} result.
+     * The predicate checks only the authorization decision and observation
+     * outcome; it does not validate a directly supplied observation reason.
      *
-     * @return true when authorization observation fields are populated
+     * @return true when the authorization decision and observation outcome are non-null
      */
     public boolean hasAuthorizationObservation() {
         return authorizationDecision != null && authorizationObservationOutcome != null;
