@@ -100,6 +100,34 @@ behavior.
 The generic adapter does not gain a Spring AI dependency or perform ZAP Server
 wiring.
 
+### Unreleased 0.11.0 Changes
+
+The development snapshot adds the strict authorizer overload, opt-in metadata
+snapshot utility, and `McpToolAccessRegistry.activeToolRegistry(Collection<String>)`
+in core. The catalog helper validates its input strictly without changing the
+existing registry lookup normalization. Existing decision constructors retain
+their checks and signatures; the decision-contract review documents their limits
+and the supported evaluation paths.
+
+The adapter adds an optional typed rejection observer and
+`McpGatewayAuditObservers`, which connects the four existing observer setters to
+an application-supplied audit sink. Setters retain their replacement semantics;
+combining metrics and audit callbacks is explicit. Existing constructors and
+observer-omitted configurations remain supported. No audit persistence is
+installed automatically.
+
+Resolver validation deliberately rejects a null or mismatched tool execution
+context before governance. Equivalent context copies remain valid. When both
+authorization and protection are disabled and no active-tool registry is
+configured, filtering remains inactive. Idle rate-bucket retirement now uses
+each bucket's stored refill period and requires full replenishment before
+removal, preserving debt across unrelated policy lookups. Public signatures
+remain available.
+
+These changes are not in published `0.10.0`. The final release artifacts still
+require their release checks, including the Java 17 consumer check. The public
+preview compatibility limits above continue to apply.
+
 For `0.9.0`, the WebFlux adapter adds the fluent
 `McpGatewayWebFluxGovernanceFilter` builder. Existing public constructors,
 defaults, and governance behavior remain unchanged. The framework-neutral core

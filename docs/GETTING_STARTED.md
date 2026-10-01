@@ -297,6 +297,62 @@ because that makes mapped decisions allowed instead of retaining the denial.
 Applications with an intentional wildcard policy can keep the explicit
 overload and lambda. Switching to the shortcut would change that policy.
 
+### Unreleased Active Tool Catalog Selection
+
+In unreleased `0.11.0-SNAPSHOT`, select the active catalog from the access-rule
+inventory with the tool names actually registered by your server:
+
+```java
+McpToolRegistry activeTools = accessRegistry.activeToolRegistry(exposedToolNames);
+```
+
+Here `exposedToolNames` is the host's `Collection<String>` of enabled tool names.
+Pass `activeTools` to `.toolRegistry(activeTools)` on the existing filter builder.
+The helper preserves descriptors and capabilities, includes only those names,
+and reports all missing permission mappings together before returning a registry.
+An empty collection creates an empty active catalog. Names are case-sensitive;
+null, blank, padded, or duplicate entries are rejected rather than normalized.
+This does not discover callbacks or register tools. It consolidates the host's
+selection and coverage checks; the older lookup/registry methods retain their behavior.
+
+### Unreleased Audit Observer Helper
+
+In unreleased `0.11.0-SNAPSHOT`, connect the adapter's four observation families
+to an application-owned audit sink using the existing builder settings:
+
+```java
+import mcp.gateway.core.audit.GatewayAuditSink;
+import mcp.gateway.spring.webflux.McpGatewayAuditObservers;
+
+McpGatewayAuditObservers audits = McpGatewayAuditObservers.of(auditSink);
+
+// Add to the existing filter builder before .build():
+.authorizationObserver(audits)
+.protectionRejectionObserver(audits)
+.invalidRequestObserver(audits)
+.adapterRejectionObserver(audits)
+```
+
+`auditSink` is the host's `GatewayAuditSink`. It chooses storage and delivery;
+the helper translates pre-execution observations into audit events and does not
+observe tool completion. Existing observer setters still replace their respective
+callbacks. To keep metrics, compose them explicitly with the audit callback:
+
+```java
+.authorizationObserver(observation -> {
+    recordAuthorizationMetrics(observation); // metrics only; no audit publication
+    audits.record(observation);
+})
+```
+
+The shown ordering runs metrics before audit. If either callback throws, the
+remaining work and downstream execution stop through the existing reactive error
+path. Do not combine the helper with a callback that already publishes the same
+audit event: that would duplicate records. Diagnostic callbacks supply no
+identity or tool information; the helper omits unavailable fields instead of
+inventing them. See the [audit schema](CONTRACT_REFERENCE.md#audit-observer-helper-unreleased).
+Both helpers in these sections are unavailable in published `0.10.0`.
+
 ### Unreleased Adapter Rejection Diagnostics
 
 In unreleased `0.11.0-SNAPSHOT`, add this optional callback before `.build()` to

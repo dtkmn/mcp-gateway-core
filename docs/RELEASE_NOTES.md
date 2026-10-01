@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Add `McpToolAccessRegistry.activeToolRegistry(Collection<String>)` in
+  `0.11.0-SNAPSHOT` to select existing descriptors from the host's actual enabled
+  tool names and check permission coverage in one operation. Missing mappings
+  are reported together; identity is case-sensitive, and null/blank/padded or
+  duplicate entries are rejected. Empty input produces an empty catalog. Existing
+  lookup methods retain their normalization and behavior; core remains JDK-only.
+- Add the opt-in WebFlux `McpGatewayAuditObservers.of(GatewayAuditSink)` helper
+  implementing the four existing observer interfaces. It translates observations
+  into documented pre-execution audit events with immutable generated details,
+  omits unavailable identity/context fields, and excludes payloads and arguments.
+  Install it through the existing builder setters; application metrics, storage
+  and delivery remain application-owned. Callback/sink exceptions retain the
+  reactive failure path. Existing wiring is unchanged; no bridge is installed
+  automatically. Published `0.10.0` is unchanged.
+- Clarify authorization/governance decision states and the limits of direct
+  record construction. Existing constructors retain their checks and accepted
+  inputs. Use the public authorizer/evaluation APIs to produce supported states;
+  no new factories or constructor tightening are introduced by this review.
 - Add the opt-in WebFlux `McpAdapterRejectionObserver`, typed
   `McpAdapterRejectionReason` codes, and `Builder.adapterRejectionObserver` in
   `0.11.0-SNAPSHOT`. Five previously silent paths now support diagnostics for
