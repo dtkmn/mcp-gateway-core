@@ -61,7 +61,7 @@ An active-only `McpToolAccessRegistry` already owns a suitable `toolRegistry()`;
 the adapter does not require a third registry or a separate hand-maintained
 tool list. This input adds no discovery, Spring AI wiring, or core API changes.
 
-In unreleased `0.11.0-SNAPSHOT`, the JDK-only
+In the unpublished `0.11.0` candidate, the JDK-only
 `McpToolAccessRegistry.activeToolRegistry(Collection<String>)` helper selects
 descriptors for the host's active names and checks their permission mappings.
 Discovery and registration remain owned by the hosting runtime.

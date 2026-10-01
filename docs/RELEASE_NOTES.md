@@ -1,86 +1,109 @@
 # Release Notes
 
-## Unreleased
+## 0.11.0 Public Preview (Unpublished Candidate)
 
-- Add `McpToolAccessRegistry.activeToolRegistry(Collection<String>)` in
-  `0.11.0-SNAPSHOT` to select existing descriptors from the host's actual enabled
-  tool names and check permission coverage in one operation. Missing mappings
-  are reported together; identity is case-sensitive, and null/blank/padded or
-  duplicate entries are rejected. Empty input produces an empty catalog. Existing
-  lookup methods retain their normalization and behavior; core remains JDK-only.
-- Add the opt-in WebFlux `McpGatewayAuditObservers.of(GatewayAuditSink)` helper
-  implementing the four existing observer interfaces. It translates observations
-  into documented pre-execution audit events with immutable generated details,
-  omits unavailable identity/context fields, and excludes payloads and arguments.
-  Install it through the existing builder setters; application metrics, storage
-  and delivery remain application-owned. Callback/sink exceptions retain the
-  reactive failure path. Existing wiring is unchanged; no bridge is installed
-  automatically. Published `0.10.0` is unchanged.
-- Clarify authorization/governance decision states and the limits of direct
-  record construction. Existing constructors retain their checks and accepted
-  inputs. Use the public authorizer/evaluation APIs to produce supported states;
-  no new factories or constructor tightening are introduced by this review.
-- Add the opt-in WebFlux `McpAdapterRejectionObserver`, typed
-  `McpAdapterRejectionReason` codes, and `Builder.adapterRejectionObserver` in
-  `0.11.0-SNAPSHOT`. Five previously silent paths now support diagnostics for
-  invalid/missing tool-call ids, unavailable tools, enforced missing mappings,
-  and invalid execution contexts. Existing observers and response formats remain
-  unchanged. Omitted wiring and existing constructors add no new correlation lookups;
-  an installed observer resolves correlation and runs before the response write.
-  Diagnostic failures propagate reactively and may prevent the normal response.
-  This is an additive opt-in API; published `0.10.0` artifacts are unchanged.
-- Add the opt-in `GatewayMetadataSnapshot.copyOf(Map<String, ?>)` utility in
-  `0.11.0-SNAPSHOT` for recursive snapshots of supported metadata maps, lists,
-  sets, and immutable scalars, with cycle, depth, and value-count limits.
-  Unsupported values fail explicitly. Existing `GatewayAuditEvent` and
-  `ToolPolicyDecision` constructors/factories retain their shallow outer-map copy
-  and custom-object compatibility; clarify that their nested values are shared.
-  This is an additive API, not an automatic consumer migration. Published
-  `0.10.0` artifacts are unchanged.
-- Validate trusted WebFlux resolver wiring in `0.11.0-SNAPSHOT` through the existing
-  interface. Custom resolvers must return a non-null context preserving the supplied
-  invocation's `kind`/`method`/`toolName`; equal copies and context enrichment remain
-  supported. Null or mismatched results normally return HTTP `500` with
-  `{"error":"invalid_execution_context"}` before scope extraction, governance
-  decisions, authorization/protection observations, or execution. An optional
-  adapter diagnostic runs before the response. Resolver validation tightens behavior
-  without changing its interface or validating tool arguments; published `0.10.0`
-  and existing bypass paths are unchanged.
-- Update the core-only and WebFlux getting-started rate examples to use one
-  `TokenBucketRateLimiter.Attempt` for both the consumption decision and its
-  retry delay. This is a documentation-only adoption of the API already
-  published in `0.10.0`; it adds no helper, public API, or core behavior change.
+`0.11.0` is the selected release candidate for both `mcp-gateway-core` and
+`mcp-gateway-spring-webflux`. It is not yet published to Maven Central;
+`0.10.0` remains the latest published version. Publication, the release tag,
+and the final source commit must follow the
+[release policy](https://danieltse.org/mcp-gateway-core/maintainers/release-policy/).
+The artifacts remain public preview; the core remains JDK-only.
+
+### Core APIs And Rate Limiting
+
 - Add `McpToolAuthorizer.authorize(Collection<String>, GatewayToolExecutionContext)`
   as a strict decision-calculation shortcut equivalent to the existing
   `authorize(context, grantedScopes, false, true)` overload. It checks mapped
   requirements without wildcard bypass and supports `authorizer::authorize`
-  in the WebFlux authorization builder callback. Governance still owns
-  `ENFORCE`, `WARN`, and `DISABLED` behavior; the shortcut does not enforce a
-  response or execute a tool by itself. This is an additive, binary-compatible
-  core API change; existing explicit calls, overloads, and consumer
-  policies are unchanged. It is available only in the unreleased
-  `0.11.0-SNAPSHOT` development version, not published `0.10.0` artifacts.
+  in the WebFlux authorization callback. Governance still owns `ENFORCE`,
+  `WARN`, and `DISABLED` behavior. Existing overloads and consumer policies remain
+  available; this shortcut does not enforce a response or execute a tool.
+- Add `McpToolAccessRegistry.activeToolRegistry(Collection<String>)` to select
+  existing descriptors from the host's actual enabled tool names and check
+  permission coverage together. Missing mappings are reported together;
+  identity is case-sensitive, and null, blank, padded, or duplicate entries are
+  rejected. Empty input produces an empty catalog. Existing lookup methods
+  retain their normalization and behavior. The helper does not discover or
+  register tools in a server.
+- Add the opt-in `GatewayMetadataSnapshot.copyOf(Map<String, ?>)` utility for
+  recursive snapshots of supported metadata maps, lists, sets, and immutable
+  scalars, with cycle, depth, and value-count limits. Unsupported values fail
+  explicitly. Existing audit-event and policy-decision constructors retain
+  their shallow outer-map copy and custom-object compatibility; nested values
+  remain shared unless the caller explicitly snapshots them.
 - Retire idle rate-limit buckets only after they fully replenish under their
-  own stored token policy. Bucket admission no longer discards outstanding
-  refill state based on another key's policy or wall-clock age alone. New keys
-  continue to be rejected when the tracked-key limit remains full. Public
+  own stored token policy. Admission no longer discards outstanding refill state
+  based on another key's policy or wall-clock age alone. Each new-key admission
+  inspects at most 64 retirement candidates and rotates retained candidates
+  across attempts. Token debt and the tracked-key cap remain enforced; public
   rate-limiter signatures are unchanged.
-- Bound each new-key admission to at most 64 retirement candidates in
-  `0.11.0-SNAPSHOT`, rotating retained candidates across attempts. A full map
-  may return the existing one-second rejection before a later attempt finds an
-  eligible bucket; a smaller incoming tracked-key limit may require multiple
-  passes. Token debt and the tracked-key cap remain enforced. Update the
-  getting-started examples to share a caller quota across MCP actions using
-  trusted principal identity. Public signatures and published `0.10.0` artifacts
-  are unchanged.
-- Update the Spring WebFlux adapter's Jackson Databind dependency from `3.1.6`
-  to `3.2.3`, with Jackson Core `3.2.3` and Jackson Annotations `2.22`.
-  The adapter continues to use Jackson 3 `JsonMapper`; the core artifact remains
-  JDK-only. Published `0.10.0` artifacts are unchanged.
-- Update the adapter's integration-test dependencies to MCP Java SDK `2.0.1`,
-  Netty `4.2.18.Final`, Logback `1.6.4`, and Log4j-to-SLF4J `2.26.1`.
-  These remain test dependencies and are not added to the adapter's published
-  dependencies. Consuming applications manage their own runtime versions.
+
+### Spring WebFlux Adapter
+
+- Validate custom resolver results through the existing interface. A resolver
+  must return a non-null context preserving the supplied invocation's `kind`,
+  `method`, and `toolName`; equal copies and context enrichment remain supported.
+  Null or mismatched results normally return HTTP `500` with
+  `{"error":"invalid_execution_context"}` before scope extraction, governance
+  decisions, authorization/protection observations, or execution. An optional
+  adapter diagnostic runs before the response. This validates trusted wiring;
+  it does not validate tool arguments or change existing bypass paths.
+- Add the opt-in `McpAdapterRejectionObserver`, typed `McpAdapterRejectionReason`
+  codes, and `Builder.adapterRejectionObserver`. Five previously silent paths
+  support diagnostics for invalid/missing tool-call ids, unavailable tools,
+  enforced missing mappings, and invalid execution contexts. Installing the
+  observer does not change the rejection response formats. Omitted wiring and
+  existing constructors add no new correlation lookups; an installed observer
+  resolves correlation and runs before the response write. Diagnostic failures
+  propagate reactively and may prevent the normal response.
+- Add `McpGatewayAuditObservers.of(GatewayAuditSink)` to bridge the four observer
+  interfaces, including the new typed adapter diagnostics, to an application-owned
+  audit sink. The helper creates documented pre-execution events with immutable
+  generated details, omits unavailable identity/context fields, and excludes
+  payloads and arguments. Install it through the four builder setters; no bridge,
+  storage, metrics, or delivery backend is installed automatically. Callback or
+  sink exceptions retain the reactive failure path.
+
+### Upgrade Notes
+
+- Review custom resolvers before upgrading: null contexts or changed invocations
+  are now rejected before scope extraction and governance with the generic
+  HTTP `500` response described above. Resolver enrichment that preserves the
+  invocation remains supported.
+- A full rate-limit map may return the existing one-second rejection before a
+  later attempt finds an eligible bucket elsewhere in the map. A smaller
+  incoming tracked-key limit may require multiple bounded passes. Callers should
+  honor retry delays rather than retry in a tight loop.
+- The new authorizer, active-catalog, metadata, diagnostics, and audit helpers
+  are opt-in. Observer setters replace their callbacks; applications that need
+  multiple observers must compose them. Audit events describe decisions before
+  execution, not successful tool completion.
+- Check the consuming application's resolved dependency versions when framework
+  dependency management overrides the adapter's requested Jackson version.
+  Test-stack updates in this repository do not upgrade a consuming server.
+
+### Dependencies, Documentation And Verification
+
+- Update the adapter's published Jackson Databind dependency from `3.1.6` to
+  `3.2.3`, with Jackson Core `3.2.3` and Jackson Annotations `2.22`. It continues
+  to use Jackson 3 `JsonMapper`; no runtime dependencies are added to the core.
+- Update integration-test dependencies to MCP Java SDK `2.0.1`, Netty
+  `4.2.18.Final`, Logback `1.6.4`, and Log4j-to-SLF4J `2.26.1`; update JUnit to
+  `6.1.3` in both modules. These remain test dependencies, outside the published
+  adapter dependency graph.
+- Update the Gradle Wrapper to `9.8.0`, retaining Java 17 compilation targets,
+  module-owned JAR checks, the core `java.base`-only check, and adapter runtime
+  bytecode checks. Extend the clean Java 17 consumer smoke checks to exercise the
+  new APIs. Add regression coverage for limiter retirement and policy precedence.
+- Update the documentation site's Astro dependency to `7.3.5` and Sharp to
+  `0.35.5`; correct public guide links and check published-version consistency
+  in the generated site. These are documentation-build dependencies.
+- Clarify authorization/governance decision states and direct record-construction
+  limits without changing existing constructor checks or adding factories.
+  Update rate examples to share a caller quota using trusted principal identity
+  and use one `TokenBucketRateLimiter.Attempt` for both the decision and retry
+  delay. `Attempt` was already published in `0.10.0`; adopting it in examples
+  is a documentation change.
 
 ## 0.10.0 Public Preview
 
