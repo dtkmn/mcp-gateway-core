@@ -144,7 +144,7 @@ TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
         1
 );
 
-String key = context.principalId() + ":" + context.actionName();
+String key = context.principalId();
 TokenBucketRateLimiter.Attempt attempt = limiter.attempt(key, policy);
 boolean allowed = attempt.allowed();
 long retryAfterSeconds = attempt.retryAfterSeconds();
@@ -154,6 +154,13 @@ The `attempt` API is available in published `0.10.0`. Its decision and retry
 delay come from the same consumption attempt: allowed requests report zero,
 and rejected requests report at least one second. Use that result's retry delay
 when constructing a rejection response.
+
+This example shares one request quota across a caller's MCP actions. Derive the
+principal from trusted authentication; unauthenticated callers share the
+anonymous bucket. Avoid keys built from arbitrary request methods, headers, or
+caller-selected identifiers: varying those values would create separate quotas.
+If you also need per-tool quotas, use host-validated tool identities alongside
+an overall caller limit.
 
 ## Spring WebFlux Governance Filter
 
@@ -227,7 +234,7 @@ class McpGatewayConfiguration {
                 .protection(
                         () -> true,
                         context -> {
-                            String key = context.principalId() + ":" + context.actionName();
+                            String key = context.principalId();
                             TokenBucketRateLimiter.Attempt attempt = limiter.attempt(key, policy);
                             if (attempt.allowed()) {
                                 return McpAbuseProtectionDecision.allow(

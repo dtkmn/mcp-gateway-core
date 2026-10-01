@@ -1,7 +1,7 @@
 package mcp.gateway.core.rate;
 
-import java.util.Iterator;
-import java.util.Map;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.LongSupplier;
@@ -11,6 +11,8 @@ import java.util.function.LongSupplier;
  * Token-policy changes for an existing key take effect from the change onward;
  * elapsed time is never retroactively credited at a newly configured refill rate.
  * Idle buckets are retired only when fully replenished under their stored token policy.
+ * New-key admission inspects at most 64 retirement candidates, rotating through
+ * tracked buckets across attempts. An eligible bucket may be reached on a later attempt.
  * A retired key is newly admitted under the policy supplied when it returns;
  * policy history is retained only while the bucket remains tracked.
  */
@@ -18,8 +20,12 @@ public final class TokenBucketRateLimiter {
     /** Default key used when callers provide a blank or null key. */
     public static final String DEFAULT_KEY = "anonymous";
 
+    private static final int MAX_EVICTION_CHECKS_PER_ADMISSION = 64;
+
     private final ConcurrentHashMap<String, BucketState> buckets = new ConcurrentHashMap<>();
     private final Object bucketCreationLock = new Object();
+    // One entry per tracked bucket; accessed only while holding bucketCreationLock.
+    private final Deque<String> evictionCandidates = new ArrayDeque<>();
     private final LongSupplier nanoClock;
     private final LongSupplier millisClock;
 
@@ -187,10 +193,12 @@ public final class TokenBucketRateLimiter {
         }
 
         long nowMillis = millisClock.getAsLong();
-        Iterator<Map.Entry<String, BucketState>> iterator = buckets.entrySet().iterator();
-        while (iterator.hasNext() && buckets.size() >= policy.maxTrackedKeys()) {
-            Map.Entry<String, BucketState> entry = iterator.next();
-            BucketState state = entry.getValue();
+        int checks = Math.min(MAX_EVICTION_CHECKS_PER_ADMISSION, evictionCandidates.size());
+        for (int i = 0; i < checks && buckets.size() >= policy.maxTrackedKeys(); i++) {
+            // Keep the candidate queued until clock reads and evaluation succeed.
+            String key = evictionCandidates.getFirst();
+            BucketState state = buckets.get(key);
+            boolean retired = false;
             synchronized (state) {
                 long staleAgeMillis = saturatedMultiply(
                         saturatedMultiply(state.refillPeriodSeconds, 1_000L),
@@ -201,9 +209,13 @@ public final class TokenBucketRateLimiter {
                     refill(state, state.capacity, state.refillTokens,
                             state.refillPeriodSeconds, nanoClock.getAsLong());
                     if (state.tokens >= state.capacity) {
-                        buckets.remove(entry.getKey(), state);
+                        retired = buckets.remove(key, state);
                     }
                 }
+            }
+            evictionCandidates.removeFirst();
+            if (!retired) {
+                evictionCandidates.addLast(key);
             }
         }
     }
@@ -225,6 +237,7 @@ public final class TokenBucketRateLimiter {
                     millisClock.getAsLong()
             );
             buckets.put(normalizedKey, newState);
+            evictionCandidates.addLast(normalizedKey);
             return newState;
         }
     }

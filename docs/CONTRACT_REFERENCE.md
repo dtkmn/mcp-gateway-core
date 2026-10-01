@@ -496,8 +496,16 @@ IP, API key, or another shape.
 | `maxTrackedKeys` | Maximum bucket keys retained in memory. Minimum normalized value is `1`. |
 | `disabledRetryAfterSeconds` | Retry delay returned when the policy is disabled. |
 
-When the limiter is at `maxTrackedKeys` and no bucket can be safely retired,
-new keys fail closed instead of growing memory. A bucket is eligible for
+In unreleased `0.11.0-SNAPSHOT`, each new-key admission at `maxTrackedKeys`
+inspects at most 64 retirement candidates. Retained candidates rotate to the
+back of a queue, so later attempts continue through the tracked buckets rather
+than restarting the search. The queue holds one key reference per tracked
+bucket. If that bounded pass does not make room, the new key fails closed with
+a one-second retry delay, even if another uninspected bucket could retire.
+This bounds candidate inspection per admission; it does not guarantee request
+latency under contention or limit total incoming traffic.
+
+In the same development version, a bucket is eligible for
 retirement only after more than five of its own refill periods without a
 consumption attempt and after its tokens fully replenish under its stored
 capacity and refill settings. Wall-clock age alone does not establish that the
@@ -517,7 +525,9 @@ not retain policy history for retired keys.
 a consistent limit for a limiter instance. If a request supplies a smaller limit,
 existing buckets with refill debt are retained rather than discarded to shrink
 the map immediately; new-key admission remains rejected until safe retirement
-can make room.
+can make room. Retirement proceeds in bounded batches, so reducing the limit
+can require multiple admission attempts even when all existing buckets are idle
+and fully replenished.
 
 ## URL Scope And Correlation IDs
 

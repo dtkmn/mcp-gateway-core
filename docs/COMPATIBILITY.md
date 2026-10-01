@@ -121,7 +121,11 @@ context before governance. Equivalent context copies remain valid. When both
 authorization and protection are disabled and no active-tool registry is
 configured, filtering remains inactive. Idle rate-bucket retirement now uses
 each bucket's stored refill period and requires full replenishment before
-removal, preserving debt across unrelated policy lookups. Public signatures
+removal, preserving debt across unrelated policy lookups. New-key admission
+checks at most 64 retirement candidates and rotates retained candidates across
+attempts. A full map may temporarily reject a new key with the one-second retry
+delay before a later attempt reaches an eligible bucket. A smaller incoming
+tracked-key limit may also require multiple retirement passes. Public signatures
 remain available.
 
 These changes are not in published `0.10.0`. The final release artifacts still
