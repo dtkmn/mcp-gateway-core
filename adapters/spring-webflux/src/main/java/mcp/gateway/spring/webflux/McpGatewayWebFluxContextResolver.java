@@ -12,12 +12,26 @@ import org.springframework.web.server.ServerWebExchange;
 public interface McpGatewayWebFluxContextResolver {
     /**
      * Resolves the core context for a parsed invocation.
+     * <p>
+     * The resolver may enrich caller, workspace, correlation, and target values,
+     * but must preserve the supplied invocation's kind, method, and tool name.
+     * A separately constructed invocation with equal values is accepted; object
+     * identity is not required. Invocation values do not contain tool arguments.
+     * <p>
+     * When governance is active and resolution is reached, the WebFlux filter
+     * rejects a null context or unequal invocation with HTTP 500 and the fixed
+     * JSON error {@code invalid_execution_context}, before scope extraction,
+     * authorization/protection decision callbacks and observations, or downstream
+     * handling. An optional {@link McpAdapterRejectionObserver} may receive a
+     * diagnostic containing only its reason and request/correlation identifiers;
+     * the rejected context is never supplied to it. Fully inactive governance
+     * bypasses context resolution.
      *
      * @param authentication authenticated Spring principal, or {@code null}
      *        for unauthenticated requests
      * @param exchange request exchange
      * @param invocation normalized invocation
-     * @return non-null tool execution context
+     * @return non-null tool execution context preserving the parsed invocation
      */
     GatewayToolExecutionContext resolve(Authentication authentication,
                                         ServerWebExchange exchange,

@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- Add the opt-in WebFlux `McpAdapterRejectionObserver`, typed
+  `McpAdapterRejectionReason` codes, and `Builder.adapterRejectionObserver` in
+  `0.11.0-SNAPSHOT`. Five previously silent paths now support diagnostics for
+  invalid/missing tool-call ids, unavailable tools, enforced missing mappings,
+  and invalid execution contexts. Existing observers and response formats remain
+  unchanged. Omitted wiring and existing constructors add no new correlation lookups;
+  an installed observer resolves correlation and runs before the response write.
+  Diagnostic failures propagate reactively and may prevent the normal response.
+  This is an additive opt-in API; published `0.10.0` artifacts are unchanged.
+- Add the opt-in `GatewayMetadataSnapshot.copyOf(Map<String, ?>)` utility in
+  `0.11.0-SNAPSHOT` for recursive snapshots of supported metadata maps, lists,
+  sets, and immutable scalars, with cycle, depth, and value-count limits.
+  Unsupported values fail explicitly. Existing `GatewayAuditEvent` and
+  `ToolPolicyDecision` constructors/factories retain their shallow outer-map copy
+  and custom-object compatibility; clarify that their nested values are shared.
+  This is an additive API, not an automatic consumer migration. Published
+  `0.10.0` artifacts are unchanged.
+- Validate trusted WebFlux resolver wiring in `0.11.0-SNAPSHOT` through the existing
+  interface. Custom resolvers must return a non-null context preserving the supplied
+  invocation's `kind`/`method`/`toolName`; equal copies and context enrichment remain
+  supported. Null or mismatched results normally return HTTP `500` with
+  `{"error":"invalid_execution_context"}` before scope extraction, governance
+  decisions, authorization/protection observations, or execution. An optional
+  adapter diagnostic runs before the response. Resolver validation tightens behavior
+  without changing its interface or validating tool arguments; published `0.10.0`
+  and existing bypass paths are unchanged.
 - Update the core-only and WebFlux getting-started rate examples to use one
   `TokenBucketRateLimiter.Attempt` for both the consumption decision and its
   retry delay. This is a documentation-only adoption of the API already

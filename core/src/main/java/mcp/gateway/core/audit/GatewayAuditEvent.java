@@ -3,14 +3,19 @@ package mcp.gateway.core.audit;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import mcp.gateway.core.metadata.GatewayMetadataSnapshot;
 
 /**
  * Generic audit event emitted by an MCP gateway runtime.
+ * <p>
+ * Details are copied into an unmodifiable outer map, dropping null keys and
+ * values. Nested values retain their original references. For supported nested
+ * metadata snapshots, pass {@link GatewayMetadataSnapshot#copyOf(Map)} as details.
  *
  * @param type event type
  * @param principal authenticated actor or client identifier
  * @param outcome normalized event outcome
- * @param details immutable event details
+ * @param details event details with an unmodifiable outer map
  */
 public record GatewayAuditEvent(
         String type,

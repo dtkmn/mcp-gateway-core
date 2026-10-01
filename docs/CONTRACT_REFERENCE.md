@@ -212,7 +212,10 @@ Package: `mcp.gateway.core.policy`
 | --- | --- |
 | `outcome` | Allow, deny, or abstain. Null normalizes to deny. |
 | `reason` | Human-readable reason. |
-| `details` | Machine-readable details supplied by the provider. Null keys/values are dropped. |
+| `details` | Shallow, unmodifiable outer copy of provider metadata. Top-level null keys/values are dropped; nested values remain caller-owned. |
+
+See [metadata details](#metadata-details) for the shared copy contract and the
+unreleased opt-in snapshot utility.
 
 The consuming runtime decides how multiple policy providers combine. A common
 safe model is deny-wins, all-abstain-fails-closed.
@@ -287,13 +290,49 @@ Package: `mcp.gateway.core.audit`
 | `type` | Event type, chosen by the runtime. |
 | `principal` | Actor or client id. |
 | `outcome` | Runtime-normalized outcome such as allowed, denied, rejected, or failed. |
-| `details` | Machine-readable event data. Null keys/values are dropped. |
+| `details` | Shallow, unmodifiable outer copy of event metadata. Top-level null keys/values are dropped; nested values remain caller-owned. |
 
 `GatewayAuditSink` receives non-null events. `GatewayAuditEmitter` owns fallback
 normalization if callers emit null.
 
 Core does not persist audit events. Your runtime decides whether events go to
 logs, storage, metrics, traces, SIEM, or all of those.
+
+## Metadata Details
+
+Existing `GatewayAuditEvent` and `ToolPolicyDecision` constructors and factories
+copy only the outer details map, preserving encounter order and dropping entries
+with null keys or values. The outer copy is unmodifiable, but nested containers
+and custom objects remain shared references: later caller mutations can change
+the visible details. These APIs do not promise a recursive immutable snapshot.
+
+### Explicit Snapshots (Unreleased)
+
+Unreleased `0.11.0-SNAPSHOT` adds
+`mcp.gateway.core.metadata.GatewayMetadataSnapshot.copyOf(Map<String, ?>)`,
+returning a `Map<String, Object>` for use with the existing event and decision
+factories. This is opt-in; published `0.10.0` and existing shallow-copy paths are
+unchanged.
+
+- Maps with string keys, lists, and sets are copied recursively into unmodifiable
+  containers, preserving encounter order and map-key spelling.
+- Supported scalars are `String`, `Boolean`, `Character`, `Byte`, `Short`,
+  `Integer`, `Long`, `Float`, `Double`, and exact `BigInteger`/`BigDecimal` classes.
+  Other values, including arrays, custom numbers, and other collection types,
+  are rejected with `IllegalArgumentException`; nothing is stringified or serialized.
+- A null root becomes an empty map. Root entries with null keys or values are
+  skipped without visiting their values. Nested map keys must be non-null strings;
+  nested null values and list/set null elements are retained.
+- Identity cycles are rejected; repeated references without a cycle are accepted
+  and visited again. Limits are 32 container levels including the root and 10,000
+  visited retained values, counting containers, the root, and nested nulls.
+  Map keys and skipped root entries do not count.
+- Invalid input or exceeded limits throws `IllegalArgumentException` with fixed
+  diagnostics. The caller must not mutate the input graph during copying.
+
+Snapshotting does not provide redaction, storage, retention, or sink-failure
+handling; those remain runtime responsibilities. Concrete collection classes,
+JSON validity, and byte-size limits are not part of the snapshot guarantee.
 
 ## Abuse Protection And Quotas
 
@@ -457,6 +496,8 @@ must be non-null. Unspecified options use these defaults:
 - `McpInvalidRequestObserver.noop()`; and
 - no tool registry.
 
+The unreleased adapter-rejection observer is disabled unless explicitly supplied.
+
 Authorization and protection do not have implicit evaluators. At least one
 authorization evaluator, protection evaluator, or tool registry must be
 supplied; otherwise `build()` throws `IllegalStateException`. This catches
@@ -479,6 +520,7 @@ Optional builder methods are:
 | `protectionRejectionObserver(McpProtectionRejectionObserver)` | Receives rejected protection decisions. |
 | `correlationIdResolver(McpGatewayCorrelationIdResolver)` | Replaces default correlation-header resolution. |
 | `invalidRequestObserver(McpInvalidRequestObserver)` | Receives invalid-request rejections without request payloads. |
+| `adapterRejectionObserver(McpAdapterRejectionObserver)` | Unreleased `0.11.0-SNAPSHOT`: opts into typed diagnostics for the five paths listed under [adapter rejection observation](#adapter-rejection-observation-unreleased). |
 | `toolRegistry(McpToolRegistry)` | Uses the existing core registry of exactly the runtime's registered, enabled tools to check availability before tool-call authorization. |
 
 Choose either the complete evaluator method or the paired callback method for
@@ -509,6 +551,30 @@ continues after negative authorization decisions; protection may still reject.
 continues its availability checks in all three modes. Keep an explicit callback
 when the host intentionally supplies a different wildcard or authorization
 calculation policy.
+
+### Context Resolution (Unreleased)
+
+Unreleased `0.11.0-SNAPSHOT` validates trusted resolver wiring through the existing
+`McpGatewayWebFluxContextResolver` interface; published `0.10.0` is unchanged.
+Return a non-null context preserving the adapter-supplied invocation. Equality
+compares `kind`, `method`, and `toolName`; an equal copied record is accepted.
+Custom resolvers that substitute an invocation must preserve the supplied value
+instead. Trusted identity/workspace/correlation/target enrichment remains allowed.
+`McpToolInvocation` contains no arguments, so this does not validate tool arguments.
+
+A null context or invocation mismatch normally returns HTTP `500`,
+`Content-Type: application/json`, and exactly `{"error":"invalid_execution_context"}`.
+There is no JSON-RPC id, authentication challenge, or request/context detail.
+Validation precedes scope extraction and governance decisions; scope extraction,
+authorization/protection decision callbacks and observations, and downstream
+execution are skipped on failure. An optional [adapter rejection observer](#adapter-rejection-observation-unreleased)
+can run before this response; its failure can prevent the normal response.
+
+Validation applies whenever active filtering reaches resolution, including `WARN`,
+protection-only, registry-only, and valid non-authorizable requests. Non-matching
+routes and fully inactive filtering still bypass unchanged. Earlier body/parser
+rejections, recognized response envelopes, and registry-controlled invalid
+tool-call ids, notifications, and unavailable tools retain their existing paths.
 
 <a id="active-tool-registry-unreleased"></a>
 
@@ -669,7 +735,9 @@ Invalid message reasons are:
 
 `McpGatewayWebFluxContextResolver` maps Spring `Authentication`, the
 `ServerWebExchange`, and the parsed `McpToolInvocation` into
-`GatewayToolExecutionContext`.
+`GatewayToolExecutionContext`. Preserve the supplied invocation while enriching
+the context; see [unreleased context-resolution validation](#context-resolution-unreleased)
+for the adapter's result checks and failure response.
 
 `McpGrantedScopesExtractor.springSecurityScopes()` reads Spring Security
 authorities with the `SCOPE_` prefix only for authenticated, non-anonymous
@@ -696,6 +764,7 @@ response formats are deliberately distinct:
 
 | Condition | HTTP status | Response body | Authentication challenge |
 | --- | --- | --- | --- |
+| Unreleased `0.11.0-SNAPSHOT`: null resolved context or invocation mismatch | `500` | `{"error":"invalid_execution_context"}`; no JSON-RPC id | None |
 | Registry configured: unknown or disabled tool | `200` | JSON-RPC `-32602`, `Unknown tool`, original `id` | None |
 | Registry configured: available tool with enforced unmapped authorization | `200` | JSON-RPC `-32603`, `Internal error`, original `id` | None |
 | Registry configured: invalid tool-call `id` | `400` | JSON-RPC `-32600`, `Invalid Request`, `id: null` | None |
@@ -713,10 +782,10 @@ the active tool registry.
 
 Unknown-tool, tool-call identifier, and enforced unmapped-tool configuration
 rejections do not emit authorization observations, so they are not mislabeled
-as permission denials. This option adds no automatic diagnostic events or new
-observer API for these protocol responses. Ordinary mapped permission decisions
-retain their existing authorization observations. Runtimes remain responsible
-for operational diagnostics, including startup validation of permission mappings.
+as permission denials. Published `0.10.0` has no diagnostic observer for those
+paths; unreleased `0.11.0-SNAPSHOT` adds the opt-in observer below. Ordinary mapped
+permission decisions retain their existing authorization observations. Hosts
+still own startup validation of permission mappings.
 
 Existing authorization and protection rejection responses use the execution
 context's correlation id when present, otherwise the configured
@@ -726,6 +795,45 @@ correlation-id rules to the request header
 and falls back to the server request id. An `insufficient_scope` challenge
 includes its `scope` parameter only when every required scope is an RFC 6749
 scope token.
+
+### Adapter Rejection Observation (Unreleased)
+
+Unreleased `0.11.0-SNAPSHOT` adds the functional `McpAdapterRejectionObserver`
+with `rejected(McpAdapterRejectionReason reason, String serverRequestId,
+String correlationId)`. Install it through `Builder.adapterRejectionObserver`.
+Public constructors are unchanged; they and builders omitting this option leave it disabled,
+without adding correlation-resolution calls on these previously silent paths.
+Explicitly installing even a no-op lambda opts into correlation resolution.
+
+The callback receives only the typed reason, server HTTP request id (not the
+JSON-RPC id), and correlation id. It receives no payload, arguments, tool name,
+context, principal, or headers. `McpAdapterRejectionReason.code()` exposes the
+stable lowercase code shown below. Existing observer signals are unchanged:
+
+| Path | Observer | Adapter reason constant / `code()` |
+| --- | --- | --- |
+| Invalid message/body shape or oversized body | Existing `McpInvalidRequestObserver` only | None |
+| Registry configured: invalid tool-call id | New adapter observer only | `INVALID_TOOL_CALL_ID` / `invalid_tool_call_id` |
+| Registry configured: tool call without id | New adapter observer only; still HTTP `202`, empty body, no execution | `TOOL_CALL_WITHOUT_ID` / `tool_call_without_id` |
+| Registry configured: unknown or inactive tool | New adapter observer only | `UNKNOWN_TOOL` / `unknown_tool` |
+| Registry configured: active tool with enforced unmapped authorization | New adapter observer only | `UNMAPPED_TOOL` / `unmapped_tool` |
+| Null resolved context or invocation mismatch | New adapter observer only | `INVALID_EXECUTION_CONTEXT` / `invalid_execution_context` |
+| Enforced mapped permission denial, or enforced unmapped action without a registry | Existing authorization observer only | None |
+| Protection rejection | Existing protection-rejection observer; an earlier authorization allow/warn observation may also occur | None |
+| Allowed requests, recognized response envelopes, or bypassed requests | No new adapter observation; existing applicable observers remain unchanged | None |
+
+Each of the five new paths emits one adapter diagnostic when configured; it does
+not also emit an invalid-request, authorization, or protection-rejection event.
+An authorization allow/warn observation followed by a protection rejection
+describes two stages, not two rejection events. These are pre-execution signals,
+not tool-completion records or automatic audit persistence.
+
+For `UNMAPPED_TOOL`, correlation uses the valid resolved context's correlation id
+when present, then falls back to the configured correlation resolver. The other
+four reasons use that resolver directly; invalid context data is never used.
+Correlation resolution and the callback run before writing the response. An
+exception from either propagates as a reactive error and prevents execution;
+the normal status/body is not guaranteed when diagnostic handling fails.
 
 ## What Not To Encode In Core Values
 

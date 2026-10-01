@@ -3,13 +3,18 @@ package mcp.gateway.core.policy;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import mcp.gateway.core.metadata.GatewayMetadataSnapshot;
 
 /**
  * Generic allow, deny, or abstain decision for an MCP tool policy check.
+ * <p>
+ * Details are copied into an unmodifiable outer map, dropping null keys and
+ * values. Nested values retain their original references. For supported nested
+ * metadata snapshots, pass {@link GatewayMetadataSnapshot#copyOf(Map)} as details.
  *
  * @param outcome policy outcome
  * @param reason human-readable reason for the decision
- * @param details immutable machine-readable details
+ * @param details machine-readable details with an unmodifiable outer map
  */
 public record ToolPolicyDecision(
         ToolPolicyOutcome outcome,

@@ -98,12 +98,17 @@ GRADLE
 # Exercise the published API on Java 17; detailed behavior stays in the unit tests.
 mkdir -p "${WORK_DIR}/core-consumer/src/main/java"
 cat > "${WORK_DIR}/core-consumer/src/main/java/CoreSmoke.java" <<'JAVA'
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import mcp.gateway.core.audit.GatewayAuditEvent;
 import mcp.gateway.core.authz.McpToolAccessRegistry;
 import mcp.gateway.core.authz.McpToolAccessRule;
 import mcp.gateway.core.authz.McpToolAuthorizer;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.invocation.McpToolInvocation;
+import mcp.gateway.core.metadata.GatewayMetadataSnapshot;
+import mcp.gateway.core.policy.ToolPolicyDecision;
 import mcp.gateway.core.tool.McpToolSurface;
 
 public final class CoreSmoke {
@@ -128,6 +133,15 @@ public final class CoreSmoke {
         if (authorizer.authorize(List.of("*"), context).allowed()) {
             throw new IllegalStateException("Strict core consumer accepted a universal wildcard grant");
         }
+        List<String> sourceTags = new ArrayList<>(List.of("original"));
+        Map<String, Object> snapshot = GatewayMetadataSnapshot.copyOf(Map.of("tags", sourceTags));
+        GatewayAuditEvent event = GatewayAuditEvent.of("policy", "demo-client", "allow", snapshot);
+        ToolPolicyDecision policy = ToolPolicyDecision.allow("approved", snapshot);
+        sourceTags.clear();
+        if (!List.of("original").equals(event.details().get("tags"))
+                || !List.of("original").equals(policy.details().get("tags"))) {
+            throw new IllegalStateException("Core consumer metadata snapshot changed with its source");
+        }
     }
 }
 JAVA
@@ -136,12 +150,14 @@ mkdir -p "${WORK_DIR}/webflux-consumer/src/main/java"
 cat > "${WORK_DIR}/webflux-consumer/src/main/java/WebFluxSmoke.java" <<'JAVA'
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import mcp.gateway.core.authz.McpToolAccessRegistry;
 import mcp.gateway.core.authz.McpToolAccessRule;
 import mcp.gateway.core.authz.McpToolAuthorizer;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.tool.McpToolSurface;
+import mcp.gateway.spring.webflux.McpAdapterRejectionReason;
 import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
 import mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter;
 import org.springframework.core.io.buffer.DataBufferUtils;
@@ -169,6 +185,8 @@ public final class WebFluxSmoke {
                 McpToolAccessRule.of("demo_tool", McpToolSurface.of("default"), List.of("demo:run"))
         ));
         McpToolAuthorizer authorizer = McpToolAuthorizer.of(activeAccessRegistry, List.of("mcp:tools:list"));
+        AtomicInteger adapterRejections = new AtomicInteger();
+        AtomicReference<McpAdapterRejectionReason> adapterReason = new AtomicReference<>();
         McpGatewayWebFluxGovernanceFilter filter = McpGatewayWebFluxGovernanceFilter
                 .builder(JsonMapper.builder().build(), (authentication, exchange, invocation) ->
                         GatewayToolExecutionContext.of(
@@ -177,6 +195,11 @@ public final class WebFluxSmoke {
                 .authorization(() -> McpGatewayAuthorizationMode.ENFORCE,
                         authorizer::authorize)
                 .toolRegistry(activeAccessRegistry.toolRegistry())
+                .adapterRejectionObserver((reason, requestId, correlationId) -> {
+                    require(requestId != null, "Adapter diagnostic must contain the server request ID");
+                    adapterReason.set(reason);
+                    adapterRejections.incrementAndGet();
+                })
                 .build();
 
         AtomicReference<String> downstreamBody = new AtomicReference<>();
@@ -191,6 +214,7 @@ public final class WebFluxSmoke {
         String response = ((MockServerHttpResponse) denied.getResponse()).getBodyAsString().block();
         require(response != null && response.contains("insufficient_scope"),
                 "Denied request must produce an authorization error response");
+        require(adapterRejections.get() == 0, "Permission decisions must not duplicate adapter diagnostics");
 
         ServerWebExchange unavailable = exchange("demo:run", """
                 {"jsonrpc":"2.0","id":9007199254740993,"method":"tools/call","params":{"name":"unavailable"}}
@@ -207,6 +231,9 @@ public final class WebFluxSmoke {
         require(error.path("error").path("code").asInt() == -32602, "Unavailable tool must use code -32602");
         require("Unknown tool".equals(error.path("error").path("message").asString()),
                 "Unavailable tool must not expose its configuration");
+        require(adapterRejections.get() == 1 && adapterReason.get() == McpAdapterRejectionReason.UNKNOWN_TOOL
+                        && "unknown_tool".equals(adapterReason.get().code()),
+                "Unavailable tool must emit one typed adapter diagnostic");
     }
 
     private static ServerWebExchange exchange(String scope) {

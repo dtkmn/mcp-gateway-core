@@ -12,8 +12,8 @@ own transport adapter.
 ## Choose The Artifact
 
 The main examples below target the published `0.10.0` public-preview release.
-The separately marked strict-authorization shortcuts require the unreleased
-`0.11.0-SNAPSHOT` development version and are not available in `0.10.0`.
+The separately marked unreleased sections describe `0.11.0-SNAPSHOT`
+development APIs and behavior that are not part of published `0.10.0`.
 Consumers that remain on `0.7.2` must also keep its Jackson 2 `ObjectMapper`
 wiring.
 
@@ -214,6 +214,7 @@ class McpGatewayConfiguration {
                                     principalId,
                                     workspaceId,
                                     correlationId,
+                                    // Preserve the invocation supplied by the adapter.
                                     invocation,
                                     null
                             );
@@ -258,6 +259,19 @@ response envelopes used to answer server-initiated JSON-RPC requests pass
 through to that runtime without request authorization or action-based
 abuse-protection evaluation.
 
+### Unreleased Resolver Validation
+
+Unreleased `0.11.0-SNAPSHOT` validates trusted resolver wiring using the existing
+interface; published `0.10.0` does not perform this check. Return a non-null
+context preserving the supplied invocation, as the example does. Custom resolvers
+that substitute another invocation must change to preserve it. Equal copied
+records are accepted, and host-owned identity/workspace/correlation/target
+enrichment remains supported. This checks action identity, not tool arguments.
+Null or mismatched results normally receive a fixed HTTP `500` response before
+authorization/protection decisions and observations or execution. An optional
+adapter diagnostic can run before that response; see the
+[context-resolution contract](CONTRACT_REFERENCE.md#context-resolution-unreleased).
+
 ### Unreleased Strict Shortcut In The Builder
 
 With the unreleased `0.11.0-SNAPSHOT` core API, replace only the authorization
@@ -282,6 +296,49 @@ set the authorizer's `authorizationEnabled` flag to `false` for that purpose,
 because that makes mapped decisions allowed instead of retaining the denial.
 Applications with an intentional wildcard policy can keep the explicit
 overload and lambda. Switching to the shortcut would change that policy.
+
+### Unreleased Adapter Rejection Diagnostics
+
+In unreleased `0.11.0-SNAPSHOT`, add this optional callback before `.build()` to
+observe previously silent adapter rejections. It is unavailable in published `0.10.0`:
+
+```java
+.adapterRejectionObserver((reason, serverRequestId, correlationId) ->
+        System.getLogger("mcp.gateway").log(
+                System.Logger.Level.WARNING,
+                "{0}: requestId={1}, correlationId={2}",
+                reason.code(), serverRequestId, correlationId))
+```
+
+Omitting the callback preserves the existing behavior. Explicitly installing one,
+even a no-op lambda, resolves correlation before the callback and response write.
+Exceptions from either step propagate reactively and can prevent the normal error
+response. Existing authorization, protection, and invalid-request observers remain
+separate; see the [coverage matrix](CONTRACT_REFERENCE.md#adapter-rejection-observation-unreleased).
+
+## Unreleased Metadata Snapshots
+
+Existing audit events and policy decisions freeze only the outer details map;
+nested values remain shared. In unreleased `0.11.0-SNAPSHOT`, opt into a recursive
+snapshot before calling the existing factories (not available in published `0.10.0`):
+
+```java
+import java.util.Map;
+import mcp.gateway.core.audit.GatewayAuditEvent;
+import mcp.gateway.core.metadata.GatewayMetadataSnapshot;
+import mcp.gateway.core.policy.ToolPolicyDecision;
+
+Map<String, Object> snapshot = GatewayMetadataSnapshot.copyOf(details);
+GatewayAuditEvent event = GatewayAuditEvent.of(
+        "authorization", "user-123", "allowed", snapshot);
+ToolPolicyDecision decision = ToolPolicyDecision.allow("scope_granted", snapshot);
+```
+
+Here `details` is the application's `Map<String, ?>`. Keep it unchanged during
+copying and use the supported containers/scalars described in the
+[metadata contract](CONTRACT_REFERENCE.md#metadata-details). Unsupported values,
+cycles, or value-count/depth limits are rejected. Persistence and redaction remain
+application concerns; existing callers are not automatically migrated.
 
 ## Adoption Checklist
 
