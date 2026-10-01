@@ -105,7 +105,7 @@ or `long-running`.
 
 ### Active Catalog Selection (Unreleased)
 
-In `0.11.0-SNAPSHOT`,
+In the unpublished `0.11.0` candidate,
 `McpToolAccessRegistry.activeToolRegistry(Collection<String> exposedToolNames)`
 selects existing tool descriptors and validates permission coverage together.
 Supply the names actually registered and enabled by the hosting runtime; unused
@@ -176,14 +176,14 @@ invalid. Use a missing requirement to represent an unmapped action.
 
 The two-argument `McpToolAuthorizer.authorize(Collection<String> grantedScopes,
 GatewayToolExecutionContext context)` is available in the unreleased
-`0.11.0-SNAPSHOT` development version only. Published `0.10.0` consumers must
+`0.11.0` candidate only. Published `0.10.0` consumers must
 continue to use the explicit overload:
 
 ```java
 // Published 0.10.0: strict decision calculation.
 authorizer.authorize(context, grantedScopes, false, true);
 
-// Unreleased 0.11.0-SNAPSHOT: equivalent shortcut, with scopes first.
+// Unreleased 0.11.0: equivalent shortcut, with scopes first.
 authorizer.authorize(grantedScopes, context);
 ```
 
@@ -330,7 +330,7 @@ the visible details. These APIs do not promise a recursive immutable snapshot.
 
 ### Explicit Snapshots (Unreleased)
 
-Unreleased `0.11.0-SNAPSHOT` adds
+Unreleased `0.11.0` adds
 `mcp.gateway.core.metadata.GatewayMetadataSnapshot.copyOf(Map<String, ?>)`,
 returning a `Map<String, Object>` for use with the existing event and decision
 factories. This is opt-in; published `0.10.0` and existing shallow-copy paths are
@@ -496,7 +496,7 @@ IP, API key, or another shape.
 | `maxTrackedKeys` | Maximum bucket keys retained in memory. Minimum normalized value is `1`. |
 | `disabledRetryAfterSeconds` | Retry delay returned when the policy is disabled. |
 
-In unreleased `0.11.0-SNAPSHOT`, each new-key admission at `maxTrackedKeys`
+In unreleased `0.11.0`, each new-key admission at `maxTrackedKeys`
 inspects at most 64 retirement candidates. Retained candidates rotate to the
 back of a queue, so later attempts continue through the tracked buckets rather
 than restarting the search. The queue holds one key reference per tracked
@@ -616,7 +616,7 @@ Optional builder methods are:
 | `protectionRejectionObserver(McpProtectionRejectionObserver)` | Receives rejected protection decisions. |
 | `correlationIdResolver(McpGatewayCorrelationIdResolver)` | Replaces default correlation-header resolution. |
 | `invalidRequestObserver(McpInvalidRequestObserver)` | Receives invalid-request rejections without request payloads. |
-| `adapterRejectionObserver(McpAdapterRejectionObserver)` | Unreleased `0.11.0-SNAPSHOT`: opts into typed diagnostics for the five paths listed under [adapter rejection observation](#adapter-rejection-observation-unreleased). |
+| `adapterRejectionObserver(McpAdapterRejectionObserver)` | Unreleased `0.11.0`: opts into typed diagnostics for the five paths listed under [adapter rejection observation](#adapter-rejection-observation-unreleased). |
 | `toolRegistry(McpToolRegistry)` | Uses the existing core registry of exactly the runtime's registered, enabled tools to check availability before tool-call authorization. |
 
 Choose either the complete evaluator method or the paired callback method for
@@ -625,7 +625,7 @@ an application can retain runtime-controlled authorization modes and protection
 flags. The builder does not register the result with Spring; applications still
 expose the built filter through their own `@Bean` method or equivalent wiring.
 
-The unreleased `0.11.0-SNAPSHOT` strict authorizer overload matches the
+The unreleased `0.11.0` strict authorizer overload matches the
 authorization callback's argument order and supports a method reference:
 
 ```java
@@ -650,7 +650,7 @@ calculation policy.
 
 ### Context Resolution (Unreleased)
 
-Unreleased `0.11.0-SNAPSHOT` validates trusted resolver wiring through the existing
+Unreleased `0.11.0` validates trusted resolver wiring through the existing
 `McpGatewayWebFluxContextResolver` interface; published `0.10.0` is unchanged.
 Return a non-null context preserving the adapter-supplied invocation. Equality
 compares `kind`, `method`, and `toolName`; an equal copied record is accepted.
@@ -860,7 +860,7 @@ response formats are deliberately distinct:
 
 | Condition | HTTP status | Response body | Authentication challenge |
 | --- | --- | --- | --- |
-| Unreleased `0.11.0-SNAPSHOT`: null resolved context or invocation mismatch | `500` | `{"error":"invalid_execution_context"}`; no JSON-RPC id | None |
+| Unreleased `0.11.0`: null resolved context or invocation mismatch | `500` | `{"error":"invalid_execution_context"}`; no JSON-RPC id | None |
 | Registry configured: unknown or disabled tool | `200` | JSON-RPC `-32602`, `Unknown tool`, original `id` | None |
 | Registry configured: available tool with enforced unmapped authorization | `200` | JSON-RPC `-32603`, `Internal error`, original `id` | None |
 | Registry configured: invalid tool-call `id` | `400` | JSON-RPC `-32600`, `Invalid Request`, `id: null` | None |
@@ -879,7 +879,7 @@ the active tool registry.
 Unknown-tool, tool-call identifier, and enforced unmapped-tool configuration
 rejections do not emit authorization observations, so they are not mislabeled
 as permission denials. Published `0.10.0` has no diagnostic observer for those
-paths; unreleased `0.11.0-SNAPSHOT` adds the opt-in observer below. Ordinary mapped
+paths; unreleased `0.11.0` adds the opt-in observer below. Ordinary mapped
 permission decisions retain their existing authorization observations. Hosts
 still own startup validation of permission mappings.
 
@@ -894,7 +894,7 @@ scope token.
 
 ### Adapter Rejection Observation (Unreleased)
 
-Unreleased `0.11.0-SNAPSHOT` adds the functional `McpAdapterRejectionObserver`
+Unreleased `0.11.0` adds the functional `McpAdapterRejectionObserver`
 with `rejected(McpAdapterRejectionReason reason, String serverRequestId,
 String correlationId)`. Install it through `Builder.adapterRejectionObserver`.
 Public constructors are unchanged; they and builders omitting this option leave it disabled,
@@ -934,9 +934,9 @@ the normal status/body is not guaranteed when diagnostic handling fails.
 ### Audit Observer Helper (Unreleased)
 
 `McpGatewayAuditObservers.of(GatewayAuditSink)` is an opt-in helper in
-`0.11.0-SNAPSHOT`. One instance implements the authorization, protection
-rejection, invalid-request, and adapter-rejection observer interfaces. Install
-it through their four existing builder setters. Constructing the helper alone
+the unpublished `0.11.0` candidate. One instance implements the authorization,
+protection rejection, invalid-request, and adapter-rejection observer interfaces. Install
+it through their four builder setters. Constructing the helper alone
 does not install it; existing constructors and omitted observers remain unchanged.
 
 The helper publishes the following `GatewayAuditEvent` schema:

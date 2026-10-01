@@ -12,8 +12,8 @@ own transport adapter.
 ## Choose The Artifact
 
 The main examples below target the published `0.10.0` public-preview release.
-The separately marked unreleased sections describe `0.11.0-SNAPSHOT`
-development APIs and behavior that are not part of published `0.10.0`.
+The separately marked unreleased sections describe the unpublished `0.11.0`
+candidate's APIs and behavior, which are not part of published `0.10.0`.
 
 Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:
@@ -116,7 +116,7 @@ through the `wildcardAllowed` argument.
 
 ### Unreleased Strict Authorization Shortcut
 
-In the unreleased `0.11.0-SNAPSHOT` development version, the same decision can
+In the unpublished `0.11.0` candidate, the same decision can
 be calculated with a two-argument overload:
 
 ```java
@@ -272,7 +272,7 @@ abuse-protection evaluation.
 
 ### Unreleased Resolver Validation
 
-Unreleased `0.11.0-SNAPSHOT` validates trusted resolver wiring using the existing
+Unreleased `0.11.0` validates trusted resolver wiring using the existing
 interface; published `0.10.0` does not perform this check. Return a non-null
 context preserving the supplied invocation, as the example does. Custom resolvers
 that substitute another invocation must change to preserve it. Equal copied
@@ -285,7 +285,7 @@ adapter diagnostic can run before that response; see the
 
 ### Unreleased Strict Shortcut In The Builder
 
-With the unreleased `0.11.0-SNAPSHOT` core API, replace only the authorization
+With the unreleased `0.11.0` core API, replace only the authorization
 builder call above with:
 
 ```java
@@ -310,7 +310,7 @@ overload and lambda. Switching to the shortcut would change that policy.
 
 ### Unreleased Active Tool Catalog Selection
 
-In unreleased `0.11.0-SNAPSHOT`, select the active catalog from the access-rule
+In unreleased `0.11.0`, select the active catalog from the access-rule
 inventory with the tool names actually registered by your server:
 
 ```java
@@ -328,8 +328,8 @@ selection and coverage checks; the older lookup/registry methods retain their be
 
 ### Unreleased Audit Observer Helper
 
-In unreleased `0.11.0-SNAPSHOT`, connect the adapter's four observation families
-to an application-owned audit sink using the existing builder settings:
+In unreleased `0.11.0`, connect the adapter's four observation families
+to an application-owned audit sink using the four builder settings:
 
 ```java
 import mcp.gateway.core.audit.GatewayAuditSink;
@@ -366,7 +366,7 @@ Both helpers in these sections are unavailable in published `0.10.0`.
 
 ### Unreleased Adapter Rejection Diagnostics
 
-In unreleased `0.11.0-SNAPSHOT`, add this optional callback before `.build()` to
+In unreleased `0.11.0`, add this optional callback before `.build()` to
 observe previously silent adapter rejections. It is unavailable in published `0.10.0`:
 
 ```java
@@ -386,7 +386,7 @@ separate; see the [coverage matrix](https://danieltse.org/mcp-gateway-core/refer
 ## Unreleased Metadata Snapshots
 
 Existing audit events and policy decisions freeze only the outer details map;
-nested values remain shared. In unreleased `0.11.0-SNAPSHOT`, opt into a recursive
+nested values remain shared. In unreleased `0.11.0`, opt into a recursive
 snapshot before calling the existing factories (not available in published `0.10.0`):
 
 ```java

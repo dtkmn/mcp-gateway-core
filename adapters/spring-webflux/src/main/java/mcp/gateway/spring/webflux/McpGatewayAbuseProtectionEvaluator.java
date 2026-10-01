@@ -13,6 +13,7 @@ public interface McpGatewayAbuseProtectionEvaluator extends GatewayToolProtectio
      *
      * @return true when enabled
      */
+    @Override
     boolean enabled();
 
     /**
@@ -21,5 +22,6 @@ public interface McpGatewayAbuseProtectionEvaluator extends GatewayToolProtectio
      * @param context tool execution context
      * @return allow or reject decision
      */
+    @Override
     McpAbuseProtectionDecision evaluate(GatewayToolExecutionContext context);
 }

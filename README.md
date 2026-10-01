@@ -20,6 +20,10 @@ Current status: public preview. The latest published version is `0.10.0`. The
 package and coordinates are intended for early integration proof, not a stable
 compatibility promise.
 
+The selected release candidate is `0.11.0` for both artifacts. It is not yet
+published; see the [candidate release notes](docs/RELEASE_NOTES.md) for additions
+and upgrade considerations. Dependency examples continue to use published `0.10.0`.
+
 ## Positioning
 
 `mcp-gateway-core` is an embeddable Java governance contract library for MCP

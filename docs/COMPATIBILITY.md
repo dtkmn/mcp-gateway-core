@@ -102,15 +102,15 @@ wiring.
 
 ### Unreleased 0.11.0 Changes
 
-The development snapshot adds the strict authorizer overload, opt-in metadata
-snapshot utility, and `McpToolAccessRegistry.activeToolRegistry(Collection<String>)`
+The unpublished `0.11.0` candidate adds the strict authorizer overload, opt-in
+metadata snapshot utility, and `McpToolAccessRegistry.activeToolRegistry(Collection<String>)`
 in core. The catalog helper validates its input strictly without changing the
 existing registry lookup normalization. Existing decision constructors retain
-their checks and signatures; the decision-contract review documents their limits
-and the supported evaluation paths.
+their checks and signatures; the decision-contract documentation describes their
+limits and the supported evaluation paths.
 
 The adapter adds an optional typed rejection observer and
-`McpGatewayAuditObservers`, which connects the four existing observer setters to
+`McpGatewayAuditObservers`, which connects the four observer setters to
 an application-supplied audit sink. Setters retain their replacement semantics;
 combining metrics and audit callbacks is explicit. Existing constructors and
 observer-omitted configurations remain supported. No audit persistence is
