@@ -14,8 +14,6 @@ own transport adapter.
 The main examples below target the published `0.10.0` public-preview release.
 The separately marked unreleased sections describe `0.11.0-SNAPSHOT`
 development APIs and behavior that are not part of published `0.10.0`.
-Consumers that remain on `0.7.2` must also keep its Jackson 2 `ObjectMapper`
-wiring.
 
 Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:
@@ -35,8 +33,14 @@ The adapter currently targets Spring Framework 7, Spring Security 7, and
 Jackson 3. Its optional integration stack uses Spring AI 2.0 and MCP Java SDK
 2.0. Spring Boot 4.1 applications can inject Boot's Jackson 3 `JsonMapper`. If
 your application is on Spring Boot 3 / Spring Framework 6 or still exposes a
-Jackson 2 `ObjectMapper`, use the framework-neutral core artifact or remain on
-the `0.7.2` adapter while completing the migration.
+Jackson 2 `ObjectMapper`, use the current framework-neutral core artifact and
+wire your own transport adapter, or migrate your application stack before using
+the current WebFlux adapter.
+
+The historical `0.7.2` adapter uses Jackson 2 `ObjectMapper` wiring. It is outside
+the security-fix support line and should not be chosen for a new integration.
+Only `0.10.0` is currently supported for security fixes; see the
+[security policy](https://danieltse.org/mcp-gateway-core/project/security/).
 
 ## What Your App Still Owns
 
@@ -277,7 +281,7 @@ enrichment remains supported. This checks action identity, not tool arguments.
 Null or mismatched results normally receive a fixed HTTP `500` response before
 authorization/protection decisions and observations or execution. An optional
 adapter diagnostic can run before that response; see the
-[context-resolution contract](CONTRACT_REFERENCE.md#context-resolution-unreleased).
+[context-resolution contract](https://danieltse.org/mcp-gateway-core/reference/contract-reference/#context-resolution-unreleased).
 
 ### Unreleased Strict Shortcut In The Builder
 
@@ -357,7 +361,7 @@ remaining work and downstream execution stop through the existing reactive error
 path. Do not combine the helper with a callback that already publishes the same
 audit event: that would duplicate records. Diagnostic callbacks supply no
 identity or tool information; the helper omits unavailable fields instead of
-inventing them. See the [audit schema](CONTRACT_REFERENCE.md#audit-observer-helper-unreleased).
+inventing them. See the [audit schema](https://danieltse.org/mcp-gateway-core/reference/contract-reference/#audit-observer-helper-unreleased).
 Both helpers in these sections are unavailable in published `0.10.0`.
 
 ### Unreleased Adapter Rejection Diagnostics
@@ -377,7 +381,7 @@ Omitting the callback preserves the existing behavior. Explicitly installing one
 even a no-op lambda, resolves correlation before the callback and response write.
 Exceptions from either step propagate reactively and can prevent the normal error
 response. Existing authorization, protection, and invalid-request observers remain
-separate; see the [coverage matrix](CONTRACT_REFERENCE.md#adapter-rejection-observation-unreleased).
+separate; see the [coverage matrix](https://danieltse.org/mcp-gateway-core/reference/contract-reference/#adapter-rejection-observation-unreleased).
 
 ## Unreleased Metadata Snapshots
 
@@ -399,7 +403,7 @@ ToolPolicyDecision decision = ToolPolicyDecision.allow("scope_granted", snapshot
 
 Here `details` is the application's `Map<String, ?>`. Keep it unchanged during
 copying and use the supported containers/scalars described in the
-[metadata contract](CONTRACT_REFERENCE.md#metadata-details). Unsupported values,
+[metadata contract](https://danieltse.org/mcp-gateway-core/reference/contract-reference/#metadata-details). Unsupported values,
 cycles, or value-count/depth limits are rejected. Persistence and redaction remain
 application concerns; existing callers are not automatically migrated.
 

@@ -33,6 +33,10 @@ must explicitly supply their active-tool registry; upgrading alone retains the
 previous behavior. The core adds a combined rate-limit decision and retry-delay
 result through `TokenBucketRateLimiter.attempt` and remains JDK-only.
 
+The guide's separately marked `0.11.0-SNAPSHOT` sections describe unreleased
+development APIs and behavior. Those additions are not available in the
+published `0.10.0` dependencies shown below.
+
 ## Choose Your Path
 
 | Need | Start Here |
