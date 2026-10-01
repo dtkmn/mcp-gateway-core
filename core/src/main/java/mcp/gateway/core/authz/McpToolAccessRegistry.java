@@ -3,11 +3,13 @@ package mcp.gateway.core.authz;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import mcp.gateway.core.tool.McpToolCapability;
 import mcp.gateway.core.tool.McpToolDescriptor;
 import mcp.gateway.core.tool.McpToolRegistry;
@@ -98,6 +100,50 @@ public final class McpToolAccessRegistry {
      */
     public McpToolRegistry toolRegistry() {
         return toolRegistry;
+    }
+
+    /**
+     * Selects an immutable tool registry for exactly the supplied runtime names,
+     * after verifying that every name has a permission mapping.
+     * <p>
+     * The host must supply the names of its actually registered, enabled tools.
+     * This method does not discover or register tools, and unused access rules
+     * do not become active. Names are matched exactly and case-sensitively;
+     * null, blank, padded, and duplicate names are rejected rather than normalized.
+     * All missing permission mappings are reported together in sorted order.
+     * <p>
+     * Existing descriptors and their capabilities are retained. Descriptor order
+     * follows the supplied names' encounter order. An empty collection produces
+     * an empty registry; subsequent changes to the input collection do not affect it.
+     *
+     * @param exposedToolNames actual names exposed by the hosting runtime
+     * @return immutable registry containing only the supplied tools
+     * @throws NullPointerException when the collection is null
+     * @throws IllegalArgumentException for invalid or duplicate names, or missing
+     *         permission mappings
+     */
+    public McpToolRegistry activeToolRegistry(Collection<String> exposedToolNames) {
+        Objects.requireNonNull(exposedToolNames, "exposedToolNames must not be null");
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        for (String name : exposedToolNames) {
+            if (name == null || name.isBlank() || !name.equals(name.strip()) || !name.equals(name.trim())) {
+                throw new IllegalArgumentException("exposed MCP tool names must be non-null, non-blank, and unpadded");
+            }
+            if (!names.add(name)) {
+                throw new IllegalArgumentException("duplicate exposed MCP tool name: " + name);
+            }
+        }
+
+        Set<String> missingNames = new TreeSet<>();
+        for (String name : names) {
+            if (!requirementsByTool.containsKey(name)) {
+                missingNames.add(name);
+            }
+        }
+        if (!missingNames.isEmpty()) {
+            throw new IllegalArgumentException("Missing permission mappings for MCP tools: " + missingNames);
+        }
+        return McpToolRegistry.of(names.stream().map(toolRegistry::requireDescriptor).toList());
     }
 
     /**
