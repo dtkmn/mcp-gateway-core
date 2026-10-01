@@ -105,6 +105,10 @@ public final class McpGatewayWebFluxGovernanceFilter implements WebFilter, Order
      * tool registry is configured.
      * The required context resolver must preserve the parsed invocation as
      * documented by {@link McpGatewayWebFluxContextResolver}.
+     * An optional {@link McpGatewayAuditObservers} helper can be supplied to the
+     * four existing observer setters. Setters replace callbacks; applications
+     * needing both metrics and audit should compose them explicitly without
+     * publishing the same audit signal twice.
      */
     public static final class Builder {
         private final JsonMapper jsonMapper;
