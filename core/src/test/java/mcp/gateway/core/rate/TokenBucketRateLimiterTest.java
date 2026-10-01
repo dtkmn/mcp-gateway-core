@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 
@@ -182,6 +183,172 @@ class TokenBucketRateLimiterTest {
         nowMillis.addAndGet(5_001L);
         assertTrue(limiter.tryConsume("client-new", policy));
         assertEquals(100, limiter.trackedKeyCount());
+    }
+
+    @Test
+    void boundsRetirementChecksForUniqueAndRepeatedRejectedKeysWithoutErasingDebt() {
+        AtomicLong clockReads = new AtomicLong();
+        TokenBucketRateLimiter countedLimiter = new TokenBucketRateLimiter(
+                () -> {
+                    clockReads.incrementAndGet();
+                    return nowNanos.get();
+                }, nowMillis::get
+        );
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true, 10, 1, 1, 10_000, 30
+        );
+        for (int key = 0; key < policy.maxTrackedKeys(); key++) {
+            for (int token = 0; token < policy.capacity(); token++) {
+                assertTrue(countedLimiter.tryConsume("client-" + key, policy));
+            }
+        }
+        nowNanos.set(6_000_000_000L);
+        nowMillis.set(6_000L);
+        clockReads.set(0L);
+
+        for (int request = 0; request < 100; request++) {
+            if (request % 2 == 0) {
+                assertEquals(new TokenBucketRateLimiter.Attempt(false, 1L),
+                        countedLimiter.attempt("new-" + request, policy));
+            } else {
+                assertFalse(countedLimiter.tryConsume(" repeated-new-key ", policy));
+            }
+        }
+
+        assertEquals(6_400L, clockReads.get());
+        assertEquals(10_000, countedLimiter.trackedKeyCount());
+        clockReads.set(0L);
+        for (int token = 0; token < 6; token++) {
+            assertTrue(countedLimiter.tryConsume("client-0", policy));
+        }
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 1L),
+                countedLimiter.attempt("client-0", policy));
+        assertEquals(7L, clockReads.get());
+    }
+
+    @Test
+    void rotatesPastFreshBucketsToReachRetirableCandidatesOnLaterAttempts() {
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true, 1, 1, 1, 129, 30
+        );
+        for (int key = 0; key < policy.maxTrackedKeys(); key++) {
+            assertTrue(limiter.tryConsume("client-" + key, policy));
+        }
+        nowNanos.set(6_000_000_000L);
+        nowMillis.set(6_000L);
+        for (int key = 0; key < 128; key++) {
+            assertTrue(limiter.tryConsume("client-" + key, policy));
+        }
+
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 1L), limiter.attempt("new", policy));
+        assertFalse(limiter.tryConsume("new", policy));
+        assertTrue(limiter.tryConsume("new", policy));
+        assertEquals(129, limiter.trackedKeyCount());
+        assertFalse(limiter.tryConsume("client-0", policy));
+        assertFalse(limiter.tryConsume("new", policy));
+    }
+
+    @Test
+    void retiresInBoundedBatchesWhenIncomingTrackedKeyLimitIsSmaller() {
+        TokenBucketRateLimiter.Policy initialPolicy = new TokenBucketRateLimiter.Policy(
+                true, 1, 1, 1, 129, 30
+        );
+        for (int key = 0; key < initialPolicy.maxTrackedKeys(); key++) {
+            assertTrue(limiter.tryConsume("client-" + key, initialPolicy));
+        }
+        nowNanos.set(6_000_000_000L);
+        nowMillis.set(6_000L);
+        TokenBucketRateLimiter.Policy smallerPolicy = new TokenBucketRateLimiter.Policy(
+                true, 1, 1, 1, 1, 30
+        );
+
+        assertEquals(new TokenBucketRateLimiter.Attempt(false, 1L), limiter.attempt("new", smallerPolicy));
+        assertEquals(65, limiter.trackedKeyCount());
+        assertFalse(limiter.tryConsume("new", smallerPolicy));
+        assertEquals(1, limiter.trackedKeyCount());
+        assertTrue(limiter.tryConsume("new", smallerPolicy));
+        assertEquals(1, limiter.trackedKeyCount());
+    }
+
+    @Test
+    void returningKeysRemainRetirableAcrossRepeatedReplacement() {
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true, 1, 1, 1, 2, 30
+        );
+        assertTrue(limiter.tryConsume("client-0", policy));
+        assertTrue(limiter.tryConsume("client-1", policy));
+        for (int cycle = 0; cycle < 100; cycle++) {
+            nowNanos.addAndGet(6_000_000_000L);
+            nowMillis.addAndGet(6_000L);
+            String returningKey = "client-" + ((cycle + 2) % 3);
+            assertTrue(limiter.tryConsume(returningKey, policy));
+            assertEquals(new TokenBucketRateLimiter.Attempt(false, 1L), limiter.attempt(returningKey, policy));
+            assertEquals(2, limiter.trackedKeyCount());
+        }
+    }
+
+    @Test
+    void clockFailureDoesNotLoseRetirementCandidate() {
+        AtomicBoolean failClock = new AtomicBoolean();
+        TokenBucketRateLimiter throwingLimiter = new TokenBucketRateLimiter(
+                () -> {
+                    if (failClock.get()) {
+                        throw new IllegalStateException("clock unavailable");
+                    }
+                    return nowNanos.get();
+                }, nowMillis::get
+        );
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true, 1, 1, 1, 1, 30
+        );
+        assertTrue(throwingLimiter.tryConsume("original", policy));
+        nowNanos.set(6_000_000_000L);
+        nowMillis.set(6_000L);
+        failClock.set(true);
+        assertThrows(IllegalStateException.class, () -> throwingLimiter.attempt("new", policy));
+        assertEquals(1, throwingLimiter.trackedKeyCount());
+
+        failClock.set(false);
+        assertTrue(throwingLimiter.tryConsume("new", policy));
+        assertEquals(1, throwingLimiter.trackedKeyCount());
+    }
+
+    @Test
+    void concurrentRejectedAdmissionsKeepRetirementWorkBounded() throws Exception {
+        AtomicLong clockReads = new AtomicLong();
+        TokenBucketRateLimiter countedLimiter = new TokenBucketRateLimiter(
+                () -> {
+                    clockReads.incrementAndGet();
+                    return nowNanos.get();
+                }, nowMillis::get
+        );
+        TokenBucketRateLimiter.Policy policy = new TokenBucketRateLimiter.Policy(
+                true, 10, 1, 1, 256, 30
+        );
+        for (int key = 0; key < policy.maxTrackedKeys(); key++) {
+            for (int token = 0; token < policy.capacity(); token++) {
+                assertTrue(countedLimiter.tryConsume("client-" + key, policy));
+            }
+        }
+        nowNanos.set(6_000_000_000L);
+        nowMillis.set(6_000L);
+        clockReads.set(0L);
+        ExecutorService executor = Executors.newFixedThreadPool(16);
+        try {
+            List<Callable<TokenBucketRateLimiter.Attempt>> attempts = new ArrayList<>();
+            for (int request = 0; request < 100; request++) {
+                String key = "new-" + request;
+                attempts.add(() -> countedLimiter.attempt(key, policy));
+            }
+            for (Future<TokenBucketRateLimiter.Attempt> future : executor.invokeAll(attempts, 5, TimeUnit.SECONDS)) {
+                assertEquals(new TokenBucketRateLimiter.Attempt(false, 1L), future.get(5, TimeUnit.SECONDS));
+            }
+        } finally {
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+        }
+        assertEquals(6_400L, clockReads.get());
+        assertEquals(256, countedLimiter.trackedKeyCount());
     }
 
     @Test

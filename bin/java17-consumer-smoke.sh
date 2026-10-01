@@ -109,13 +109,20 @@ import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.invocation.McpToolInvocation;
 import mcp.gateway.core.metadata.GatewayMetadataSnapshot;
 import mcp.gateway.core.policy.ToolPolicyDecision;
+import mcp.gateway.core.tool.McpToolRegistry;
 import mcp.gateway.core.tool.McpToolSurface;
 
 public final class CoreSmoke {
     public static void main(String[] args) {
-        McpToolAuthorizer authorizer = McpToolAuthorizer.of(McpToolAccessRegistry.of(List.of(
-                McpToolAccessRule.of("demo_tool", McpToolSurface.of("default"), List.of("demo:run"))
-        )), List.of("mcp:tools:list"));
+        McpToolAccessRegistry accessRegistry = McpToolAccessRegistry.of(List.of(
+                McpToolAccessRule.of("demo_tool", McpToolSurface.of("default"), List.of("demo:run")),
+                McpToolAccessRule.of("inactive_tool", McpToolSurface.of("default"), List.of("demo:other"))
+        ));
+        McpToolRegistry activeTools = accessRegistry.activeToolRegistry(List.of("demo_tool"));
+        if (!activeTools.contains("demo_tool") || activeTools.contains("inactive_tool")) {
+            throw new IllegalStateException("Core consumer active catalog did not preserve the exposed subset");
+        }
+        McpToolAuthorizer authorizer = McpToolAuthorizer.of(accessRegistry, List.of("mcp:tools:list"));
 
         if (!authorizer.authorizeToolCall("demo_tool", List.of("demo:run"), false, true).allowed()) {
             throw new IllegalStateException("Authorized core consumer call was denied");
@@ -149,16 +156,19 @@ JAVA
 mkdir -p "${WORK_DIR}/webflux-consumer/src/main/java"
 cat > "${WORK_DIR}/webflux-consumer/src/main/java/WebFluxSmoke.java" <<'JAVA'
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import mcp.gateway.core.authz.McpToolAccessRegistry;
 import mcp.gateway.core.authz.McpToolAccessRule;
 import mcp.gateway.core.authz.McpToolAuthorizer;
+import mcp.gateway.core.audit.GatewayAuditEvent;
 import mcp.gateway.core.context.GatewayToolExecutionContext;
 import mcp.gateway.core.tool.McpToolSurface;
 import mcp.gateway.spring.webflux.McpAdapterRejectionReason;
 import mcp.gateway.spring.webflux.McpGatewayAuthorizationMode;
+import mcp.gateway.spring.webflux.McpGatewayAuditObservers;
 import mcp.gateway.spring.webflux.McpGatewayWebFluxGovernanceFilter;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
@@ -187,6 +197,8 @@ public final class WebFluxSmoke {
         McpToolAuthorizer authorizer = McpToolAuthorizer.of(activeAccessRegistry, List.of("mcp:tools:list"));
         AtomicInteger adapterRejections = new AtomicInteger();
         AtomicReference<McpAdapterRejectionReason> adapterReason = new AtomicReference<>();
+        List<GatewayAuditEvent> auditEvents = new ArrayList<>();
+        McpGatewayAuditObservers audits = McpGatewayAuditObservers.of(auditEvents::add);
         McpGatewayWebFluxGovernanceFilter filter = McpGatewayWebFluxGovernanceFilter
                 .builder(JsonMapper.builder().build(), (authentication, exchange, invocation) ->
                         GatewayToolExecutionContext.of(
@@ -194,11 +206,15 @@ public final class WebFluxSmoke {
                         ))
                 .authorization(() -> McpGatewayAuthorizationMode.ENFORCE,
                         authorizer::authorize)
-                .toolRegistry(activeAccessRegistry.toolRegistry())
+                .toolRegistry(activeAccessRegistry.activeToolRegistry(List.of("demo_tool")))
+                .authorizationObserver(audits)
+                .protectionRejectionObserver(audits)
+                .invalidRequestObserver(audits)
                 .adapterRejectionObserver((reason, requestId, correlationId) -> {
                     require(requestId != null, "Adapter diagnostic must contain the server request ID");
                     adapterReason.set(reason);
                     adapterRejections.incrementAndGet();
+                    audits.rejected(reason, requestId, correlationId);
                 })
                 .build();
 
@@ -234,6 +250,14 @@ public final class WebFluxSmoke {
         require(adapterRejections.get() == 1 && adapterReason.get() == McpAdapterRejectionReason.UNKNOWN_TOOL
                         && "unknown_tool".equals(adapterReason.get().code()),
                 "Unavailable tool must emit one typed adapter diagnostic");
+        require(auditEvents.size() == 3, "Each consumer signal must produce exactly one audit event");
+        require("authorization".equals(auditEvents.get(0).type())
+                        && "allowed".equals(auditEvents.get(0).outcome())
+                        && "denied".equals(auditEvents.get(1).outcome()),
+                "Audit bridge must retain authorization outcomes");
+        require("adapter_rejection".equals(auditEvents.get(2).type())
+                        && "unknown_tool".equals(auditEvents.get(2).details().get("reason")),
+                "Audit bridge must translate typed adapter diagnostics");
     }
 
     private static ServerWebExchange exchange(String scope) {

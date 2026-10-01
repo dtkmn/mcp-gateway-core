@@ -15,6 +15,7 @@ const compatibilityHtml = await readDist('reference/compatibility/index.html');
 const releaseNotesHtml = await readDist('maintainers/release-notes/index.html');
 const releasePolicyHtml = await readDist('maintainers/release-policy/index.html');
 const contractReferenceHtml = await readDist('reference/contract-reference/index.html');
+const securityHtml = await readDist('project/security/index.html');
 const sitemapIndexXml = await readDist('sitemap-index.xml');
 const sitemapXml = await readDist('sitemap-0.xml');
 const faviconSvg = await readDist('favicon.svg');
@@ -49,6 +50,54 @@ const coordinateVersions = [
 ];
 assertEqual(coordinateVersions.join(', '), latestPublishedVersion);
 
+assertEqual(
+  extract(
+    gettingStartedHtml,
+    /main examples below target the published <code[^>]*>([^<]+)<\/code>/,
+    'getting-started published version',
+  ),
+  latestPublishedVersion,
+);
+assertEqual(
+  extract(
+    securityHtml,
+    /<code[^>]*>([^<]+)<\/code> is the latest published release and the only line expected to receive\s+security fixes\./,
+    'security-supported version',
+  ),
+  latestPublishedVersion,
+);
+
+for (const anchor of [
+  'context-resolution-unreleased',
+  'audit-observer-helper-unreleased',
+  'adapter-rejection-observation-unreleased',
+  'metadata-details',
+]) {
+  assertContains(
+    gettingStartedHtml,
+    `href="${homeUrl}reference/contract-reference/#${anchor}"`,
+    `getting-started should link to the deployed ${anchor} contract`,
+  );
+  assertContains(
+    contractReferenceHtml,
+    `id="${anchor}"`,
+    `contract reference should contain the ${anchor} destination`,
+  );
+}
+
+for (const [, href] of gettingStartedHtml.matchAll(/<a\b[^>]*\bhref="([^"]+)"/g)) {
+  const target = new URL(href, `${homeUrl}guides/getting-started/`);
+  assert(
+    target.origin !== site || !target.pathname.endsWith('.md'),
+    `getting-started must not link to Markdown files on the website: ${href}`,
+  );
+}
+assertContains(
+  gettingStartedHtml,
+  `href="${homeUrl}project/security/"`,
+  'getting-started should link to the security support policy',
+);
+
 for (const [page, html] of [
   ['compatibility', compatibilityHtml],
   ['release notes', releaseNotesHtml],
@@ -75,6 +124,11 @@ for (const artifact of ['mcp-gateway-core', 'mcp-gateway-spring-webflux']) {
     indexHtml,
     `io.github.dtkmn:${artifact}:${latestPublishedVersion}`,
     `home page should advertise ${artifact} at the latest published version`,
+  );
+  assertContains(
+    gettingStartedHtml,
+    `io.github.dtkmn:${artifact}:${latestPublishedVersion}`,
+    `getting-started should use the published version of ${artifact}`,
   );
 }
 

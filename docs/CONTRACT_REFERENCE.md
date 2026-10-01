@@ -103,6 +103,28 @@ assign semantics to capability names; your runtime does. Good capability labels
 are stable and low-cardinality, for example `read-only`, `mutating`, `report`,
 or `long-running`.
 
+### Active Catalog Selection (Unreleased)
+
+In `0.11.0-SNAPSHOT`,
+`McpToolAccessRegistry.activeToolRegistry(Collection<String> exposedToolNames)`
+selects existing tool descriptors and validates permission coverage together.
+Supply the names actually registered and enabled by the hosting runtime; unused
+access rules do not become active. This helper does not discover or register tools.
+
+A null collection throws `NullPointerException`. Null, blank, leading/trailing
+whitespace or control-character padding detected by `String.strip()` or
+`String.trim()`, and duplicate entries throw `IllegalArgumentException`. Names
+are matched exactly and case-sensitively. After validating all input names, the
+helper reports every missing permission mapping in one `IllegalArgumentException`,
+with missing names sorted lexicographically for deterministic diagnostics.
+
+An empty collection produces an empty registry. Selected descriptors retain
+their surface and capabilities. Descriptor lists follow the input collection's
+encounter order; the registry's `names()` set does not promise iteration order.
+The result is immutable and does not change when the source collection changes.
+Existing lookup methods keep their normalization and behavior. Published
+`0.10.0` has no selection helper.
+
 ## Authorization
 
 Package: `mcp.gateway.core.authz`
@@ -141,7 +163,7 @@ invalid. Use a missing requirement to represent an unmapped action.
 | `actionName` | Normalized action evaluated. |
 | `requiredScopes` | Required scopes for the mapped action. |
 | `grantedScopes` | Caller scopes considered by the evaluation. |
-| `missingScopes` | Required scopes not present in `grantedScopes`. |
+| `missingScopes` | Required scopes unsatisfied under the applied evaluation policy; not necessarily the literal difference from `grantedScopes`. |
 
 `McpToolAuthorizer` adds MCP-specific flow:
 
@@ -391,6 +413,70 @@ continue into protection so runtimes can observe policy drift without bypassing
 rate limits or quotas. Protection rejection preserves any authorization
 observation so downstream adapters can emit both facts accurately.
 
+### Decision States And Construction
+
+Use the existing public evaluation paths to produce decisions:
+
+- `McpToolAuthorizer` evaluates MCP tool calls and tool listing against the
+  configured access registry.
+- `ToolAuthorizationPipeline.evaluate(request, requirement)` evaluates a
+  scope-based request, with a null requirement representing an unmapped action.
+- `GatewayToolGovernance.evaluate(context, scopes, authorization, protection)`
+  composes the evaluator results using the selected governance policy.
+
+The following matrix describes these built-in paths with enforcing or warning
+policies. "Allowed/skipped" protection means an allowing result, an absent
+evaluator, or a disabled evaluator. The table assumes coherent evaluator results;
+governance does not re-evaluate or validate arbitrary custom decision fields.
+
+| Authorization policy/result | Protection | Final outcome / reason | Authorization observation outcome / reason |
+| --- | --- | --- | --- |
+| Enforce: mapped and allowed | Allowed/skipped | `ALLOW` / `GOVERNANCE_PASSED` | `ALLOW` / `SCOPE_GRANTED` |
+| Enforce: mapped and denied | Not run | `REJECT` / `INSUFFICIENT_SCOPE` | `REJECT` / `INSUFFICIENT_SCOPE` |
+| Enforce: unmapped | Not run | `REJECT` / `UNMAPPED_TOOL` | `REJECT` / `UNMAPPED_TOOL` |
+| Warn: mapped and allowed | Allowed/skipped | `ALLOW` / `GOVERNANCE_PASSED` | `ALLOW` / `SCOPE_GRANTED` |
+| Warn: mapped and denied | Allowed/skipped | `WARN` / `INSUFFICIENT_SCOPE` | `WARN` / `INSUFFICIENT_SCOPE` |
+| Warn: unmapped | Allowed/skipped | `WARN` / `UNMAPPED_TOOL` | `WARN` / `UNMAPPED_TOOL` |
+| Absent/disabled authorization or non-authorizable invocation | Allowed/skipped | `ALLOW` / `GOVERNANCE_PASSED` | None |
+| Enforce or warn: mapped and allowed | Rejected | `REJECT` / `PROTECTION_REJECTED` | `ALLOW` / `SCOPE_GRANTED` |
+| Warn: mapped and denied | Rejected | `REJECT` / `PROTECTION_REJECTED` | `WARN` / `INSUFFICIENT_SCOPE` |
+| Warn: unmapped | Rejected | `REJECT` / `PROTECTION_REJECTED` | `WARN` / `UNMAPPED_TOOL` |
+| Absent/disabled authorization or non-authorizable invocation | Rejected | `REJECT` / `PROTECTION_REJECTED` | None |
+
+When authorization is skipped, `authorizationDecision`,
+`authorizationObservationOutcome`, and `authorizationObservationReason` are all
+null. When it runs, the built-in composition populates all three. A protection
+decision is null when protection is absent, disabled, or short-circuited by an
+authorization rejection; otherwise it is the evaluator's result.
+`hasAuthorizationObservation()` is independent of final `allowed()`: a warning
+can retain a denied authorization result while execution is permitted, and a
+protection rejection can retain an earlier authorization allow or warning.
+
+`ToolAuthorizationDecision.missingScopes` cannot be reconstructed from its lists
+alone. A permitted `*` grant satisfies mapped requirements without listing their
+literal scope tokens. The authorizer's explicit `authorizationEnabled=false`
+also returns mapped allowed decisions with empty missing scopes, while retaining
+the required and granted lists. An unmapped result is denied with empty required
+and missing lists. Governance warning mode instead retains the negative
+authorization result and changes how that result affects execution.
+
+The public record constructors have narrower checks than these evaluation paths:
+
+- `ToolAuthorizationDecision` rejects null/blank action names, trims other names,
+  converts null lists to empty, and makes defensive list copies that reject null
+  elements. It does not normalize scope text, remove duplicates, recompute missing
+  scopes, or validate flags against the lists.
+- `GatewayToolGovernanceDecision` requires non-null final outcome and reason.
+  It does not reject partial observation fields or conflicting nested decisions.
+  `allowed()` reads only the final outcome. `hasAuthorizationObservation()` checks
+  only the authorization decision and observation outcome, not its reason.
+
+Direct construction remains a trusted caller responsibility. For `0.11.0`, this
+is documentation and contract-test clarification: no new factories, constructor
+restrictions, signatures, or runtime behavior are introduced. Stricter validation
+or additional construction APIs require a separate compatibility decision and
+consumer need.
+
 ## Rate Limiting
 
 Package: `mcp.gateway.core.rate`
@@ -410,8 +496,16 @@ IP, API key, or another shape.
 | `maxTrackedKeys` | Maximum bucket keys retained in memory. Minimum normalized value is `1`. |
 | `disabledRetryAfterSeconds` | Retry delay returned when the policy is disabled. |
 
-When the limiter is at `maxTrackedKeys` and no bucket can be safely retired,
-new keys fail closed instead of growing memory. A bucket is eligible for
+In unreleased `0.11.0-SNAPSHOT`, each new-key admission at `maxTrackedKeys`
+inspects at most 64 retirement candidates. Retained candidates rotate to the
+back of a queue, so later attempts continue through the tracked buckets rather
+than restarting the search. The queue holds one key reference per tracked
+bucket. If that bounded pass does not make room, the new key fails closed with
+a one-second retry delay, even if another uninspected bucket could retire.
+This bounds candidate inspection per admission; it does not guarantee request
+latency under contention or limit total incoming traffic.
+
+In the same development version, a bucket is eligible for
 retirement only after more than five of its own refill periods without a
 consumption attempt and after its tokens fully replenish under its stored
 capacity and refill settings. Wall-clock age alone does not establish that the
@@ -431,7 +525,9 @@ not retain policy history for retired keys.
 a consistent limit for a limiter instance. If a request supplies a smaller limit,
 existing buckets with refill debt are retained rather than discarded to shrink
 the map immediately; new-key admission remains rejected until safe retirement
-can make room.
+can make room. Retirement proceeds in bounded batches, so reducing the limit
+can require multiple admission attempts even when all existing buckets are idle
+and fully replenished.
 
 ## URL Scope And Correlation IDs
 
@@ -834,6 +930,55 @@ four reasons use that resolver directly; invalid context data is never used.
 Correlation resolution and the callback run before writing the response. An
 exception from either propagates as a reactive error and prevents execution;
 the normal status/body is not guaranteed when diagnostic handling fails.
+
+### Audit Observer Helper (Unreleased)
+
+`McpGatewayAuditObservers.of(GatewayAuditSink)` is an opt-in helper in
+`0.11.0-SNAPSHOT`. One instance implements the authorization, protection
+rejection, invalid-request, and adapter-rejection observer interfaces. Install
+it through their four existing builder setters. Constructing the helper alone
+does not install it; existing constructors and omitted observers remain unchanged.
+
+The helper publishes the following `GatewayAuditEvent` schema:
+
+| Callback | Event type / outcome | Principal | Details |
+| --- | --- | --- | --- |
+| Authorization observation | `authorization` / observation's `allowed`, `denied`, or `warn` | Context principal, or null | `action`, `reason`, `requiredScopes`, `grantedScopes`; context `workspaceId` and `correlationId` when available |
+| Protection rejection | `protection_rejection` / `rejected` | Decision's client id, or null | Decision's `tool`, `errorCode`, `reason`, `retryAfterSeconds`, `workspaceId`; optional context `correlationId` |
+| Invalid request | `invalid_mcp_request` / `rejected` | Null | Available `reason`, server `requestId`, `correlationId` |
+| Adapter rejection | `adapter_rejection` / `rejected` | Null | Typed reason's stable `code()`, plus available server `requestId` and `correlationId` |
+
+Optional null fields are omitted. Authorization scope lists and protection
+retry delay remain present. Diagnostic callbacks supply no principal, workspace,
+or tool fields; the helper does not infer them. `requestId` is the server HTTP
+request id, not the JSON-RPC id. Context correlation is copied as supplied, and
+an absent value is not synthesized from headers or the response's fallback id.
+
+Events describe governance before execution. An ID-less tool-call event also
+uses `rejected`, even though the response is HTTP `202`: execution was stopped.
+These events do not report tool completion or always represent permission
+denials. A directly supplied allowed protection decision publishes nothing.
+The normal filter may emit both an authorization event and a later protection
+rejection event; they describe separate facts.
+
+Generated details contain only immutable strings, a retry-delay number, and
+the observation's defensively copied scope lists. Each event freezes a fresh
+outer map. Request bodies, arguments, headers, and context targets are excluded;
+arbitrary application metadata is not accepted. Timestamp enrichment belongs
+to the application or sink; `GatewayAuditEvent` does not carry a timestamp.
+
+Each event makes one synchronous sink attempt, without retry or suppression.
+Sink exceptions propagate through the filter publisher, prevent downstream
+execution, and may prevent the usual rejection response. The application owns
+storage, redaction, retention, enrichment, and delivery policy. Null sinks,
+authorization observations, protection decisions, or typed rejection reasons
+are rejected with `NullPointerException` before publication.
+
+Observer setters replace their previous callback. To retain metrics, compose
+a metrics-only callback with the helper explicitly in the desired order. If
+the first callback throws, the second is not called. Do not wrap a callback that
+already publishes the same audit event; that would duplicate it. No sink or
+observer composition is installed automatically. Published `0.10.0` has no helper.
 
 ## What Not To Encode In Core Values
 

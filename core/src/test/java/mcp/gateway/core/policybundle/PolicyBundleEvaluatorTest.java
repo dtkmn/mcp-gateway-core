@@ -11,8 +11,44 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class PolicyBundleEvaluatorTest {
+
+    @ParameterizedTest(name = "{0} before {1}: first matching rule wins")
+    @CsvSource({"ALLOW, DENY", "DENY, ALLOW"})
+    void firstMatchingRuleWinsOverConflictingLaterRule(PolicyBundleDecision firstDecision,
+                                                      PolicyBundleDecision laterDecision) {
+        PolicyBundleMatch match = PolicyBundleMatch.of(
+                List.of("files.read"),
+                List.of("sandbox.example.com"),
+                List.of()
+        );
+        PolicyBundleRule first = rule("first-rule", firstDecision, match);
+        PolicyBundleRule later = rule("later-rule", laterDecision, match);
+
+        PolicyBundleEvaluationResult result = PolicyBundleEvaluator.evaluate(
+                PolicyBundleRuleset.of(laterDecision, List.of(first, later)),
+                request("files.read", "sandbox.example.com", "2026-06-02T01:00:00Z")
+        );
+
+        assertEquals(firstDecision, result.decision());
+        assertEquals(PolicyBundleDecisionSource.RULE, result.source());
+        assertEquals(first.id(), result.matchedRuleId());
+        assertEquals(first.reason(), result.reason());
+        assertEquals(laterDecision, result.defaultDecision());
+        assertEquals(1, result.trace().size());
+
+        PolicyBundleRuleEvaluation trace = result.trace().get(0);
+        assertEquals(first.id(), trace.ruleId());
+        assertEquals(firstDecision, trace.decision());
+        assertEquals(first.reason(), trace.reason());
+        assertTrue(trace.enabled());
+        assertTrue(trace.matched());
+        assertEquals(List.of("tools", "hosts"), trace.matchedSelectors());
+        assertEquals(List.of(), trace.failedSelectors());
+    }
 
     @Test
     void returnsFirstMatchingRuleDecisionAndTrace() {
