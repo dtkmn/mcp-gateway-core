@@ -56,6 +56,11 @@ Your application still owns:
 Core owns the neutral vocabulary and decision mechanics once your app has those
 inputs.
 
+For a working Spring AI/WebFlux consumer, the optional
+[integration reference](https://danieltse.org/mcp-gateway-core/reference/zap-integration/)
+maps ZAP's application wiring and provides tests for allowed execution and
+permission denial before execution.
+
 ## Core-Only Authorization
 
 Create a tool access registry from your own tool catalog, then authorize parsed
@@ -219,8 +224,7 @@ class McpGatewayConfiguration {
                             String principalId = authentication == null
                                     ? "anonymous"
                                     : authentication.getName();
-                            String workspaceId = exchange.getRequest().getHeaders()
-                                    .getFirst("X-Workspace-Id");
+                            String workspaceId = "default"; // Fixed single-tenant demo workspace.
                             String correlationId = McpGatewayCorrelationIdResolver.defaultResolver()
                                     .resolve(exchange);
                             return GatewayToolExecutionContext.of(
@@ -263,6 +267,12 @@ class McpGatewayConfiguration {
     }
 }
 ```
+
+This example uses a fixed workspace for a single-tenant application.
+Multi-workspace hosts must validate the authenticated caller's membership or
+entitlement to the requested workspace before constructing the context. Core's
+workspace normalization and the adapter's context validation do not establish
+tenant authorization.
 
 The default scope extractor reads Spring Security authorities named
 `SCOPE_<scope>` and passes normalized scope names into the authorization
@@ -425,7 +435,9 @@ application concerns; existing callers are not automatically migrated.
 
 1. Map every exposed MCP tool into `McpToolAccessRegistry`.
 2. Decide the required scope for `tools/list`.
-3. Resolve a stable principal ID and workspace ID before gateway checks run.
+3. Resolve a stable principal ID and validate that caller's membership or
+   entitlement to the requested workspace before constructing the execution
+   context. Use a fixed workspace only for a single-tenant application.
 4. Decide whether unknown tools fail closed, warn, or bypass in your runtime. The
    core authorizer fails closed when enforcement is enabled.
 5. Authenticate the MCP endpoint independently, and require the downstream

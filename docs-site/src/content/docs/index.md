@@ -44,6 +44,7 @@ rate-limit retirement changes before upgrading.
 | Need | Start Here |
 | --- | --- |
 | Wire the library into an MCP server | [Getting started](guides/getting-started/) |
+| Trace a working Spring AI/WebFlux consumer | [Integration reference](reference/zap-integration/) |
 | Understand every field and enum value | [Contract reference](reference/contract-reference/) |
 | See package ownership boundaries | [Module map](reference/modules/) |
 | Check compatibility promises and non-promises | [Compatibility](reference/compatibility/) |

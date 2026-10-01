@@ -63,6 +63,10 @@ npm --prefix docs-site run build
 The site build syncs source pages from `docs/` and `SECURITY.md`; edit those
 source files rather than their generated copies.
 
+The [ZAP integration reference](docs/ZAP_INTEGRATION_REFERENCE.md) maps a
+Spring AI/WebFlux consumer and its permission-enforcement tests. Keep
+consumer-specific setup and operational contracts in the consuming project.
+
 Treat tracked files, drafts, committed metadata, and Git history as public.
 Keep private advisor conversations, personal review notes, and credentials
 outside this repository. A file or folder named `internal` or `private` does
