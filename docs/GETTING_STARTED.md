@@ -11,22 +11,22 @@ own transport adapter.
 
 ## Choose The Artifact
 
-The main examples below target the published `0.10.0` public-preview release.
-The separately marked unreleased sections describe the unpublished `0.11.0`
-candidate's APIs and behavior, which are not part of published `0.10.0`.
+The main examples below target the published `0.11.0` public-preview release.
+Feature sections identify additions introduced in `0.11.0` and describe the
+equivalent older APIs where useful.
 
 Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.10.0"
+implementation "io.github.dtkmn:mcp-gateway-core:0.11.0"
 ```
 
 Use both artifacts when your MCP endpoint is a Spring WebFlux route:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.10.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.10.0"
+implementation "io.github.dtkmn:mcp-gateway-core:0.11.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.11.0"
 ```
 
 The adapter currently targets Spring Framework 7, Spring Security 7, and
@@ -39,7 +39,7 @@ the current WebFlux adapter.
 
 The historical `0.7.2` adapter uses Jackson 2 `ObjectMapper` wiring. It is outside
 the security-fix support line and should not be chosen for a new integration.
-Only `0.10.0` is currently supported for security fixes; see the
+Only `0.11.0` is currently supported for security fixes; see the
 [security policy](https://danieltse.org/mcp-gateway-core/project/security/).
 
 ## What Your App Still Owns
@@ -114,9 +114,11 @@ McpToolInvocation invocation = McpToolInvocation.fromJsonRpc("tools/list", null)
 Unmapped authorizable actions fail closed. Wildcard scope behavior is explicit
 through the `wildcardAllowed` argument.
 
-### Unreleased Strict Authorization Shortcut
+<a id="unreleased-strict-authorization-shortcut"></a>
 
-In the unpublished `0.11.0` candidate, the same decision can
+### Strict Authorization Shortcut
+
+Since `0.11.0`, the same decision can
 be calculated with a two-argument overload:
 
 ```java
@@ -154,7 +156,7 @@ boolean allowed = attempt.allowed();
 long retryAfterSeconds = attempt.retryAfterSeconds();
 ```
 
-The `attempt` API is available in published `0.10.0`. Its decision and retry
+The `attempt` API is available since `0.10.0`. Its decision and retry
 delay come from the same consumption attempt: allowed requests report zero,
 and rejected requests report at least one second. Use that result's retry delay
 when constructing a rejection response.
@@ -270,10 +272,12 @@ response envelopes used to answer server-initiated JSON-RPC requests pass
 through to that runtime without request authorization or action-based
 abuse-protection evaluation.
 
-### Unreleased Resolver Validation
+<a id="unreleased-resolver-validation"></a>
 
-Unreleased `0.11.0` validates trusted resolver wiring using the existing
-interface; published `0.10.0` does not perform this check. Return a non-null
+### Resolver Validation
+
+Since `0.11.0`, the adapter validates trusted resolver wiring using the existing
+interface; `0.10.0` does not perform this check. Return a non-null
 context preserving the supplied invocation, as the example does. Custom resolvers
 that substitute another invocation must change to preserve it. Equal copied
 records are accepted, and host-owned identity/workspace/correlation/target
@@ -283,9 +287,11 @@ authorization/protection decisions and observations or execution. An optional
 adapter diagnostic can run before that response; see the
 [context-resolution contract](https://danieltse.org/mcp-gateway-core/reference/contract-reference/#context-resolution-unreleased).
 
-### Unreleased Strict Shortcut In The Builder
+<a id="unreleased-strict-shortcut-in-the-builder"></a>
 
-With the unreleased `0.11.0` core API, replace only the authorization
+### Strict Shortcut In The Builder
+
+With the `0.11.0` core API, replace only the authorization
 builder call above with:
 
 ```java
@@ -295,8 +301,8 @@ builder call above with:
 )
 ```
 
-Keep the explicit lambda in the published `0.10.0` example when using that
-release. The shortcut calculates the strict decision; the mode supplier still
+Consumers still using `0.10.0` must keep the explicit lambda shown above.
+The shortcut calculates the strict decision; the mode supplier still
 controls what governance does with it. `ENFORCE` rejects denied or unmapped
 authorizable requests, `WARN` emits a warning observation and continues to
 protection, and `DISABLED` skips authorization evaluation. Protection and an
@@ -308,9 +314,11 @@ because that makes mapped decisions allowed instead of retaining the denial.
 Applications with an intentional wildcard policy can keep the explicit
 overload and lambda. Switching to the shortcut would change that policy.
 
-### Unreleased Active Tool Catalog Selection
+<a id="unreleased-active-tool-catalog-selection"></a>
 
-In unreleased `0.11.0`, select the active catalog from the access-rule
+### Active Tool Catalog Selection
+
+Since `0.11.0`, select the active catalog from the access-rule
 inventory with the tool names actually registered by your server:
 
 ```java
@@ -326,9 +334,11 @@ null, blank, padded, or duplicate entries are rejected rather than normalized.
 This does not discover callbacks or register tools. It consolidates the host's
 selection and coverage checks; the older lookup/registry methods retain their behavior.
 
-### Unreleased Audit Observer Helper
+<a id="unreleased-audit-observer-helper"></a>
 
-In unreleased `0.11.0`, connect the adapter's four observation families
+### Audit Observer Helper
+
+Since `0.11.0`, connect the adapter's four observation families
 to an application-owned audit sink using the four builder settings:
 
 ```java
@@ -362,12 +372,14 @@ path. Do not combine the helper with a callback that already publishes the same
 audit event: that would duplicate records. Diagnostic callbacks supply no
 identity or tool information; the helper omits unavailable fields instead of
 inventing them. See the [audit schema](https://danieltse.org/mcp-gateway-core/reference/contract-reference/#audit-observer-helper-unreleased).
-Both helpers in these sections are unavailable in published `0.10.0`.
+Both helpers in these sections were introduced in `0.11.0`.
 
-### Unreleased Adapter Rejection Diagnostics
+<a id="unreleased-adapter-rejection-diagnostics"></a>
 
-In unreleased `0.11.0`, add this optional callback before `.build()` to
-observe previously silent adapter rejections. It is unavailable in published `0.10.0`:
+### Adapter Rejection Diagnostics
+
+Since `0.11.0`, add this optional callback before `.build()` to
+observe previously silent adapter rejections:
 
 ```java
 .adapterRejectionObserver((reason, serverRequestId, correlationId) ->
@@ -383,11 +395,13 @@ Exceptions from either step propagate reactively and can prevent the normal erro
 response. Existing authorization, protection, and invalid-request observers remain
 separate; see the [coverage matrix](https://danieltse.org/mcp-gateway-core/reference/contract-reference/#adapter-rejection-observation-unreleased).
 
-## Unreleased Metadata Snapshots
+<a id="unreleased-metadata-snapshots"></a>
+
+## Metadata Snapshots
 
 Existing audit events and policy decisions freeze only the outer details map;
-nested values remain shared. In unreleased `0.11.0`, opt into a recursive
-snapshot before calling the existing factories (not available in published `0.10.0`):
+nested values remain shared. Since `0.11.0`, opt into a recursive
+snapshot before calling the existing factories:
 
 ```java
 import java.util.Map;

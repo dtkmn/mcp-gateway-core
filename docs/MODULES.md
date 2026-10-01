@@ -61,13 +61,13 @@ An active-only `McpToolAccessRegistry` already owns a suitable `toolRegistry()`;
 the adapter does not require a third registry or a separate hand-maintained
 tool list. This input adds no discovery, Spring AI wiring, or core API changes.
 
-In the unpublished `0.11.0` candidate, the JDK-only
+Since `0.11.0`, the JDK-only
 `McpToolAccessRegistry.activeToolRegistry(Collection<String>)` helper selects
 descriptors for the host's active names and checks their permission mappings.
 Discovery and registration remain owned by the hosting runtime.
 
-The unreleased WebFlux `McpGatewayAuditObservers` helper converts the four
-existing observer signals into core `GatewayAuditEvent` values. The adapter owns
+The WebFlux `McpGatewayAuditObservers` helper, available since `0.11.0`, converts
+the four existing observer signals into core `GatewayAuditEvent` values. The adapter owns
 the fixed event schema. Storage, metrics, enrichment, and delivery remain owned
 by the application. Installing the helper is explicit; these observations do
 not report tool execution completion.

@@ -27,15 +27,17 @@ scanner integration, UI, or service mesh.
 contracts for Java MCP tool runtimes. It is not an MCP server SDK, Spring Boot
 starter, OAuth provider, policy language, plugin system, proxy, or data plane.
 
-The latest published preview release is `0.10.0`. The WebFlux adapter can check
+The latest published preview release is `0.11.0`. The WebFlux adapter can check
 tool availability before permissions using the existing core registry. Hosts
 must explicitly supply their active-tool registry; upgrading alone retains the
-previous behavior. The core adds a combined rate-limit decision and retry-delay
-result through `TokenBucketRateLimiter.attempt` and remains JDK-only.
+previous behavior. The core's combined rate-limit decision and retry-delay
+result, `TokenBucketRateLimiter.attempt`, is available since `0.10.0`.
+Core remains JDK-only.
 
-The guide's separately marked `0.11.0` sections describe the unpublished
-candidate's APIs and behavior. Those additions are not available in the
-published `0.10.0` dependencies shown below.
+`0.11.0` adds opt-in strict authorization, active-catalog selection, metadata
+snapshots, adapter diagnostics, and an audit-observer bridge. Review the
+[release notes](maintainers/release-notes/) for resolver validation and
+rate-limit retirement changes before upgrading.
 
 ## Choose Your Path
 
@@ -50,11 +52,11 @@ published `0.10.0` dependencies shown below.
 
 ## Coordinates
 
-These are the current `0.10.0` public-preview coordinates.
+These are the current `0.11.0` public-preview coordinates.
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.10.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.10.0" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.11.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.11.0" // optional
 ```
 
 ## Boundary

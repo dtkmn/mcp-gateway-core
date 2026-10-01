@@ -9,9 +9,9 @@ artifacts to Sonatype Central as one `USER_MANAGED` deployment:
 It does not publish the deployment. Publishing must remain a deliberate manual
 Portal action until the release policy says otherwise.
 
-`0.10.0` is the latest published version, and public dependency examples use it.
-It adds opt-in active-tool registry handling in the WebFlux adapter and the
-core's combined rate-limit decision and retry-delay API.
+`0.11.0` is the latest published version, and public dependency examples use it.
+See the [release notes](https://danieltse.org/mcp-gateway-core/maintainers/release-notes/)
+for its additions and upgrade considerations.
 For future releases, update those examples only after both new coordinates have
 propagated through Maven Central and passed the post-publication checks below.
 
