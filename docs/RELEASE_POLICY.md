@@ -19,13 +19,12 @@ Public preview means:
 Do not describe these artifacts as stable until this policy is updated and a
 stable release gate exists.
 
-`0.10.0` is the latest published public-preview version. It adds optional
-active-tool registry configuration to the WebFlux adapter for existence-first
-tool-call handling. Existing constructors and registry-omitted configurations
-retain their behavior. The core adds `TokenBucketRateLimiter.attempt` and its
-`Attempt` result, returning a consumption decision and retry delay from the
-same attempt; existing rate-limiter APIs remain available. The core stays
-framework-neutral with no runtime dependencies.
+`0.11.0` is the latest published public-preview version. It adds opt-in strict
+authorization, active-catalog selection, metadata snapshots, adapter diagnostics,
+and an audit-observer bridge, plus resolver validation and bounded rate-bucket
+retirement. See the [release notes](https://danieltse.org/mcp-gateway-core/maintainers/release-notes/)
+for upgrade considerations. The core stays framework-neutral with no runtime
+dependencies.
 
 ## Release Gates
 

@@ -100,9 +100,11 @@ behavior.
 The generic adapter does not gain a Spring AI dependency or perform ZAP Server
 wiring.
 
-### Unreleased 0.11.0 Changes
+<a id="unreleased-0110-changes"></a>
 
-The unpublished `0.11.0` candidate adds the strict authorizer overload, opt-in
+### 0.11.0 Changes
+
+The published `0.11.0` release adds the strict authorizer overload, opt-in
 metadata snapshot utility, and `McpToolAccessRegistry.activeToolRegistry(Collection<String>)`
 in core. The catalog helper validates its input strictly without changing the
 existing registry lookup normalization. Existing decision constructors retain
@@ -128,9 +130,9 @@ delay before a later attempt reaches an eligible bucket. A smaller incoming
 tracked-key limit may also require multiple retirement passes. Public signatures
 remain available.
 
-These changes are not in published `0.10.0`. The final release artifacts still
-require their release checks, including the Java 17 consumer check. The public
-preview compatibility limits above continue to apply.
+These changes are available in `0.11.0`, and are absent from `0.10.0`.
+Both published artifacts passed clean Java 17 consumer checks against Maven
+Central. The public-preview compatibility limits above continue to apply.
 
 For `0.9.0`, the WebFlux adapter adds the fluent
 `McpGatewayWebFluxGovernanceFilter` builder. Existing public constructors,

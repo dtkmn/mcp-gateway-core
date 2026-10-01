@@ -16,13 +16,12 @@ contracts.
 It is not a gateway runtime, router, scanner integration, UI, service mesh, or
 traffic-management data plane.
 
-Current status: public preview. The latest published version is `0.10.0`. The
+Current status: public preview. The latest published version is `0.11.0`. The
 package and coordinates are intended for early integration proof, not a stable
 compatibility promise.
 
-The selected release candidate is `0.11.0` for both artifacts. It is not yet
-published; see the [candidate release notes](docs/RELEASE_NOTES.md) for additions
-and upgrade considerations. Dependency examples continue to use published `0.10.0`.
+Both artifacts are available from Maven Central at `0.11.0`. See the
+[release notes](docs/RELEASE_NOTES.md) for additions and upgrade considerations.
 
 ## Positioning
 
@@ -210,25 +209,25 @@ staged repository, and exercises the current WebFlux filter path.
 
 ## Coordinates
 
-These are the current published `0.10.0` public-preview coordinates.
+These are the current published `0.11.0` public-preview coordinates.
 
 Core coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.10.0
+io.github.dtkmn:mcp-gateway-core:0.11.0
 ```
 
 Optional Spring WebFlux adapter coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-spring-webflux:0.10.0
+io.github.dtkmn:mcp-gateway-spring-webflux:0.11.0
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.10.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.10.0" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.11.0"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.11.0" // optional
 ```
 
 Maven:
@@ -237,12 +236,12 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.10.0</version>
+  <version>0.11.0</version>
 </dependency>
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-spring-webflux</artifactId>
-  <version>0.10.0</version>
+  <version>0.11.0</version>
 </dependency>
 ```
 

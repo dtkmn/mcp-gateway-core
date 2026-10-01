@@ -1,12 +1,14 @@
 # Release Notes
 
-## 0.11.0 Public Preview (Unpublished Candidate)
+<a id="0110-public-preview-unpublished-candidate"></a>
 
-`0.11.0` is the selected release candidate for both `mcp-gateway-core` and
-`mcp-gateway-spring-webflux`. It is not yet published to Maven Central;
-`0.10.0` remains the latest published version. Publication, the release tag,
-and the final source commit must follow the
-[release policy](https://danieltse.org/mcp-gateway-core/maintainers/release-policy/).
+## 0.11.0 Public Preview
+
+`0.11.0` is the latest published version of both public-preview artifacts,
+released on 2026-10-01. Both are available from Maven Central at
+`io.github.dtkmn:mcp-gateway-core:0.11.0` and
+`io.github.dtkmn:mcp-gateway-spring-webflux:0.11.0`. The published source commit
+is `a64cc5283d92860930b8d4a7b00423c4bf1c2bb7`.
 The artifacts remain public preview; the core remains JDK-only.
 
 ### Core APIs And Rate Limiting
@@ -107,8 +109,7 @@ The artifacts remain public preview; the core remains JDK-only.
 
 ## 0.10.0 Public Preview
 
-`0.10.0` is the latest published version of both public-preview artifacts and
-supersedes `0.9.0`. The core library and optional Spring WebFlux adapter are
+`0.10.0` superseded `0.9.0`. The core library and optional Spring WebFlux adapter are
 available from Maven Central at `io.github.dtkmn:mcp-gateway-core:0.10.0` and
 `io.github.dtkmn:mcp-gateway-spring-webflux:0.10.0`. The published source commit
 is `aae895e626151b555745d888c7b283851cfce44c`.
