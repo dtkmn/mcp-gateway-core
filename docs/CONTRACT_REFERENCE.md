@@ -496,6 +496,8 @@ must be non-null. Unspecified options use these defaults:
 - `McpInvalidRequestObserver.noop()`; and
 - no tool registry.
 
+The unreleased adapter-rejection observer is disabled unless explicitly supplied.
+
 Authorization and protection do not have implicit evaluators. At least one
 authorization evaluator, protection evaluator, or tool registry must be
 supplied; otherwise `build()` throws `IllegalStateException`. This catches
@@ -518,6 +520,7 @@ Optional builder methods are:
 | `protectionRejectionObserver(McpProtectionRejectionObserver)` | Receives rejected protection decisions. |
 | `correlationIdResolver(McpGatewayCorrelationIdResolver)` | Replaces default correlation-header resolution. |
 | `invalidRequestObserver(McpInvalidRequestObserver)` | Receives invalid-request rejections without request payloads. |
+| `adapterRejectionObserver(McpAdapterRejectionObserver)` | Unreleased `0.11.0-SNAPSHOT`: opts into typed diagnostics for the five paths listed under [adapter rejection observation](#adapter-rejection-observation-unreleased). |
 | `toolRegistry(McpToolRegistry)` | Uses the existing core registry of exactly the runtime's registered, enabled tools to check availability before tool-call authorization. |
 
 Choose either the complete evaluator method or the paired callback method for
@@ -559,12 +562,13 @@ Custom resolvers that substitute an invocation must preserve the supplied value
 instead. Trusted identity/workspace/correlation/target enrichment remains allowed.
 `McpToolInvocation` contains no arguments, so this does not validate tool arguments.
 
-A null context or invocation mismatch returns HTTP `500`,
+A null context or invocation mismatch normally returns HTTP `500`,
 `Content-Type: application/json`, and exactly `{"error":"invalid_execution_context"}`.
 There is no JSON-RPC id, authentication challenge, or request/context detail.
 Validation precedes scope extraction and governance decisions; scope extraction,
-authorization/protection decision callbacks, governance observers, and downstream
-execution are skipped on failure.
+authorization/protection decision callbacks and observations, and downstream
+execution are skipped on failure. An optional [adapter rejection observer](#adapter-rejection-observation-unreleased)
+can run before this response; its failure can prevent the normal response.
 
 Validation applies whenever active filtering reaches resolution, including `WARN`,
 protection-only, registry-only, and valid non-authorizable requests. Non-matching
@@ -778,10 +782,10 @@ the active tool registry.
 
 Unknown-tool, tool-call identifier, and enforced unmapped-tool configuration
 rejections do not emit authorization observations, so they are not mislabeled
-as permission denials. This option adds no automatic diagnostic events or new
-observer API for these protocol responses. Ordinary mapped permission decisions
-retain their existing authorization observations. Runtimes remain responsible
-for operational diagnostics, including startup validation of permission mappings.
+as permission denials. Published `0.10.0` has no diagnostic observer for those
+paths; unreleased `0.11.0-SNAPSHOT` adds the opt-in observer below. Ordinary mapped
+permission decisions retain their existing authorization observations. Hosts
+still own startup validation of permission mappings.
 
 Existing authorization and protection rejection responses use the execution
 context's correlation id when present, otherwise the configured
@@ -791,6 +795,45 @@ correlation-id rules to the request header
 and falls back to the server request id. An `insufficient_scope` challenge
 includes its `scope` parameter only when every required scope is an RFC 6749
 scope token.
+
+### Adapter Rejection Observation (Unreleased)
+
+Unreleased `0.11.0-SNAPSHOT` adds the functional `McpAdapterRejectionObserver`
+with `rejected(McpAdapterRejectionReason reason, String serverRequestId,
+String correlationId)`. Install it through `Builder.adapterRejectionObserver`.
+Public constructors are unchanged; they and builders omitting this option leave it disabled,
+without adding correlation-resolution calls on these previously silent paths.
+Explicitly installing even a no-op lambda opts into correlation resolution.
+
+The callback receives only the typed reason, server HTTP request id (not the
+JSON-RPC id), and correlation id. It receives no payload, arguments, tool name,
+context, principal, or headers. `McpAdapterRejectionReason.code()` exposes the
+stable lowercase code shown below. Existing observer signals are unchanged:
+
+| Path | Observer | Adapter reason constant / `code()` |
+| --- | --- | --- |
+| Invalid message/body shape or oversized body | Existing `McpInvalidRequestObserver` only | None |
+| Registry configured: invalid tool-call id | New adapter observer only | `INVALID_TOOL_CALL_ID` / `invalid_tool_call_id` |
+| Registry configured: tool call without id | New adapter observer only; still HTTP `202`, empty body, no execution | `TOOL_CALL_WITHOUT_ID` / `tool_call_without_id` |
+| Registry configured: unknown or inactive tool | New adapter observer only | `UNKNOWN_TOOL` / `unknown_tool` |
+| Registry configured: active tool with enforced unmapped authorization | New adapter observer only | `UNMAPPED_TOOL` / `unmapped_tool` |
+| Null resolved context or invocation mismatch | New adapter observer only | `INVALID_EXECUTION_CONTEXT` / `invalid_execution_context` |
+| Enforced mapped permission denial, or enforced unmapped action without a registry | Existing authorization observer only | None |
+| Protection rejection | Existing protection-rejection observer; an earlier authorization allow/warn observation may also occur | None |
+| Allowed requests, recognized response envelopes, or bypassed requests | No new adapter observation; existing applicable observers remain unchanged | None |
+
+Each of the five new paths emits one adapter diagnostic when configured; it does
+not also emit an invalid-request, authorization, or protection-rejection event.
+An authorization allow/warn observation followed by a protection rejection
+describes two stages, not two rejection events. These are pre-execution signals,
+not tool-completion records or automatic audit persistence.
+
+For `UNMAPPED_TOOL`, correlation uses the valid resolved context's correlation id
+when present, then falls back to the configured correlation resolver. The other
+four reasons use that resolver directly; invalid context data is never used.
+Correlation resolution and the callback run before writing the response. An
+exception from either propagates as a reactive error and prevents execution;
+the normal status/body is not guaranteed when diagnostic handling fails.
 
 ## What Not To Encode In Core Values
 

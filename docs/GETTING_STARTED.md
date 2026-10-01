@@ -267,9 +267,10 @@ context preserving the supplied invocation, as the example does. Custom resolver
 that substitute another invocation must change to preserve it. Equal copied
 records are accepted, and host-owned identity/workspace/correlation/target
 enrichment remains supported. This checks action identity, not tool arguments.
-Null or mismatched results receive a fixed HTTP `500` response before governance
-decisions or execution; see the [context-resolution contract](CONTRACT_REFERENCE.md#context-resolution-unreleased)
-for the response and validation boundary.
+Null or mismatched results normally receive a fixed HTTP `500` response before
+authorization/protection decisions and observations or execution. An optional
+adapter diagnostic can run before that response; see the
+[context-resolution contract](CONTRACT_REFERENCE.md#context-resolution-unreleased).
 
 ### Unreleased Strict Shortcut In The Builder
 
@@ -295,6 +296,25 @@ set the authorizer's `authorizationEnabled` flag to `false` for that purpose,
 because that makes mapped decisions allowed instead of retaining the denial.
 Applications with an intentional wildcard policy can keep the explicit
 overload and lambda. Switching to the shortcut would change that policy.
+
+### Unreleased Adapter Rejection Diagnostics
+
+In unreleased `0.11.0-SNAPSHOT`, add this optional callback before `.build()` to
+observe previously silent adapter rejections. It is unavailable in published `0.10.0`:
+
+```java
+.adapterRejectionObserver((reason, serverRequestId, correlationId) ->
+        System.getLogger("mcp.gateway").log(
+                System.Logger.Level.WARNING,
+                "{0}: requestId={1}, correlationId={2}",
+                reason.code(), serverRequestId, correlationId))
+```
+
+Omitting the callback preserves the existing behavior. Explicitly installing one,
+even a no-op lambda, resolves correlation before the callback and response write.
+Exceptions from either step propagate reactively and can prevent the normal error
+response. Existing authorization, protection, and invalid-request observers remain
+separate; see the [coverage matrix](CONTRACT_REFERENCE.md#adapter-rejection-observation-unreleased).
 
 ## Unreleased Metadata Snapshots
 

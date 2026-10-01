@@ -21,8 +21,11 @@ public interface McpGatewayWebFluxContextResolver {
      * When governance is active and resolution is reached, the WebFlux filter
      * rejects a null context or unequal invocation with HTTP 500 and the fixed
      * JSON error {@code invalid_execution_context}, before scope extraction,
-     * authorization/protection decision callbacks, observers, or downstream
-     * handling. Fully inactive governance bypasses context resolution.
+     * authorization/protection decision callbacks and observations, or downstream
+     * handling. An optional {@link McpAdapterRejectionObserver} may receive a
+     * diagnostic containing only its reason and request/correlation identifiers;
+     * the rejected context is never supplied to it. Fully inactive governance
+     * bypasses context resolution.
      *
      * @param authentication authenticated Spring principal, or {@code null}
      *        for unauthenticated requests
