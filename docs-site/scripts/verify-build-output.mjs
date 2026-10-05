@@ -15,6 +15,7 @@ const compatibilityHtml = await readDist('reference/compatibility/index.html');
 const releaseNotesHtml = await readDist('maintainers/release-notes/index.html');
 const releasePolicyHtml = await readDist('maintainers/release-policy/index.html');
 const contractReferenceHtml = await readDist('reference/contract-reference/index.html');
+const zapIntegrationHtml = await readDist('reference/zap-integration/index.html');
 const securityHtml = await readDist('project/security/index.html');
 const sitemapIndexXml = await readDist('sitemap-index.xml');
 const sitemapXml = await readDist('sitemap-0.xml');
@@ -30,6 +31,28 @@ assertEqual(
   extract(gettingStartedHtml, /<link rel="canonical" href="([^"]+)"/, 'getting-started canonical'),
   `${homeUrl}guides/getting-started/`,
 );
+assertEqual(
+  extract(zapIntegrationHtml, /<link rel="canonical" href="([^"]+)"/, 'integration reference canonical'),
+  `${homeUrl}reference/zap-integration/`,
+);
+assertContains(
+  gettingStartedHtml,
+  `href="${homeUrl}reference/zap-integration/"`,
+  'getting-started should link to the deployed integration reference',
+);
+assertContains(
+  zapIntegrationHtml,
+  'href="/mcp-gateway-core/reference/zap-integration/"',
+  'sidebar should link to the integration reference under the deployment base',
+);
+for (const anchor of ['audit-observer-helper-unreleased', 'rejection-responses-and-observability']) {
+  assertContains(
+    zapIntegrationHtml,
+    `href="${homeUrl}reference/contract-reference/#${anchor}"`,
+    `integration reference should link to the deployed ${anchor} contract`,
+  );
+  assertContains(contractReferenceHtml, `id="${anchor}"`, `contract reference should contain the ${anchor} destination`);
+}
 
 assertContains(
   indexHtml,
@@ -135,6 +158,7 @@ for (const artifact of ['mcp-gateway-core', 'mcp-gateway-spring-webflux']) {
 for (const href of [
   'guides/getting-started/',
   'reference/contract-reference/',
+  'reference/zap-integration/',
   'reference/modules/',
   'reference/compatibility/',
   'project/roadmap/',
@@ -158,6 +182,7 @@ for (const url of [
   homeUrl,
   `${homeUrl}guides/getting-started/`,
   `${homeUrl}reference/contract-reference/`,
+  `${homeUrl}reference/zap-integration/`,
   `${homeUrl}reference/modules/`,
   `${homeUrl}reference/compatibility/`,
   `${homeUrl}project/roadmap/`,

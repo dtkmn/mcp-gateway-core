@@ -136,6 +136,8 @@ For package-by-package detail, see the [module map](docs/MODULES.md).
 
 For practical integration examples, see the
 [getting started guide](docs/GETTING_STARTED.md).
+For an existing Spring AI/WebFlux consumer and executable permission checks,
+see the optional [ZAP integration reference](docs/ZAP_INTEGRATION_REFERENCE.md).
 For field and value semantics, see the
 [contract reference](docs/CONTRACT_REFERENCE.md).
 

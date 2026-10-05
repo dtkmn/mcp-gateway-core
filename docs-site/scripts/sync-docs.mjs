@@ -20,6 +20,12 @@ const pages = [
     description: 'Field and value semantics for MCP Gateway Core contracts.',
   },
   {
+    source: 'docs/ZAP_INTEGRATION_REFERENCE.md',
+    target: 'reference/zap-integration.md',
+    title: 'Spring AI/WebFlux Integration Reference',
+    description: 'Trace and test Gateway integration in MCP ZAP Server.',
+  },
+  {
     source: 'docs/MODULES.md',
     target: 'reference/modules.md',
     title: 'Module Map',

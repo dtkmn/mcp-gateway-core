@@ -31,6 +31,7 @@ export default defineConfig({
         {
           label: 'Reference',
           items: [
+            'reference/zap-integration',
             'reference/modules',
             'reference/compatibility',
           ],
