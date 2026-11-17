@@ -100,6 +100,13 @@ behavior.
 The generic adapter does not gain a Spring AI dependency or perform ZAP Server
 wiring.
 
+### 0.11.1 Changes
+
+Both libraries retain their Java 17 target and the public APIs from `0.11.0`.
+The WebFlux adapter updates its Spring and Jackson dependencies. Applications
+that manage Jackson versions should check the resolved versions of Databind and
+Core when upgrading. See the [release notes](https://danieltse.org/mcp-gateway-core/maintainers/release-notes/#0111).
+
 <a id="unreleased-0110-changes"></a>
 
 ### 0.11.0 Changes

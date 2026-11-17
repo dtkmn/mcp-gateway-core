@@ -10,7 +10,7 @@ promise yet.
 
 Current focus:
 
-- operate and consume the published `0.11.0` public-preview release and gather
+- operate and consume the published `0.11.1` public-preview release and gather
   evidence from its authorization, active-catalog, audit, metadata, and rate-limit
   APIs;
 - keep the core artifact JDK-only and framework support in separate adapter
@@ -25,16 +25,16 @@ Current focus:
 
 ## Near-Term Work
 
-1. **0.11.0 consumer adoption**
+1. **0.11.1 consumer adoption**
 
-   `0.11.0` is the latest published version. Keep public dependency landing-page
-   examples on `0.11.0`, gather evidence from real consumers, and require
+   `0.11.1` is the latest published version. Keep public dependency landing-page
+   examples on `0.11.1`, gather evidence from real consumers, and require
    downstream adapter consumers to keep identity, policy, and observability
    decisions explicit when using the fluent builder. Hosts must opt into
    existence-first tool-call handling with a registry of exactly their active
    tools; upgrading alone retains legacy behavior. Gather consumer evidence for
    the core's combined rate-limit decision and retry-delay result as well.
-   Adopt the new helpers where actual consumer call sites benefit, and verify
+   Adopt the existing helpers where actual consumer call sites benefit, and verify
    resolver compatibility before upgrading. Treat any disagreement between
    public docs and Central as a release-blocking documentation defect.
 

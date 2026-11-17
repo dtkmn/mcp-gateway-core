@@ -16,12 +16,10 @@ contracts.
 It is not a gateway runtime, router, scanner integration, UI, service mesh, or
 traffic-management data plane.
 
-Current status: public preview. The latest published version is `0.11.0`. The
-package and coordinates are intended for early integration proof, not a stable
-compatibility promise.
-
-Both artifacts are available from Maven Central at `0.11.0`. See the
-[release notes](docs/RELEASE_NOTES.md) for additions and upgrade considerations.
+Both public-preview artifacts are available from Maven Central at `0.11.1`.
+This patch updates the WebFlux adapter's dependencies and retains the Java 17
+target and public APIs. The APIs may still change in future minor releases.
+See the [release notes](docs/RELEASE_NOTES.md) for upgrade guidance.
 
 ## Positioning
 
@@ -211,25 +209,25 @@ staged repository, and exercises the current WebFlux filter path.
 
 ## Coordinates
 
-These are the current published `0.11.0` public-preview coordinates.
+These are the current published `0.11.1` public-preview coordinates.
 
 Core coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-core:0.11.0
+io.github.dtkmn:mcp-gateway-core:0.11.1
 ```
 
 Optional Spring WebFlux adapter coordinate:
 
 ```text
-io.github.dtkmn:mcp-gateway-spring-webflux:0.11.0
+io.github.dtkmn:mcp-gateway-spring-webflux:0.11.1
 ```
 
 Gradle:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.11.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.11.0" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.11.1"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.11.1" // optional
 ```
 
 Maven:
@@ -238,12 +236,12 @@ Maven:
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-core</artifactId>
-  <version>0.11.0</version>
+  <version>0.11.1</version>
 </dependency>
 <dependency>
   <groupId>io.github.dtkmn</groupId>
   <artifactId>mcp-gateway-spring-webflux</artifactId>
-  <version>0.11.0</version>
+  <version>0.11.1</version>
 </dependency>
 ```
 

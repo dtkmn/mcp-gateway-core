@@ -9,9 +9,9 @@ artifacts to Sonatype Central as one `USER_MANAGED` deployment:
 It does not publish the deployment. Publishing must remain a deliberate manual
 Portal action until the release policy says otherwise.
 
-`0.11.0` is the latest published version, and public dependency examples use it.
+`0.11.1` is the latest published version, and public dependency examples use it.
 See the [release notes](https://danieltse.org/mcp-gateway-core/maintainers/release-notes/)
-for its additions and upgrade considerations.
+for its dependency changes and upgrade guidance.
 For future releases, update those examples only after both new coordinates have
 propagated through Maven Central and passed the post-publication checks below.
 

@@ -19,10 +19,9 @@ Public preview means:
 Do not describe these artifacts as stable until this policy is updated and a
 stable release gate exists.
 
-`0.11.0` is the latest published public-preview version. It adds opt-in strict
-authorization, active-catalog selection, metadata snapshots, adapter diagnostics,
-and an audit-observer bridge, plus resolver validation and bounded rate-bucket
-retirement. See the [release notes](https://danieltse.org/mcp-gateway-core/maintainers/release-notes/)
+`0.11.1` is the latest published public-preview version. It updates the
+WebFlux adapter's Spring and Jackson dependencies and retains the public APIs
+introduced in `0.11.0`. See the [release notes](https://danieltse.org/mcp-gateway-core/maintainers/release-notes/)
 for upgrade considerations. The core stays framework-neutral with no runtime
 dependencies.
 

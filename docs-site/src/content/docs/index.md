@@ -27,17 +27,17 @@ scanner integration, UI, or service mesh.
 contracts for Java MCP tool runtimes. It is not an MCP server SDK, Spring Boot
 starter, OAuth provider, policy language, plugin system, proxy, or data plane.
 
-The latest published preview release is `0.11.0`. The WebFlux adapter can check
-tool availability before permissions using the existing core registry. Hosts
-must explicitly supply their active-tool registry; upgrading alone retains the
-previous behavior. The core's combined rate-limit decision and retry-delay
-result, `TokenBucketRateLimiter.attempt`, is available since `0.10.0`.
-Core remains JDK-only.
+The latest published preview release is `0.11.1`. It updates Spring WebFlux,
+Spring Security Core, and Jackson Databind in the optional adapter. Both
+libraries retain Java 17 support and their existing public APIs. Core remains
+JDK-only.
 
-`0.11.0` adds opt-in strict authorization, active-catalog selection, metadata
-snapshots, adapter diagnostics, and an audit-observer bridge. Review the
-[release notes](maintainers/release-notes/) for resolver validation and
-rate-limit retirement changes before upgrading.
+The adapter checks tool availability before permissions when the host supplies
+its active-tool registry. The core's combined rate-limit decision and retry-delay
+result, `TokenBucketRateLimiter.attempt`, is available since `0.10.0`.
+Version `0.11.0` introduced active-catalog selection, opt-in strict authorization,
+metadata snapshots, adapter diagnostics, and an audit-observer bridge. See the
+[release notes](maintainers/release-notes/) for upgrade guidance.
 
 ## Choose Your Path
 
@@ -53,11 +53,11 @@ rate-limit retirement changes before upgrading.
 
 ## Coordinates
 
-These are the current `0.11.0` public-preview coordinates.
+These are the current `0.11.1` public-preview coordinates.
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.11.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.11.0" // optional
+implementation "io.github.dtkmn:mcp-gateway-core:0.11.1"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.11.1" // optional
 ```
 
 ## Boundary
