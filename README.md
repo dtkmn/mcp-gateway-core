@@ -314,15 +314,19 @@ promote, or change the manual public-preview release path.
 
 ## Documentation Site
 
-The public documentation site is built with Astro Starlight from `docs-site/`
-and deployed to GitHub Pages:
+Read the [published Gateway Core documentation](https://danieltse.org/mcp-gateway-core/).
+To preview the site locally, use Node.js 24 and run these commands from the
+repository root:
 
 ```bash
-npm --prefix docs-site run build
+npm --prefix docs-site ci
+npm --prefix docs-site run dev
 ```
 
-The site syncs source Markdown from `docs/` and `SECURITY.md` before each build
-so the repository README/docs remain the editing source of truth.
+Open `/mcp-gateway-core/` on the port Astro reports (normally
+`http://127.0.0.1:4321/mcp-gateway-core/`) and keep the server running while
+browsing. To build and check the site, run
+`npm --prefix docs-site run build`.
 
 ## Future Plan
 

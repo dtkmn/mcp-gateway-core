@@ -60,8 +60,10 @@ npm --prefix docs-site ci
 npm --prefix docs-site run build
 ```
 
-The site build syncs source pages from `docs/` and `SECURITY.md`; edit those
-source files rather than their generated copies.
+To browse your changes, run `npm --prefix docs-site run dev` and open
+`/mcp-gateway-core/` on the port Astro reports. Both the development server and
+the build generate the guide pages from `docs/` and `SECURITY.md`. Edit those
+source files and restart the development server to pick up guide edits.
 
 The [ZAP integration reference](docs/ZAP_INTEGRATION_REFERENCE.md) maps a
 Spring AI/WebFlux consumer and its permission-enforcement tests. Keep
