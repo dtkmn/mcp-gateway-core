@@ -1,11 +1,22 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { syncDocs } from './scripts/sync-docs.mjs';
 
 export default defineConfig({
   site: 'https://danieltse.org',
   base: '/mcp-gateway-core',
   trailingSlash: 'always',
   integrations: [
+    {
+      name: 'repository-docs',
+      hooks: {
+        'astro:config:setup': async ({ command }) => {
+          if (command === 'dev' || command === 'build') {
+            await syncDocs();
+          }
+        },
+      },
+    },
     starlight({
       title: 'MCP Gateway Core',
       description: 'Java contracts and Spring WebFlux adapters for MCP tool governance.',

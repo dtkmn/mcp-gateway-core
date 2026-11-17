@@ -7,18 +7,16 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "predev": "node ./scripts/sync-docs.mjs",
     "dev": "astro dev --host 127.0.0.1",
-    "prebuild": "node ./scripts/sync-docs.mjs",
     "build": "astro build",
     "postbuild": "node ./scripts/verify-build-output.mjs",
     "preview": "astro preview --host 127.0.0.1"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.42.10",
-    "astro": "^7.4.11",
+    "@astrojs/starlight": "^0.43.1",
+    "astro": "^7.4.12",
     "sharp": "^0.35.5",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "allowScripts": {
     "esbuild@0.28.1": true,

@@ -155,6 +155,18 @@ for (const artifact of ['mcp-gateway-core', 'mcp-gateway-spring-webflux']) {
   );
 }
 
+const heroActions = extract(indexHtml, /<div class="[^"]*\bactions\b[^"]*"[^>]*>([\s\S]*?)<\/div>/, 'home hero actions');
+for (const [label, route] of [
+  ['Get started', 'guides/getting-started/'],
+  ['Contract reference', 'reference/contract-reference/'],
+]) {
+  const link = new RegExp(`<a\\b[^>]*\\bhref="([^"]+)"[^>]*>\\s*${label}<`);
+  const href = extract(heroActions, link, `home hero link "${label}"`);
+  for (const home of [homeUrl, `http://localhost:4321${base}/`]) {
+    assertEqual(new URL(href, home).href, `${home}${route}`);
+  }
+}
+
 for (const href of [
   'guides/getting-started/',
   'reference/contract-reference/',

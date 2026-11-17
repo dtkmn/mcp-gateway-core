@@ -69,33 +69,35 @@ const pages = [
   },
 ];
 
-await Promise.all([
-  rm(join(docsRoot, 'guides'), { recursive: true, force: true }),
-  rm(join(docsRoot, 'reference'), { recursive: true, force: true }),
-  rm(join(docsRoot, 'project'), { recursive: true, force: true }),
-  rm(join(docsRoot, 'maintainers'), { recursive: true, force: true }),
-]);
+export async function syncDocs() {
+  await Promise.all([
+    rm(join(docsRoot, 'guides'), { recursive: true, force: true }),
+    rm(join(docsRoot, 'reference'), { recursive: true, force: true }),
+    rm(join(docsRoot, 'project'), { recursive: true, force: true }),
+    rm(join(docsRoot, 'maintainers'), { recursive: true, force: true }),
+  ]);
 
-for (const page of pages) {
-  const sourcePath = join(repoRoot, page.source);
-  const targetPath = join(docsRoot, page.target);
-  const source = await readFile(sourcePath, 'utf8');
-  const content = stripFirstHeading(source);
-  const generated = [
-    '---',
-    `title: ${quoteYaml(page.title)}`,
-    `description: ${quoteYaml(page.description)}`,
-    `editUrl: ${quoteYaml(`https://github.com/dtkmn/mcp-gateway-core/edit/main/${page.source}`)}`,
-    '---',
-    '',
-    '<!-- This page is generated from the repository root docs. Edit the source Markdown file, not this generated file. -->',
-    '',
-    content.trimEnd(),
-    '',
-  ].join('\n');
+  for (const page of pages) {
+    const sourcePath = join(repoRoot, page.source);
+    const targetPath = join(docsRoot, page.target);
+    const source = await readFile(sourcePath, 'utf8');
+    const content = stripFirstHeading(source);
+    const generated = [
+      '---',
+      `title: ${quoteYaml(page.title)}`,
+      `description: ${quoteYaml(page.description)}`,
+      `editUrl: ${quoteYaml(`https://github.com/dtkmn/mcp-gateway-core/edit/main/${page.source}`)}`,
+      '---',
+      '',
+      '<!-- This page is generated from the repository root docs. Edit the source Markdown file, not this generated file. -->',
+      '',
+      content.trimEnd(),
+      '',
+    ].join('\n');
 
-  await mkdir(dirname(targetPath), { recursive: true });
-  await writeFile(targetPath, generated);
+    await mkdir(dirname(targetPath), { recursive: true });
+    await writeFile(targetPath, generated);
+  }
 }
 
 function stripFirstHeading(markdown) {
@@ -104,4 +106,8 @@ function stripFirstHeading(markdown) {
 
 function quoteYaml(value) {
   return JSON.stringify(value);
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await syncDocs();
 }
