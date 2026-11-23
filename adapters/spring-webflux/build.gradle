@@ -11,14 +11,14 @@ version = providers.gradleProperty('gatewayCoreVersion')
         .get()
 
 def springWebFluxArtifactId = 'mcp-gateway-spring-webflux'
-def springFrameworkVersion = providers.gradleProperty('springFrameworkVersion').orElse('7.0.10').get()
-def springSecurityVersion = providers.gradleProperty('springSecurityVersion').orElse('7.1.2').get()
+def springFrameworkVersion = providers.gradleProperty('springFrameworkVersion').orElse('7.1.0').get()
+def springSecurityVersion = providers.gradleProperty('springSecurityVersion').orElse('7.2.0').get()
 def jacksonDatabindVersion = providers.gradleProperty('jacksonDatabindVersion').orElse('3.2.4').get()
-def reactorVersion = providers.gradleProperty('reactorVersion').orElse('3.8.8').get()
-def springBootVersion = providers.gradleProperty('springBootVersion').orElse('4.1.2').get()
-def springAiVersion = providers.gradleProperty('springAiVersion').orElse('2.0.2').get()
-def mcpJavaSdkVersion = providers.gradleProperty('mcpJavaSdkVersion').orElse('2.1.0').get()
-def logbackVersion = providers.gradleProperty('logbackVersion').orElse('1.6.4').get()
+def reactorVersion = providers.gradleProperty('reactorVersion').orElse('3.9.0').get()
+def springBootVersion = providers.gradleProperty('springBootVersion').orElse('4.2.0').get()
+def springAiVersion = providers.gradleProperty('springAiVersion').orElse('2.1.0').get()
+def mcpJavaSdkVersion = providers.gradleProperty('mcpJavaSdkVersion').orElse('2.2.0').get()
+def logbackVersion = providers.gradleProperty('logbackVersion').orElse('1.6.6').get()
 def log4jVersion = providers.gradleProperty('log4jVersion').orElse('2.26.1').get()
 def gatewayJavaRelease = 17
 def gatewayJavaClassFileMajorVersion = 61
