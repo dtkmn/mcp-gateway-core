@@ -11,7 +11,7 @@ own transport adapter.
 
 ## Choose The Artifact
 
-The main examples below target the published `0.11.0` public-preview release.
+The main examples below target the published `0.11.1` public-preview release.
 Feature sections identify additions introduced in `0.11.0` and describe the
 equivalent older APIs where useful.
 
@@ -19,19 +19,20 @@ Use core only when you have a non-Spring runtime, a custom transport, Quarkus,
 Micronaut, servlet MVC, or another framework:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.11.0"
+implementation "io.github.dtkmn:mcp-gateway-core:0.11.1"
 ```
 
 Use both artifacts when your MCP endpoint is a Spring WebFlux route:
 
 ```groovy
-implementation "io.github.dtkmn:mcp-gateway-core:0.11.0"
-implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.11.0"
+implementation "io.github.dtkmn:mcp-gateway-core:0.11.1"
+implementation "io.github.dtkmn:mcp-gateway-spring-webflux:0.11.1"
 ```
 
-The adapter currently targets Spring Framework 7, Spring Security 7, and
-Jackson 3. Its optional integration stack uses Spring AI 2.0 and MCP Java SDK
-2.0. Spring Boot 4.1 applications can inject Boot's Jackson 3 `JsonMapper`. If
+The `0.11.1` adapter uses Spring WebFlux `7.0.10`, Spring Security Core
+`7.1.2`, and Jackson Databind `3.2.4`. The adapter's integration tests use
+Spring AI `2.0.2` and MCP Java SDK `2.1.0`. Spring Boot 4.1 applications
+can inject Boot's Jackson 3 `JsonMapper`. If
 your application is on Spring Boot 3 / Spring Framework 6 or still exposes a
 Jackson 2 `ObjectMapper`, use the current framework-neutral core artifact and
 wire your own transport adapter, or migrate your application stack before using
@@ -39,7 +40,7 @@ the current WebFlux adapter.
 
 The historical `0.7.2` adapter uses Jackson 2 `ObjectMapper` wiring. It is outside
 the security-fix support line and should not be chosen for a new integration.
-Only `0.11.0` is currently supported for security fixes; see the
+Only `0.11.1` is currently supported for security fixes; see the
 [security policy](https://danieltse.org/mcp-gateway-core/project/security/).
 
 ## What Your App Still Owns

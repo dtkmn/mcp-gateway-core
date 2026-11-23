@@ -1,34 +1,39 @@
 # Release Notes
+<a id="0111-public-preview-unpublished-candidate"></a>
+<a id="0111-public-preview"></a>
 
-## 0.11.1 Public Preview (Unpublished Candidate)
+## 0.11.1
 
-`0.11.1` updates the Spring WebFlux adapter's dependencies. Both libraries
-retain their Java 17 target and their `0.11.0` public APIs. Core requires only
-the JDK. Maven Central currently provides `0.11.0` for both artifacts.
+Released on 2026-11-17. This patch updates the Spring WebFlux adapter's
+dependencies. Both libraries retain Java 17 support and the `0.11.0` public
+APIs. The core library still requires only the JDK.
 
-- The adapter requests Spring WebFlux `7.0.10`, Spring Security Core `7.1.2`,
-  and Jackson Databind `3.2.4`. WebFlux brings in Reactor Core `3.8.8`.
-- If your application manages its own dependencies, check the resolved runtime
-  versions of both Jackson Databind and Jackson Core. On the Jackson `3.2.x`
-  line, `3.2.4` fixes a polymorphic type validation issue in Databind and a
-  number-length check in Core's asynchronous parser. Applications using the
-  `0.11.0` adapter can select the patched Jackson versions directly.
-  [Databind advisory (CVE-2026-110879)](https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-m8xf-2cr7-77ph),
-  [Jackson Core advisory (CVE-2026-110729)](https://github.com/FasterXML/jackson-core/security/advisories/GHSA-vvjm-vc27-799r).
-- Adapter integration tests use Spring Boot `4.1.2`, Spring AI `2.0.2`,
-  MCP Java SDK `2.1.0`, and Reactor Test `3.8.8`. Spring Boot now manages
-  Netty for these tests.
-- The getting-started guide clarifies how hosts validate workspace access.
-  A new guide traces tool registration, authorization, and rejection handling
-  in MCP ZAP Server `0.14.0`.
+- The adapter updates Spring WebFlux from `7.0.9` to `7.0.10`, Spring
+  Security Core from `7.1.1` to `7.1.2`, and Jackson Databind from
+  `3.2.3` to `3.2.4`. WebFlux brings in Reactor Core `3.8.8`.
+- If your application manages Jackson versions, check that both Databind and
+  Jackson Core resolve to `3.2.4` or a patched successor on your chosen line.
+  The fixes cover polymorphic type validation in Databind and numeric length
+  limits in Core's asynchronous parser.
+  [Databind advisory (CVE-2026-110879)](https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-m8xf-2cr7-77ph)
+  and [Jackson Core advisory (CVE-2026-110729)](https://github.com/FasterXML/jackson-core/security/advisories/GHSA-vvjm-vc27-799r).
+- The getting-started guide clarifies which workspace-access checks the host
+  owns. A new integration guide follows a tool from registration through
+  authorization in MCP ZAP Server `0.14.0` and shows how a rejected request
+  is handled.
   [Spring AI/WebFlux integration reference](https://danieltse.org/mcp-gateway-core/reference/zap-integration/).
+
+To upgrade from `0.11.0`, change the version of the artifact you already use
+to `0.11.1`. Both are available on Maven Central.
+[Core](https://repo.maven.apache.org/maven2/io/github/dtkmn/mcp-gateway-core/0.11.1/)
+and [Spring WebFlux adapter](https://repo.maven.apache.org/maven2/io/github/dtkmn/mcp-gateway-spring-webflux/0.11.1/).
 
 <a id="0110-public-preview-unpublished-candidate"></a>
 
 ## 0.11.0 Public Preview
 
-`0.11.0` is the latest published version of both public-preview artifacts,
-released on 2026-10-01. Both are available from Maven Central at
+`0.11.0` was released on 2026-10-01. Both public-preview artifacts are
+available from Maven Central at
 `io.github.dtkmn:mcp-gateway-core:0.11.0` and
 `io.github.dtkmn:mcp-gateway-spring-webflux:0.11.0`. The published source commit
 is `a64cc5283d92860930b8d4a7b00423c4bf1c2bb7`.
